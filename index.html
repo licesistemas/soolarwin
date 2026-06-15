@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#08111f" />
-  <title>SolarCRM Pro v2.8 — CRM para Energia Solar</title>
+  <title>SolarCRM Pro v2.9 — CRM para Energia Solar</title>
   <meta name="description" content="CRM completo para empresas de energia solar com propostas profissionais, Kanban, Firebase, financeiro, obras e pós-venda." />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <style>
@@ -850,8 +850,8 @@ body.auth-ready #loginScreen { display:none !important; }
             <button id="loginChangeAccount" class="btn btn-ghost btn-sm" type="button">Trocar conta</button>
           </div>
         </div>
-        <div class="login-secondary">Primeiro acesso nesta empresa? <button id="systemCreateAdmin" type="button">Criar administrador</button></div>
-        <p class="login-footer-note">O acesso com Google requer que o provedor Google esteja ativado no Firebase Authentication e que o domínio do sistema esteja autorizado.</p>
+        <div class="login-secondary">Ainda não possui conta? <button id="systemCreateAdmin" type="button">Criar conta / solicitar acesso</button></div>
+        <p class="login-footer-note">Contas novas, inclusive pelo Google, permanecem pendentes até um administrador aprovar o perfil e as permissões.</p>
       </div>
     </div>
   </section>
@@ -873,7 +873,7 @@ body.auth-ready #loginScreen { display:none !important; }
             <span>⌕</span>
             <input id="globalSearch" type="search" placeholder="Buscar cliente, lead, proposta..." autocomplete="off" />
           </label>
-          <select id="roleSwitcher" class="compact-select" title="Simular perfil de acesso">
+          <select id="roleSwitcher" class="compact-select" title="Permissão definida pelo administrador" disabled>
             <option value="admin">Administrador</option>
             <option value="manager">Gerente</option>
             <option value="seller">Vendedor</option>
@@ -1033,12 +1033,12 @@ body.auth-ready #loginScreen { display:none !important; }
   <input id="backupImportInput" type="file" accept="application/json" hidden />
 
   <script>
-/* Adaptador Firebase modular — SolarCRM Pro v2.8. */
+/* Adaptador Firebase modular — SolarCRM Pro v2.9. */
 (() => {
   'use strict';
   const SDK_VERSION = '11.10.0';
   const collectionMap = {
-    companies: 'companies', users: 'users', teams: 'team_members', clients: 'clients', leads: 'leads', proposals: 'proposals', contracts: 'contracts',
+    companies: 'companies', users: 'users', teams: 'team_members', accessRequests: 'access_requests', clients: 'clients', leads: 'leads', proposals: 'proposals', contracts: 'contracts',
     projects: 'projects', works: 'projects', installations: 'installations', aftersales: 'installations', homologations: 'homologations',
     tickets: 'tickets', financial: 'financial', commissions: 'commissions', products: 'products', inventory: 'products',
     suppliers: 'suppliers', notifications: 'notifications', projectDocuments: 'project_documents', automationRules: 'automation_rules', automationQueue: 'automation_queue', automationLogs: 'automation_logs', stockMovements: 'stock_movements', tasks: 'tasks'
@@ -1058,7 +1058,7 @@ body.auth-ready #loginScreen { display:none !important; }
     'auth/weak-password': 'A senha precisa ter pelo menos 6 caracteres.',
     'auth/email-already-in-use': 'Este e-mail já possui uma conta no Firebase.',
     'auth/user-disabled': 'Este usuário está desativado no Firebase Authentication.',
-    'auth/operation-not-allowed': 'Ative o provedor de login correspondente (E-mail/senha ou Google) no Firebase Authentication.',
+    'auth/operation-not-allowed': 'Ative o provedor E-mail/senha no Firebase Authentication.',
     'auth/network-request-failed': 'Falha de rede ao acessar o Firebase.',
     'auth/too-many-requests': 'Muitas tentativas. Aguarde alguns minutos e tente novamente.',
     'auth/popup-blocked': 'O navegador bloqueou a janela do Google. Permita pop-ups para este site e tente novamente.',
@@ -1068,8 +1068,8 @@ body.auth-ready #loginScreen { display:none !important; }
     'auth/provider-already-linked': 'A conta Google já está vinculada a este usuário.',
     'auth/user-not-found': 'Usuário não encontrado.',
 
-    'permission-denied': 'Permissão negada pelo Firestore. Verifique o perfil do usuário e publique as regras da versão 2.6.',
-    'firestore/permission-denied': 'Permissão negada pelo Firestore. Verifique o perfil do usuário e publique as regras da versão 2.6.',
+    'permission-denied': 'Permissão negada pelo Firestore. Verifique a aprovação do usuário e publique as regras da versão 2.9.',
+    'firestore/permission-denied': 'Permissão negada pelo Firestore. Verifique a aprovação do usuário e publique as regras da versão 2.9.',
     'storage/unauthorized': 'Sem permissão para acessar o Storage. Verifique o usuário e as regras publicadas.',
     'storage/object-not-found': 'O arquivo solicitado não foi encontrado no Storage.',
     'functions/not-found': 'A Cloud Function ainda não foi publicada.',
@@ -1077,7 +1077,7 @@ body.auth-ready #loginScreen { display:none !important; }
     'functions/permission-denied': 'O usuário não tem permissão para executar essa função.',
     'unavailable': 'O serviço Firebase está temporariamente indisponível.',
     'crm/bootstrap-owned-by-another-user': 'O primeiro administrador já está vinculado a outra conta. Entre com a conta original ou peça ao administrador para liberar este usuário.',
-    'crm/bootstrap-profile-repair-denied': 'O login é o administrador inicial, mas o Firestore não permitiu reconstruir o perfil. Publique as regras da versão 2.8 e tente novamente.'
+    'crm/bootstrap-profile-repair-denied': 'O login é o administrador inicial, mas o Firestore não permitiu reconstruir o perfil. Publique as regras da versão 2.9 e tente novamente.'
   };
 
   function friendlyError(error, fallback = 'O Firebase não conseguiu concluir a operação.') {
@@ -1295,7 +1295,8 @@ body.auth-ready #loginScreen { display:none !important; }
           ? raw.companyIds
           : (raw.companyId ? [raw.companyId] : []);
         this.profile = { ...raw, companyIds };
-        this.syncReady = Boolean(companyIds.length);
+        const active = String(raw.status || '').toLowerCase() === 'ativo';
+        this.syncReady = Boolean(companyIds.length && active);
         return this.profile;
       } catch (error) {
         this.profile = null;
@@ -1316,6 +1317,120 @@ body.auth-ready #loginScreen { display:none !important; }
         return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
       } catch (error) {
         throw friendlyError(error, 'Não foi possível verificar o administrador inicial.');
+      }
+    },
+
+    async getOwnAccessRequest() {
+      this.ensureAuthenticated();
+      try {
+        const { doc, getDoc } = this.modules.firestoreMod;
+        const snapshot = await getDoc(doc(this.db, 'access_requests', this.auth.currentUser.uid));
+        return snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null;
+      } catch (error) {
+        throw friendlyError(error, 'Não foi possível consultar a solicitação de acesso.');
+      }
+    },
+
+    async requestAccess({ companyId, companyName = '' } = {}) {
+      this.ensureAuthenticated();
+      if (!companyId) throw new Error('A empresa de destino não foi identificada.');
+      try {
+        const { doc, setDoc, serverTimestamp } = this.modules.firestoreMod;
+        const user = this.auth.currentUser;
+        const provider = user.providerData?.[0]?.providerId || 'password';
+        const request = {
+          id: user.uid,
+          uid: user.uid,
+          name: user.displayName || user.email?.split('@')[0] || 'Novo usuário',
+          email: user.email || '',
+          photoURL: user.photoURL || '',
+          provider,
+          companyId,
+          companyName,
+          requestedRole: 'seller',
+          status: 'Pendente',
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        };
+        await setDoc(doc(this.db, 'access_requests', user.uid), request, { merge: true });
+        return { ...request, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
+      } catch (error) {
+        throw friendlyError(error, 'Não foi possível registrar a solicitação de acesso. Publique as regras da versão 2.9.');
+      }
+    },
+
+    async listUsers(companyId) {
+      this.ensureSyncReady();
+      try {
+        const { collection, query, where, getDocs } = this.modules.firestoreMod;
+        const snapshot = await getDocs(query(collection(this.db, 'users'), where('companyId', '==', companyId)));
+        return snapshot.docs.map(item => ({ id:item.id, ...item.data() }));
+      } catch (error) {
+        throw friendlyError(error, 'Não foi possível carregar os usuários e permissões.');
+      }
+    },
+
+    async listAccessRequests(companyId) {
+      this.ensureSyncReady();
+      try {
+        const { collection, query, where, getDocs } = this.modules.firestoreMod;
+        const snapshot = await getDocs(query(collection(this.db, 'access_requests'), where('companyId', '==', companyId)));
+        return snapshot.docs.map(item => ({ id:item.id, ...item.data() }));
+      } catch (error) {
+        throw friendlyError(error, 'Não foi possível carregar as solicitações pendentes.');
+      }
+    },
+
+    async approveAccessRequest(uid, { role='seller', companyId, companyName='' } = {}) {
+      this.ensureSyncReady();
+      if (this.profile?.role !== 'admin') throw new Error('Somente administradores podem aprovar novos usuários.');
+      try {
+        const { doc, getDoc, writeBatch, serverTimestamp } = this.modules.firestoreMod;
+        const requestRef = doc(this.db, 'access_requests', uid);
+        const requestSnapshot = await getDoc(requestRef);
+        if (!requestSnapshot.exists()) throw new Error('A solicitação de acesso não foi encontrada.');
+        const request = { id:requestSnapshot.id, ...requestSnapshot.data() };
+        const targetCompany = companyId || request.companyId;
+        const profile = {
+          id:uid, name:request.name || request.email || 'Usuário', email:request.email || '', avatar:request.photoURL || '',
+          role, permission:role, companyId:targetCompany, companyIds:[targetCompany], companyName,
+          status:'Ativo', approvedBy:this.auth.currentUser.uid, approvedAt:new Date().toISOString(),
+          createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()
+        };
+        const batch = writeBatch(this.db);
+        batch.set(doc(this.db, 'users', uid), profile, { merge:true });
+        batch.set(requestRef, { status:'Aprovado', approvedRole:role, approvedBy:this.auth.currentUser.uid, approvedAt:serverTimestamp(), updatedAt:serverTimestamp() }, { merge:true });
+        await batch.commit();
+        return profile;
+      } catch (error) {
+        throw friendlyError(error, 'Não foi possível aprovar o usuário.');
+      }
+    },
+
+    async rejectAccessRequest(uid, reason='') {
+      this.ensureSyncReady();
+      if (this.profile?.role !== 'admin') throw new Error('Somente administradores podem rejeitar solicitações.');
+      try {
+        const { doc, setDoc, serverTimestamp } = this.modules.firestoreMod;
+        await setDoc(doc(this.db, 'access_requests', uid), { status:'Rejeitado', rejectionReason:reason, reviewedBy:this.auth.currentUser.uid, reviewedAt:serverTimestamp(), updatedAt:serverTimestamp() }, { merge:true });
+        return true;
+      } catch (error) {
+        throw friendlyError(error, 'Não foi possível rejeitar a solicitação.');
+      }
+    },
+
+    async updateUserPermissions(uid, { role, status, companyId } = {}) {
+      this.ensureSyncReady();
+      if (this.profile?.role !== 'admin') throw new Error('Somente administradores podem alterar permissões.');
+      if (uid === this.auth.currentUser.uid && status !== 'Ativo') throw new Error('Você não pode desativar o próprio usuário.');
+      try {
+        const { doc, setDoc, serverTimestamp } = this.modules.firestoreMod;
+        await setDoc(doc(this.db, 'users', uid), {
+          role, permission:role, status, companyId, companyIds:[companyId], updatedBy:this.auth.currentUser.uid, updatedAt:serverTimestamp()
+        }, { merge:true });
+        return true;
+      } catch (error) {
+        throw friendlyError(error, 'Não foi possível atualizar as permissões do usuário.');
       }
     },
 
@@ -1401,68 +1516,51 @@ body.auth-ready #loginScreen { display:none !important; }
         return profile;
       } catch (error) {
         if (error?.code === 'crm/bootstrap-owned-by-another-user') throw error;
-        throw friendlyError(error, 'Não foi possível criar ou recuperar o primeiro administrador. Publique as regras da versão 2.8.');
+        throw friendlyError(error, 'Não foi possível criar ou recuperar o primeiro administrador. Publique as regras da versão 2.9.');
       }
     },
 
     async diagnose(companyId) {
       const result = {
-        connected: this.connected,
-        authenticated: Boolean(this.auth?.currentUser),
-        userEmail: this.auth?.currentUser?.email || '',
-        profileFound: false,
-        companyAuthorized: false,
-        syncReady: false,
-        bootstrapExists: false,
-        bootstrapOwner: false,
-        bootstrapEmail: '',
-        bootstrapCompanyId: '',
-        code: '',
-        message: ''
+        connected:this.connected, authenticated:Boolean(this.auth?.currentUser), userEmail:this.auth?.currentUser?.email||'',
+        profileFound:false, profileStatus:'', companyAuthorized:false, syncReady:false, accessRequestStatus:'',
+        bootstrapExists:false, bootstrapOwner:false, bootstrapEmail:'', bootstrapCompanyId:'', code:'', message:''
       };
-      if (!this.connected) {
-        result.code = 'not-connected';
-        result.message = 'O projeto Firebase ainda não está conectado.';
-        return result;
-      }
-      if (!this.auth?.currentUser) {
-        result.code = 'not-authenticated';
-        result.message = 'A conexão está ativa, mas nenhum usuário entrou no Firebase.';
-        return result;
-      }
+      if (!this.connected) { result.code='not-connected'; result.message='O projeto Firebase ainda não está conectado.'; return result; }
+      if (!this.auth?.currentUser) { result.code='not-authenticated'; result.message='A conexão está ativa, mas nenhum usuário entrou no Firebase.'; return result; }
       try {
         let profile = await this.refreshProfile();
         const bootstrap = await this.getBootstrapInfo();
-        result.bootstrapExists = Boolean(bootstrap);
-        result.bootstrapOwner = Boolean(bootstrap && bootstrap.uid === this.auth.currentUser.uid);
-        result.bootstrapEmail = bootstrap?.email || '';
-        result.bootstrapCompanyId = bootstrap?.companyId || '';
-        if (!profile && result.bootstrapOwner) {
-          profile = await this.repairBootstrapOwnerProfile().catch(() => null);
-        }
-        result.profileFound = Boolean(profile);
-        result.companyAuthorized = Boolean(profile?.companyIds?.includes(companyId));
-        result.syncReady = result.profileFound && result.companyAuthorized;
+        const accessRequest = await this.getOwnAccessRequest().catch(()=>null);
+        result.bootstrapExists=Boolean(bootstrap); result.bootstrapOwner=Boolean(bootstrap&&bootstrap.uid===this.auth.currentUser.uid);
+        result.bootstrapEmail=bootstrap?.email||''; result.bootstrapCompanyId=bootstrap?.companyId||'';
+        result.accessRequestStatus=accessRequest?.status||'';
+        result.profileFound=Boolean(profile); result.profileStatus=profile?.status||'';
+        result.companyAuthorized=Boolean(profile?.companyIds?.includes(companyId));
+        result.syncReady=Boolean(profile && String(profile.status||'').toLowerCase()==='ativo' && result.companyAuthorized);
         if (!profile && !bootstrap) {
-          result.code = 'profile-missing-bootstrap-available';
-          result.message = 'Este é o primeiro acesso. Clique em “Ativar meu perfil administrador”.';
+          result.code='profile-missing-bootstrap-available';
+          result.message='Esta é a primeira conta do sistema. Ative-a como administradora para iniciar a empresa.';
         } else if (!profile && result.bootstrapOwner) {
-          result.code = 'bootstrap-owner-profile-missing';
-          result.message = 'Esta conta é a administradora inicial, mas o perfil está ausente. Publique as regras da versão 2.8 e clique em “Reparar meu perfil”.';
+          result.code='bootstrap-owner-profile-missing';
+          result.message='Esta conta é a administradora inicial, mas o perfil precisa ser reconstruído.';
+        } else if (!profile && accessRequest?.status==='Rejeitado') {
+          result.code='access-rejected';
+          result.message=accessRequest.rejectionReason ? `A solicitação foi rejeitada: ${accessRequest.rejectionReason}` : 'A solicitação de acesso foi rejeitada pelo administrador.';
         } else if (!profile) {
-          result.code = 'profile-missing-other-owner';
-          result.message = `O administrador inicial pertence a outra conta${result.bootstrapEmail ? ` (${result.bootstrapEmail})` : ''}. Entre com essa conta ou peça a ela para cadastrar este usuário.`;
+          result.code='access-pending';
+          result.message='Sua solicitação foi enviada. Um administrador precisa aprovar o perfil e escolher as permissões em Configurações → Usuários e permissões.';
+        } else if (String(profile.status||'').toLowerCase()!=='ativo') {
+          result.code='profile-inactive';
+          result.message='O perfil existe, mas está inativo. Solicite a reativação ao administrador.';
         } else if (!result.companyAuthorized) {
-          result.code = 'company-not-authorized';
-          result.message = `O usuário não possui acesso à empresa ${companyId}.`;
+          result.code='company-not-authorized';
+          result.message=`O usuário não possui acesso à empresa ${companyId}.`;
         } else {
-          result.code = 'ok';
-          result.message = 'Autenticação, perfil e empresa estão prontos para sincronizar.';
+          result.code='ok'; result.message='Autenticação, perfil aprovado e empresa estão prontos para sincronizar.';
         }
       } catch (error) {
-        const parsed = friendlyError(error);
-        result.code = parsed.code;
-        result.message = parsed.message;
+        const parsed=friendlyError(error); result.code=parsed.code; result.message=parsed.message;
       }
       return result;
     },
@@ -1555,7 +1653,7 @@ body.auth-ready #loginScreen { display:none !important; }
     ensureSyncReady() {
       this.ensureAuthenticated();
       if (!this.syncReady || !this.profile) {
-        throw new Error('O usuário está autenticado, mas ainda não possui um perfil autorizado no Firestore. Use “Diagnosticar” ou “Inicializar primeiro administrador”.');
+        throw new Error('O usuário está autenticado, mas o perfil ainda não foi aprovado ou está inativo. Um administrador deve liberar o acesso em Configurações → Usuários e permissões.');
       }
       this.user = this.auth.currentUser;
     },
@@ -1574,13 +1672,13 @@ body.auth-ready #loginScreen { display:none !important; }
 (() => {
   'use strict';
 
-  const STORAGE_KEY = 'solarcrm-pro-v2';
-  const LEGACY_STORAGE_KEY = 'solarcrm-pro-v1';
-  const FIREBASE_CONFIG_KEY = 'solarcrm-firebase-config-v2-8';
-  const LEGACY_FIREBASE_CONFIG_KEYS = ['solarcrm-firebase-config-v2-7','solarcrm-firebase-config-v2-6','solarcrm-firebase-config'];
+  const STORAGE_KEY = 'solarcrm-pro-v2-9-clean';
+  const LEGACY_STORAGE_KEY = ''; // versão limpa: não importa cadastros anteriores
+  const FIREBASE_CONFIG_KEY = 'solarcrm-firebase-config-v2-9';
+  const LEGACY_FIREBASE_CONFIG_KEYS = ['solarcrm-firebase-config-v2-8','solarcrm-firebase-config-v2-7','solarcrm-firebase-config-v2-6','solarcrm-firebase-config'];
   const DEFAULT_FIREBASE_CONFIG = Object.freeze({"apiKey":"AIzaSyCYSQfnPLyV9B6osiZhsLYYrF64YLhGkMA","authDomain":"energiasolar-67b14.firebaseapp.com","databaseURL":"https://energiasolar-67b14-default-rtdb.firebaseio.com","projectId":"energiasolar-67b14","storageBucket":"energiasolar-67b14.firebasestorage.app","messagingSenderId":"394822890491","appId":"1:394822890491:web:5afc55e01902bbf142915e","functionsRegion":"southamerica-east1"});
-  const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2';
-  const SYSTEM_VERSION = '2.8.0';
+  const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9';
+  const SYSTEM_VERSION = '2.9.0';
   let storageWarningShown = false;
   let draftSaveTimer = null;
   let firebaseLastDiagnostic = null;
@@ -1749,16 +1847,15 @@ body.auth-ready #loginScreen { display:none !important; }
   };
 
   const defaultCompany = {
-    id: 'company-demo', name: 'Solar Prime Energia', tradeName: 'Solar Prime', document: '00.000.000/0001-00', city: 'Jaraguá do Sul - SC',
-    phone: '(47) 99999-0000', email: 'contato@solarprime.com.br', website: 'www.solarprime.com.br',
-    history: 'A Solar Prime Energia nasceu para tornar a energia limpa mais simples, segura e acessível. Nossa equipe reúne profissionais de engenharia, projetos, instalação e pós-venda, acompanhando cada cliente desde a análise da fatura até o monitoramento da usina em operação.',
-    clientsCount: 1250, installedPowerMW: 18.6, certifications: 'CREA, NR-10, NR-35, INMETRO, IEC', partners: 'WEG, JA Solar, Jinko, Canadian Solar, Trina, Sungrow, Solis, Deye e Growatt',
+    id: 'company-main', name: '', tradeName: '', document: '', city: '',
+    phone: '', email: '', website: '',
+    history: '', clientsCount: 0, installedPowerMW: 0, certifications: '', partners: '',
     logo: '', workPhotos: [], primaryColor: '#ffb703', proposalValidityDays: 10, sellerSignature: '',
-    bankData: 'Banco 000 · Agência 0000 · Conta 00000-0', defaultCommissionPercent: 2,
+    bankData: '', defaultCommissionPercent: 2,
     proposalMessage: 'Olá, {cliente}! Sua proposta de energia solar {proposta} está pronta. Investimento: {valor}. Potência: {potencia} kWp.',
     npsMessage: 'Olá, {cliente}! De 0 a 10, quanto você recomendaria nossa empresa? Sua opinião é muito importante.',
     collectionMessage: 'Olá, {cliente}. Identificamos o vencimento de {descricao}, no valor de {valor}. Podemos ajudar com a regularização?',
-    companyId: 'company-demo'
+    companyId: 'company-main'
   };
 
   function newId(prefix = 'id') {
@@ -1769,98 +1866,15 @@ body.auth-ready #loginScreen { display:none !important; }
   function addDaysISO(days) { const d = new Date(); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10); }
 
   function seedState() {
-    const sampleConsumption = [680, 720, 695, 750, 810, 860, 900, 880, 840, 790, 740, 710];
     return {
-      version: 2,
-      theme: 'dark', role: 'admin', currentView: 'dashboard', currentCompanyId: 'company-demo',
-      currentUser: { id: 'demo-user', name: 'Lucas Machado', initials: 'LM', role: 'admin', companyIds: ['company-demo'] },
+      version: 3,
+      theme: 'dark', role: 'seller', currentView: 'dashboard', currentCompanyId: 'company-main',
+      currentUser: { id: '', name: '', email: '', initials: 'US', role: 'seller', companyIds: [] },
       company: { ...defaultCompany }, companies: [{ ...defaultCompany }],
-      users: [], notifications: [
-        { id:newId('n'), title:'Proposta visualizada', text:'Mariana abriu a proposta há 18 minutos.', read:false },
-        { id:newId('n'), title:'Homologação atualizada', text:'Protocolo da CELESC entrou em análise.', read:false },
-        { id:newId('n'), title:'Chamado crítico', text:'Cliente com inversor sem comunicação.', read:false }
-      ],
-      leads: [
-        { id:'lead-1', name:'Mariana Hoffmann', phone:'47999112233', email:'mariana@email.com', city:'Joinville - SC', source:'Instagram', stage:'Proposta Enviada', estimatedValue:38500, score:92, owner:'Lucas', notes:'Residência trifásica. Telhado cerâmico.', createdAt:'2026-06-08' },
-        { id:'lead-2', name:'Mercado Bom Preço', phone:'47988776655', email:'financeiro@bompreco.com', city:'Jaraguá do Sul - SC', source:'Indicação', stage:'Dimensionamento', estimatedValue:128000, score:87, owner:'Amanda', notes:'Comercial, alto consumo diurno.', createdAt:'2026-06-09' },
-        { id:'lead-3', name:'Roberto Klein', phone:'47997775544', email:'roberto@email.com', city:'Guaramirim - SC', source:'Google', stage:'Visita', estimatedValue:26900, score:72, owner:'Lucas', notes:'Visita agendada para sexta.', createdAt:'2026-06-10' },
-        { id:'lead-4', name:'Metalúrgica Delta', phone:'4733445500', email:'compras@delta.ind.br', city:'Schroeder - SC', source:'Prospecção', stage:'Negociação', estimatedValue:315000, score:96, owner:'Carlos', notes:'Aguardando análise de financiamento.', createdAt:'2026-06-05' },
-        { id:'lead-5', name:'Cláudia Ferreira', phone:'47992221100', email:'claudia@email.com', city:'Massaranduba - SC', source:'Evento', stage:'Contato', estimatedValue:22000, score:61, owner:'Amanda', notes:'Retornar após as 18h.', createdAt:'2026-06-11' },
-        { id:'lead-6', name:'Padaria Central', phone:'47999121212', email:'contato@padariacentral.com', city:'Corupá - SC', source:'Site', stage:'Novo Lead', estimatedValue:48000, score:55, owner:'Lucas', notes:'Lead recebido pelo site.', createdAt:'2026-06-12' },
-        { id:'lead-7', name:'João da Silva', phone:'47999887766', email:'joao@email.com', city:'Joinville - SC', source:'Google', stage:'Fechado', estimatedValue:42600, score:98, owner:'Lucas', notes:'Contrato assinado.', createdAt:'2026-05-22' }
-      ],
-      clients: [
-        { id:'client-1', name:'João da Silva', document:'123.456.789-00', phone:'47999887766', email:'joao@email.com', city:'Joinville - SC', address:'Rua das Palmeiras, 120', consumerUnit:'12345678', distributor:'CELESC', averageConsumption:812, status:'Ativo', createdAt:'2026-05-25' },
-        { id:'client-2', name:'Indústria Nova Era Ltda.', document:'12.345.678/0001-90', phone:'4733778899', email:'energia@novaera.com.br', city:'Jaraguá do Sul - SC', address:'Rua Industrial, 950', consumerUnit:'88990011', distributor:'CELESC', averageConsumption:12800, status:'Ativo', createdAt:'2026-04-12' },
-        { id:'client-3', name:'Condomínio Jardim Azul', document:'98.765.432/0001-10', phone:'4799001122', email:'sindico@jardimazul.com', city:'Guaramirim - SC', address:'Rua Azul, 50', consumerUnit:'55443322', distributor:'CELESC', averageConsumption:4250, status:'Em negociação', createdAt:'2026-06-02' }
-      ],
-      proposals: [
-        createSampleProposal('prop-1','Mariana Hoffmann','Joinville - SC',sampleConsumption,38500,'Enviada'),
-        createSampleProposal('prop-2','João da Silva','Joinville - SC',[760,780,800,840,825,870,900,890,850,810,790,770],42600,'Aceita'),
-        createSampleProposal('prop-3','Mercado Bom Preço','Jaraguá do Sul - SC',[8400,9100,8800,9300,9750,10200,10500,9900,9600,9200,8900,8700],128000,'Rascunho')
-      ],
-      contracts: [
-        { id:'contract-1', clientName:'João da Silva', proposalId:'prop-2', value:42600, signedAt:'2026-05-29', status:'Assinado', paymentMethod:'Financiamento Sicredi', notes:'Contrato digital.', createdAt:'2026-05-29' }
-      ],
-      works: [
-        { id:'work-1', clientName:'João da Silva', city:'Joinville - SC', systemPower:8.68, team:'Equipe Norte', startDate:'2026-06-15', deadline:'2026-06-18', progress:35, status:'Compras', notes:'Materiais separados.', createdAt:'2026-06-01' },
-        { id:'work-2', clientName:'Indústria Nova Era Ltda.', city:'Jaraguá do Sul - SC', systemPower:75.4, team:'Equipe Industrial', startDate:'2026-06-03', deadline:'2026-06-20', progress:72, status:'Em instalação', notes:'Estrutura finalizada.', createdAt:'2026-05-20' }
-      ],
-      homologations: [
-        { id:'hom-1', clientName:'João da Silva', distributor:'CELESC', protocol:'GD-2026-001245', engineer:'Eng. Carlos Souza', submittedAt:'2026-06-02', deadline:'2026-06-17', status:'Em análise', notes:'Sem pendências.', createdAt:'2026-06-02' },
-        { id:'hom-2', clientName:'Indústria Nova Era Ltda.', distributor:'CELESC', protocol:'GD-2026-000998', engineer:'Eng. Carlos Souza', submittedAt:'2026-05-20', deadline:'2026-06-10', status:'Pendência', notes:'Ajustar diagrama unifilar.', createdAt:'2026-05-20' }
-      ],
-      financial: [
-        { id:'fin-1', description:'Entrada contrato João da Silva', type:'Receita', category:'Venda', value:8520, dueDate:'2026-06-05', paidAt:'2026-06-05', status:'Pago', clientName:'João da Silva', notes:'PIX', createdAt:'2026-06-01' },
-        { id:'fin-2', description:'Compra de módulos', type:'Despesa', category:'Materiais', value:18400, dueDate:'2026-06-14', paidAt:'', status:'Pendente', clientName:'Fornecedor Solar', notes:'NF 1234', createdAt:'2026-06-04' },
-        { id:'fin-3', description:'Parcela contrato Nova Era', type:'Receita', category:'Venda', value:46500, dueDate:'2026-06-10', paidAt:'', status:'Vencido', clientName:'Indústria Nova Era Ltda.', notes:'Cobrança enviada.', createdAt:'2026-05-25' }
-      ],
-      aftersales: [
-        { id:'after-1', clientName:'João da Silva', system:'8,68 kWp · Jinko/Sungrow', generationMonth:1020, expectedMonth:980, performance:104, lastContact:'2026-06-10', nps:9, status:'Normal' },
-        { id:'after-2', clientName:'Indústria Nova Era Ltda.', system:'75,4 kWp · Trina/WEG', generationMonth:8050, expectedMonth:8900, performance:90, lastContact:'2026-06-08', nps:8, status:'Atenção' }
-      ],
-      tickets: [
-        { id:'ticket-1', clientName:'Indústria Nova Era Ltda.', subject:'Inversor sem comunicação', priority:'Crítica', category:'Monitoramento', assignedTo:'Rafael', openedAt:'2026-06-12', status:'Em atendimento', description:'Plataforma sem dados desde 07:40.', createdAt:'2026-06-12' },
-        { id:'ticket-2', clientName:'João da Silva', subject:'Dúvida sobre aplicativo', priority:'Baixa', category:'Monitoramento', assignedTo:'Paula', openedAt:'2026-06-11', status:'Aguardando cliente', description:'Orientações enviadas por WhatsApp.', createdAt:'2026-06-11' }
-      ],
-      commissions: [
-        { id:'com-1', seller:'Lucas', clientName:'João da Silva', proposalValue:42600, percentage:2.5, value:1065, dueDate:'2026-06-30', status:'Liberada', notes:'Após recebimento da entrada.', createdAt:'2026-05-29' },
-        { id:'com-2', seller:'Carlos', clientName:'Indústria Nova Era Ltda.', proposalValue:310000, percentage:2, value:6200, dueDate:'2026-07-15', status:'Prevista', notes:'Conforme cronograma financeiro.', createdAt:'2026-05-15' }
-      ],
-      inventory: [
-        { id:'stock-1', name:'Módulo Jinko 620 W', category:'Módulo', brand:'Jinko', sku:'JIN-620', quantity:84, minimum:30, unitCost:620, supplier:'Distribuidora Solar', location:'Galpão A' },
-        { id:'stock-2', name:'Inversor Sungrow 10 kW', category:'Inversor', brand:'Sungrow', sku:'SUN-10K', quantity:5, minimum:3, unitCost:7800, supplier:'Sungrow Brasil', location:'Almoxarifado' },
-        { id:'stock-3', name:'Cabo solar 6 mm preto', category:'Cabo', brand:'Conduspar', sku:'CAB-6P', quantity:220, minimum:300, unitCost:5.2, supplier:'Elétrica Sul', location:'Galpão B' }
-      ],
-      teams: [
-        { id:'team-1', name:'Lucas Machado', role:'Gerente comercial', email:'lucas@solarprime.com.br', phone:'47999990000', team:'Comercial', region:'SC', permission:'manager', status:'Ativo' },
-        { id:'team-2', name:'Amanda Silva', role:'Consultora solar', email:'amanda@solarprime.com.br', phone:'47999991111', team:'Comercial', region:'Norte SC', permission:'seller', status:'Ativo' },
-        { id:'team-3', name:'Rafael Souza', role:'Técnico instalador', email:'rafael@solarprime.com.br', phone:'47999992222', team:'Equipe Norte', region:'Norte SC', permission:'technical', status:'Ativo' },
-        { id:'team-4', name:'Carlos Mendes', role:'Engenheiro eletricista', email:'carlos@solarprime.com.br', phone:'47999993333', team:'Engenharia', region:'SC/PR', permission:'technical', status:'Ativo' }
-      ],
-      products: [...moduleCatalog, ...inverterCatalog],
-      suppliers: [],
-      automations: {
-        whatsappLead: true, emailProposal: true, followup: true, reminders: true, collections: false, nps: true,
-        lastRunAt: ''
-      },
-      automationRules: [
-        { id:'rule-demo-stage', companyId:'company-demo', name:'Avisar cliente sobre nova etapa', enabled:true, trigger:'project_stage_enter', stage:'Qualquer etapa', channel:'whatsapp', recipient:'client', execution:'approval', delayMinutes:0, thresholdDays:3, useAI:false, subject:'Atualização do seu projeto solar', message:'Olá, {cliente}! Seu projeto de energia solar avançou para a etapa {etapa}. Nossa equipe seguirá acompanhando os próximos passos. Em caso de dúvidas, estamos à disposição.\n\n{empresa}', createdAt:todayISO(), updatedAt:new Date().toISOString() }
-      ],
-      automationQueue: [],
-      automationLogs: [
-        { id:newId('log'), companyId:'company-demo', type:'system', channel:'internal', title:'Sistema iniciado', text:'Ambiente local pronto para uso.', status:'Concluído', createdAt:new Date().toISOString() }
-      ],
-      stockMovements: [],
-      projectDocuments: [],
-      tasks: [],
-      activity: [
-        { icon:'PV', title:'Proposta enviada', text:'Mariana Hoffmann · R$ 38.500', time:'18 min' },
-        { icon:'HK', title:'Lead avançou para visita', text:'Roberto Klein · Guaramirim', time:'42 min' },
-        { icon:'GD', title:'Homologação em análise', text:'João da Silva · CELESC', time:'2 h' },
-        { icon:'OS', title:'Chamado atualizado', text:'Inversor sem comunicação', time:'3 h' },
-        { icon:'R$', title:'Pagamento confirmado', text:'Entrada de R$ 8.520', time:'Ontem' }
-      ]
+      users: [], accessRequests: [], notifications: [], leads: [], clients: [], proposals: [], contracts: [], works: [],
+      homologations: [], financial: [], aftersales: [], tickets: [], commissions: [], inventory: [], teams: [], products: [], suppliers: [],
+      automations: { whatsappLead:true, emailProposal:true, followup:true, reminders:true, collections:false, nps:true, lastRunAt:'' },
+      automationRules: [], automationQueue: [], automationLogs: [], stockMovements: [], projectDocuments: [], tasks: [], activity: []
     };
   }
 
@@ -1868,8 +1882,8 @@ body.auth-ready #loginScreen { display:none !important; }
     const moduleItem = moduleCatalog[2];
     const inverter = inverterCatalog[1];
     return {
-      id, companyId:'company-demo', number:`PROP-${id.split('-')[1].padStart(4,'0')}`, status, createdAt: todayISO(), validUntil:addDaysISO(10),
-      client: { name: clientName, document:'', phone:'47999999999', email:'cliente@email.com', city, address:'', consumerUnit:'123456789', className:'Residencial', tariffGroup:'B1', distributor:'CELESC' },
+      id, companyId:state?.currentCompanyId||defaultCompany.id, number:`PROP-${String(id).replace(/[^a-zA-Z0-9]/g,'').slice(-6).toUpperCase()}`, status, createdAt: todayISO(), validUntil:addDaysISO(10),
+      client: { name: clientName, document:'', phone:'', email:'', city, address:'', consumerUnit:'', className:'Residencial', tariffGroup:'B1', distributor:'' },
       coverPhoto:'', billFileName:'', billText:'', consumption, currentTariff:0.92, tariffHistory:consumption.map((_,i)=>+(0.76+i*0.014).toFixed(3)),
       technical: { specificYield:120, targetCoverage:100, systemLosses:17, moduleId:moduleItem.id, inverterId:inverter.id, inverterOverload:1.3, structureType:'Telhado cerâmico', orientation:'Norte', areaExtra:15 },
       commercial: { price, annualTariffIncrease:7, discountRate:10, annualMaintenance:450, moduleDegradation:0.5, residualBill:75, paymentMethod:'Financiamento', notes:'Instalação completa, homologação e monitoramento inclusos.' },
@@ -1878,7 +1892,7 @@ body.auth-ready #loginScreen { display:none !important; }
         ['Projeto','Levantamento e projeto executivo','2 dias'], ['Homologação','Protocolo junto à distribuidora','15 a 30 dias'], ['Compras','Aquisição e separação dos equipamentos','5 dias'], ['Instalação','Montagem mecânica e elétrica','2 dias'], ['Vistoria','Inspeção da distribuidora','7 a 15 dias'], ['Troca do medidor','Substituição por medidor bidirecional','Até 7 dias'], ['Operação','Ativação, treinamento e monitoramento','Imediato']
       ],
       guarantees: { panels:'12 anos produto / 30 anos desempenho', inverters:'10 anos', structure:'10 anos', installation:'5 anos' },
-      acceptance:null, seller:{ name:'Lucas Machado', email:'lucas@solarprime.com.br' }, updatedAt:new Date().toISOString()
+      acceptance:null, seller:{ name:'', email:'' }, updatedAt:new Date().toISOString()
     };
   }
 
@@ -1908,6 +1922,10 @@ body.auth-ready #loginScreen { display:none !important; }
   let firebaseAuthUnsubscribe = null;
   let authFlowBusy = false;
   let pendingAuthDiagnostic = null;
+  let permissionUsers = [];
+  let permissionRequests = [];
+  let permissionUsersLoaded = false;
+  let permissionUsersLoading = false;
 
   function normalizeState(data) {
     data = data && typeof data === 'object' ? data : seedState();
@@ -1926,9 +1944,9 @@ body.auth-ready #loginScreen { display:none !important; }
       ...rule, companyId:rule.companyId || data.currentCompanyId
     }));
     data.activity = Array.isArray(data.activity) ? data.activity : [];
-    data.currentUser = data.currentUser || { id:'demo-user', name:'Usuário', initials:'US', role:'admin', companyIds:[] };
+    data.currentUser = data.currentUser || { id:'', name:'', email:'', initials:'US', role:'seller', companyIds:[] };
     data.currentUser.companyIds = [...new Set([...(data.currentUser.companyIds || []), ...data.companies.map(c => c.id)])];
-    data.role = data.role || data.currentUser.role || 'admin';
+    data.role = data.role || data.currentUser.role || 'seller';
     data.works = data.works.map(work => ({
       ...work,
       projectStage: normalizeProjectStage(work.projectStage || work.status),
@@ -1954,10 +1972,10 @@ body.auth-ready #loginScreen { display:none !important; }
 
   function loadState() {
     try {
-      const saved = safeStorageGet(STORAGE_KEY) || safeStorageGet(LEGACY_STORAGE_KEY);
+      const saved = safeStorageGet(STORAGE_KEY);
       if (!saved) return seedState();
       const parsed = JSON.parse(saved);
-      return { ...seedState(), ...parsed, company:{...defaultCompany,...parsed.company} };
+      return { ...seedState(), ...parsed, company:{...defaultCompany,...(parsed.company||{})} };
     } catch (error) {
       console.warn('Falha ao carregar dados locais:', error);
       return seedState();
@@ -2396,14 +2414,7 @@ body.auth-ready #loginScreen { display:none !important; }
       persist();
       renderView(activeView);
     });
-    document.getElementById('roleSwitcher')?.addEventListener('change', event => {
-      state.role = event.target.value;
-      state.currentUser.role = state.role;
-      persist(); renderSidebar();
-      if (!canAccess(activeView)) activeView = 'dashboard';
-      renderView(activeView); updateTopbar();
-      toast('Perfil alterado', `Visualização de permissões: ${event.target.options[event.target.selectedIndex].text}`, 'info');
-    });
+    // A permissão é definida pelo administrador e não pode ser alterada pelo próprio usuário.
     document.getElementById('quickProposalBtn')?.addEventListener('click', () => openProposalBuilder());
     document.getElementById('mobileMenuBtn')?.addEventListener('click', () => {
       document.getElementById('sidebar').classList.add('open');
@@ -3563,7 +3574,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
   }
 
   function defaultLogoData(){
-    const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="520" height="150" viewBox="0 0 520 150"><rect width="520" height="150" rx="24" fill="white"/><circle cx="70" cy="75" r="34" fill="#ffb703"/><g stroke="#ffb703" stroke-width="8" stroke-linecap="round"><path d="M70 17V5M70 145V133M12 75H0M140 75H128M29 34L20 25M120 125L111 116M111 34L120 25M20 125L29 116"/></g><text x="128" y="70" font-family="Arial" font-weight="800" font-size="34" fill="#14263b">SOLAR PRIME</text><text x="130" y="101" font-family="Arial" font-size="17" fill="#6d7888" letter-spacing="5">ENERGIA</text></svg>`;
+    const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="520" height="150" viewBox="0 0 520 150"><rect width="520" height="150" rx="24" fill="white"/><circle cx="70" cy="75" r="34" fill="#ffb703"/><g stroke="#ffb703" stroke-width="8" stroke-linecap="round"><path d="M70 17V5M70 145V133M12 75H0M140 75H128M29 34L20 25M120 125L111 116M111 34L120 25M20 125L29 116"/></g><text x="128" y="70" font-family="Arial" font-weight="800" font-size="34" fill="#14263b">SOLAR CRM</text><text x="130" y="101" font-family="Arial" font-size="17" fill="#6d7888" letter-spacing="5">ENERGIA</text></svg>`;
     return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
   }
 
@@ -3759,6 +3770,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     root.innerHTML=`<div class="settings-tabs">${tabs.map(([id,label])=>`<button class="settings-tab ${settingsTab===id?'active':''}" data-settings-tab="${id}">${label}</button>`).join('')}</div><div id="settingsPanel">${renderSettingsPanel(settingsTab)}</div>`;
     root.querySelectorAll('[data-settings-tab]').forEach(btn=>btn.addEventListener('click',()=>{settingsTab=btn.dataset.settingsTab;renderSettings();}));
     bindSettingsEvents();
+    if(settingsTab==='users' && state.role==='admin' && !permissionUsersLoaded && !permissionUsersLoading) setTimeout(()=>loadUserPermissionData(),0);
   }
 
   function getFirebaseUiState(){
@@ -3768,7 +3780,8 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     if(!firebase.profile){
       if(firebaseLastDiagnostic?.code==='profile-missing-bootstrap-available')return {title:'Primeiro acesso',detail:'Clique em “Ativar meu perfil administrador”.',badge:'Ativação pendente',className:'yellow'};
       if(firebaseLastDiagnostic?.code==='bootstrap-owner-profile-missing')return {title:'Perfil recuperável',detail:'Esta conta é a administradora inicial. Clique em “Reparar meu perfil”.',badge:'Reparo pendente',className:'yellow'};
-      if(firebaseLastDiagnostic?.code==='profile-missing-other-owner')return {title:'Acesso não liberado',detail:firebaseLastDiagnostic.message||'Outro administrador precisa cadastrar este usuário.',badge:'Autorização pendente',className:'yellow'};
+      if(['profile-missing-other-owner','access-pending'].includes(firebaseLastDiagnostic?.code))return {title:'Aguardando aprovação',detail:firebaseLastDiagnostic.message||'Um administrador precisa aprovar este usuário.',badge:'Aprovação pendente',className:'yellow'};
+      if(firebaseLastDiagnostic?.code==='access-rejected')return {title:'Acesso rejeitado',detail:firebaseLastDiagnostic.message||'A solicitação foi rejeitada.',badge:'Rejeitado',className:'red'};
       return {title:'Usuário autenticado',detail:'Falta criar ou vincular o perfil deste usuário no Firestore.',badge:'Perfil pendente',className:'yellow'};
     }
     if(!firebase.syncReady)return {title:'Perfil localizado',detail:'O usuário não possui acesso à empresa ativa.',badge:'Acesso pendente',className:'yellow'};
@@ -3786,7 +3799,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     const c=state.company;const firebaseConfig=loadFirebaseConfig();
     if(tab==='profile'){
       const u=state.currentUser||{};const linked=state.teams.find(team=>team.id===u.teamRecordId)||(u.email&&state.teams.find(team=>team.email?.toLowerCase()===u.email.toLowerCase()))||{};
-      return `<form id="userProfileForm"><div class="profile-card"><div><div class="profile-avatar">${u.avatar?`<img src="${u.avatar}" alt="${attr(u.name||'Usuário')}">`:escapeHtml(initials(u.name||'Usuário'))}</div><label class="btn btn-ghost btn-sm" style="margin-top:10px;width:126px"><input id="userAvatarInput" type="file" accept="image/*" hidden>Alterar foto</label></div><div><div class="form-grid">${settingsInput('name','Nome completo',u.name||linked.name||'')}${settingsInput('email','E-mail',u.email||linked.email||'','email')}${settingsInput('phone','Telefone / WhatsApp',u.phone||linked.phone||'','tel')}${settingsInput('jobTitle','Cargo / função',u.jobTitle||linked.role||'')}${settingsInput('team','Equipe',u.team||linked.team||'')}${settingsInput('region','Região',u.region||linked.region||'')}<label class="field"><span>Permissão atual</span><input value="${attr(state.role||u.role||'admin')}" disabled></label><label class="field"><span>ID do usuário</span><input value="${attr(u.id||'demo-user')}" disabled></label><label class="field full"><span>Assinatura / apresentação curta</span><textarea name="bio" placeholder="Ex.: Gerente comercial responsável pela região Norte de SC.">${escapeHtml(u.bio||'')}</textarea></label></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-primary" type="submit">Salvar meus dados</button></div></div></div></form>`;
+      return `<form id="userProfileForm"><div class="profile-card"><div><div class="profile-avatar">${u.avatar?`<img src="${u.avatar}" alt="${attr(u.name||'Usuário')}">`:escapeHtml(initials(u.name||'Usuário'))}</div><label class="btn btn-ghost btn-sm" style="margin-top:10px;width:126px"><input id="userAvatarInput" type="file" accept="image/*" hidden>Alterar foto</label></div><div><div class="form-grid">${settingsInput('name','Nome completo',u.name||linked.name||'')}${settingsInput('email','E-mail',u.email||linked.email||'','email')}${settingsInput('phone','Telefone / WhatsApp',u.phone||linked.phone||'','tel')}${settingsInput('jobTitle','Cargo / função',u.jobTitle||linked.role||'')}${settingsInput('team','Equipe',u.team||linked.team||'')}${settingsInput('region','Região',u.region||linked.region||'')}<label class="field"><span>Permissão atual</span><input value="${attr(state.role||u.role||'admin')}" disabled></label><label class="field"><span>ID do usuário</span><input value="${attr(u.id||'')}" disabled></label><label class="field full"><span>Assinatura / apresentação curta</span><textarea name="bio" placeholder="Ex.: Gerente comercial responsável pela região Norte de SC.">${escapeHtml(u.bio||'')}</textarea></label></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-primary" type="submit">Salvar meus dados</button></div></div></div></form>`;
     }
     if(tab==='company')return `<form id="companySettingsForm"><div class="form-grid">${settingsInput('name','Razão social',c.name)}${settingsInput('tradeName','Nome fantasia',c.tradeName)}${settingsInput('document','CNPJ',c.document)}${settingsInput('city','Cidade / sede',c.city)}${settingsInput('phone','Telefone',c.phone)}${settingsInput('email','E-mail',c.email,'email')}${settingsInput('website','Site',c.website)}${settingsInput('proposalValidityDays','Validade padrão da proposta (dias)',c.proposalValidityDays,'number')}${settingsInput('clientsCount','Quantidade de clientes',c.clientsCount,'number')}${settingsInput('installedPowerMW','Potência instalada (MW)',c.installedPowerMW,'number')}${settingsInput('defaultCommissionPercent','Comissão padrão (%)',c.defaultCommissionPercent,'number')}<label class="field full"><span>História da empresa</span><textarea name="history">${escapeHtml(c.history)}</textarea></label><label class="field full"><span>Certificações (separadas por vírgula)</span><input name="certifications" value="${attr(c.certifications)}"></label><label class="field full"><span>Parceiros</span><input name="partners" value="${attr(c.partners)}"></label><label class="field full"><span>Dados bancários</span><input name="bankData" value="${attr(c.bankData)}"></label><label class="field full"><span>Mensagem de envio de proposta</span><textarea name="proposalMessage">${escapeHtml(c.proposalMessage)}</textarea></label><label class="field full"><span>Mensagem de cobrança</span><textarea name="collectionMessage">${escapeHtml(c.collectionMessage)}</textarea></label><label class="field full"><span>Mensagem de NPS</span><textarea name="npsMessage">${escapeHtml(c.npsMessage)}</textarea></label></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-primary" type="submit">Salvar empresa</button></div></form>`;
     if(tab==='branding')return `<div class="form-section"><div class="form-section-head"><div><h3>Logo da empresa</h3><p>Usada na capa e no cabeçalho de todas as páginas.</p></div></div><div class="grid grid-2"><div>${c.logo?`<img class="logo-preview" src="${c.logo}" alt="Logo">`:`<img class="logo-preview" src="${defaultLogoData()}" alt="Logo padrão">`}</div><label class="upload-drop"><div><strong>Selecionar logo</strong><span>PNG com fundo transparente ou JPG.</span><input id="companyLogoInput" type="file" accept="image/*" style="margin-top:10px"></div></label></div></div><div class="form-section"><div class="form-section-head"><div><h3>Fotos de obras executadas</h3><p>Até quatro imagens na página institucional da proposta.</p></div></div><label class="upload-drop"><div><strong>Adicionar fotos</strong><span>Selecione uma ou várias imagens.</span><input id="workPhotosInput" type="file" accept="image/*" multiple style="margin-top:10px"></div></label><div class="photo-list" style="margin-top:12px">${(c.workPhotos||[]).map((photo,i)=>`<div style="position:relative"><img src="${photo}"><button class="btn btn-danger btn-sm btn-icon" data-remove-work-photo="${i}" style="position:absolute;right:5px;top:5px">×</button></div>`).join('')}</div></div><div class="form-section"><div class="form-section-head"><div><h3>Assinatura do vendedor</h3><p>Imagem opcional utilizada na página de aceite.</p></div></div><div class="grid grid-2"><div>${c.sellerSignature?`<img class="logo-preview" src="${c.sellerSignature}" alt="Assinatura">`:'<div class="upload-drop"><span>Nenhuma assinatura cadastrada.</span></div>'}</div><label class="upload-drop"><div><strong>Enviar assinatura</strong><span>Use PNG com fundo branco ou transparente.</span><input id="sellerSignatureInput" type="file" accept="image/*" style="margin-top:10px"></div></label></div></div>`;
@@ -3794,10 +3807,53 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
       const status=getFirebaseUiState();
       const loggedEmail=window.FirebaseCRM?.auth?.currentUser?.email||state.currentUser.email||'';
       const profileActionLabel=firebaseLastDiagnostic?.code==='bootstrap-owner-profile-missing'?'Reparar meu perfil':firebaseLastDiagnostic?.code==='profile-missing-bootstrap-available'?'Ativar meu perfil administrador':'Ativar ou reparar meu perfil';
-      return `<div class="firebase-status"><div><strong>${escapeHtml(status.title)}</strong><span>${escapeHtml(status.detail)}</span></div><span class="status ${status.className}">${escapeHtml(status.badge)}</span></div>${firebaseDiagnosticHtml()}<div class="notice" style="margin-top:14px"><strong>Perfil Firebase:</strong> o login do Authentication e o perfil do CRM são registros diferentes. A versão 2.8 cria o primeiro perfil e também reconstrói automaticamente o perfil do administrador inicial quando ele foi removido.</div><form id="firebaseSettingsForm" style="margin-top:15px"><div class="form-grid">${['apiKey','authDomain','databaseURL','projectId','storageBucket','messagingSenderId','appId','functionsRegion'].map(key=>settingsInput(key,firebaseLabels[key],firebaseConfig[key]||'',key==='apiKey'?'password':'text')).join('')}</div><div class="notice" style="margin-top:12px"><strong>Configuração carregada:</strong> projeto ${escapeHtml(firebaseConfig.projectId||'—')} · chave ${escapeHtml(firebaseKeyPreview(firebaseConfig.apiKey))} · origem ${escapeHtml(location.origin==='null'?location.protocol:location.origin)}.${location.protocol==='file:'?' O arquivo está aberto por file://; se a chave tiver restrição de site, use Firebase Hosting ou localhost.':''}</div><div style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px"><button class="btn btn-ghost" id="firebaseRestoreConfigBtn" type="button">Restaurar configuração oficial</button><button class="btn btn-ghost" id="firebaseTestBtn" type="button">Testar conexão</button><button class="btn btn-primary" type="submit">Salvar e conectar</button></div></form><div class="form-section" style="margin-top:15px"><div class="form-section-head"><div><h3>Acesso ao Firebase</h3><p>Use e-mail e senha. No primeiro acesso, o botão de criação prepara automaticamente o administrador inicial e a empresa ativa.</p></div></div><div class="inline-fields"><label class="field"><span>E-mail</span><input id="firebaseLoginEmail" type="email" value="${attr(loggedEmail)}"></label><label class="field"><span>Senha</span><input id="firebaseLoginPassword" type="password" minlength="6"></label><button class="btn btn-secondary" id="firebaseLoginBtn" type="button" style="align-self:end">Entrar</button></div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-primary" id="firebaseRegisterBtn" type="button">Criar conta e primeiro administrador</button><button class="btn btn-ghost" id="firebaseBootstrapBtn" type="button">${escapeHtml(profileActionLabel)}</button><button class="btn btn-ghost" id="firebaseDiagnoseBtn" type="button">Diagnosticar</button><button class="btn btn-ghost" id="firebaseLogoutBtn" type="button">Sair</button></div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost" id="firebasePullBtn" type="button">Carregar dados da nuvem</button><button class="btn btn-primary" id="firebaseSyncBtn" type="button">Enviar dados locais</button></div></div>`;
+      return `<div class="firebase-status"><div><strong>${escapeHtml(status.title)}</strong><span>${escapeHtml(status.detail)}</span></div><span class="status ${status.className}">${escapeHtml(status.badge)}</span></div>${firebaseDiagnosticHtml()}<div class="notice" style="margin-top:14px"><strong>Perfil Firebase:</strong> o login do Authentication e o perfil do CRM são registros diferentes. A primeira conta pode inicializar o administrador. Todas as demais contas, inclusive Google, exigem aprovação em Usuários e permissões.</div><form id="firebaseSettingsForm" style="margin-top:15px"><div class="form-grid">${['apiKey','authDomain','databaseURL','projectId','storageBucket','messagingSenderId','appId','functionsRegion'].map(key=>settingsInput(key,firebaseLabels[key],firebaseConfig[key]||'',key==='apiKey'?'password':'text')).join('')}</div><div class="notice" style="margin-top:12px"><strong>Configuração carregada:</strong> projeto ${escapeHtml(firebaseConfig.projectId||'—')} · chave ${escapeHtml(firebaseKeyPreview(firebaseConfig.apiKey))} · origem ${escapeHtml(location.origin==='null'?location.protocol:location.origin)}.${location.protocol==='file:'?' O arquivo está aberto por file://; se a chave tiver restrição de site, use Firebase Hosting ou localhost.':''}</div><div style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px"><button class="btn btn-ghost" id="firebaseRestoreConfigBtn" type="button">Restaurar configuração oficial</button><button class="btn btn-ghost" id="firebaseTestBtn" type="button">Testar conexão</button><button class="btn btn-primary" type="submit">Salvar e conectar</button></div></form><div class="form-section" style="margin-top:15px"><div class="form-section-head"><div><h3>Acesso ao Firebase</h3><p>Use e-mail e senha. Contas novas solicitam acesso; somente a primeira conta pode inicializar o administrador.</p></div></div><div class="inline-fields"><label class="field"><span>E-mail</span><input id="firebaseLoginEmail" type="email" value="${attr(loggedEmail)}"></label><label class="field"><span>Senha</span><input id="firebaseLoginPassword" type="password" minlength="6"></label><button class="btn btn-secondary" id="firebaseLoginBtn" type="button" style="align-self:end">Entrar</button></div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-primary" id="firebaseRegisterBtn" type="button">Criar conta / solicitar acesso</button><button class="btn btn-ghost" id="firebaseBootstrapBtn" type="button">${escapeHtml(profileActionLabel)}</button><button class="btn btn-ghost" id="firebaseDiagnoseBtn" type="button">Diagnosticar</button><button class="btn btn-ghost" id="firebaseLogoutBtn" type="button">Sair</button></div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost" id="firebasePullBtn" type="button">Carregar dados da nuvem</button><button class="btn btn-primary" id="firebaseSyncBtn" type="button">Enviar dados locais</button></div></div>`;
     }
-    if(tab==='users')return `<div class="notice">O controle visual de permissões já funciona no modo local. Em produção, cada usuário deve ter um documento em <strong>users/{uid}</strong> com companyIds e role, conforme as regras do Firestore incluídas no projeto.</div><div class="data-table-wrap" style="margin-top:14px"><table class="data-table"><thead><tr><th>Nome</th><th>E-mail</th><th>Função</th><th>Equipe</th><th>Permissão</th><th>Status</th><th>Ações</th></tr></thead><tbody>${state.teams.map(u=>`<tr><td>${escapeHtml(u.name)}</td><td>${escapeHtml(u.email)}</td><td>${escapeHtml(u.role)}</td><td>${escapeHtml(u.team)}</td><td><span class="status purple">${escapeHtml(u.permission)}</span></td><td><span class="status ${colorClass(u.status)}">${escapeHtml(u.status)}</span></td><td><button class="btn btn-ghost btn-sm" data-edit-settings-user="${u.id}" type="button">Editar</button></td></tr>`).join('')}</tbody></table></div><button class="btn btn-primary" id="addUserFromSettings" type="button" style="margin-top:14px">＋ Adicionar colaborador</button>`;
-    return `<div class="grid grid-2"><div class="form-section"><div class="form-section-head"><div><h3>Exportar backup</h3><p>Baixe todas as informações do modo local em JSON.</p></div></div><button class="btn btn-primary" id="settingsExportBackup" type="button">Exportar backup completo</button></div><div class="form-section"><div class="form-section-head"><div><h3>Importar backup</h3><p>Restaure um arquivo exportado anteriormente.</p></div></div><button class="btn btn-ghost" id="settingsImportBackup" type="button">Selecionar arquivo JSON</button></div></div><div class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Reiniciar dados de demonstração</h3><p>Apaga os dados locais deste navegador e recria a base inicial.</p></div></div><button class="btn btn-danger" id="resetDemoData" type="button">Apagar e recriar demonstração</button></div>`;
+    if(tab==='users')return renderUserPermissionsPanel();
+    return `<div class="grid grid-2"><div class="form-section"><div class="form-section-head"><div><h3>Exportar backup</h3><p>Baixe todas as informações cadastradas em JSON.</p></div></div><button class="btn btn-primary" id="settingsExportBackup" type="button">Exportar backup completo</button></div><div class="form-section"><div class="form-section-head"><div><h3>Importar backup</h3><p>Restaure um arquivo exportado anteriormente.</p></div></div><button class="btn btn-ghost" id="settingsImportBackup" type="button">Selecionar arquivo JSON</button></div></div><div class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Apagar dados locais</h3><p>Remove definitivamente os cadastros deste navegador e retorna para uma base vazia. Os dados já enviados ao Firebase não são apagados.</p></div></div><button class="btn btn-danger" id="resetCleanData" type="button">Apagar dados locais</button></div>`;
+  }
+
+  function permissionRoleLabel(role){return ({admin:'Administrador',manager:'Gerente',seller:'Vendedor',technical:'Técnico',finance:'Financeiro'})[role]||role||'Vendedor';}
+  function permissionRoleOptions(selected='seller'){return ['admin','manager','seller','technical','finance'].map(role=>`<option value="${role}" ${role===selected?'selected':''}>${permissionRoleLabel(role)}</option>`).join('');}
+  function firebaseDateLabel(value){
+    try{const date=value?.toDate?value.toDate():value?.seconds?new Date(value.seconds*1000):new Date(value);return Number.isNaN(date.getTime())?'—':date.toLocaleString('pt-BR');}catch(_){return '—';}
+  }
+  function renderUserPermissionsPanel(){
+    if(state.role!=='admin')return `<div class="notice danger-note"><strong>Acesso restrito</strong><br>Somente administradores podem aprovar usuários e alterar permissões.</div>`;
+    if(!window.FirebaseCRM?.syncReady)return `<div class="notice"><strong>Firebase necessário</strong><br>Entre com o administrador aprovado para carregar solicitações e permissões.</div>`;
+    const pending=permissionRequests.filter(item=>item.status==='Pendente');
+    const reviewed=permissionRequests.filter(item=>item.status!=='Pendente').slice(0,20);
+    const pendingRows=pending.length?pending.map(item=>`<tr><td><strong>${escapeHtml(item.name||'Novo usuário')}</strong><br><small>${escapeHtml(item.provider||'password')}</small></td><td>${escapeHtml(item.email||'')}</td><td>${firebaseDateLabel(item.createdAt)}</td><td><select class="compact-select" data-request-role="${item.id}">${permissionRoleOptions(item.requestedRole||'seller')}</select></td><td><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" data-approve-access="${item.id}" type="button">Aprovar</button><button class="btn btn-danger btn-sm" data-reject-access="${item.id}" type="button">Rejeitar</button></div></td></tr>`).join(''):`<tr><td colspan="5"><div class="empty-state"><strong>Nenhuma solicitação pendente</strong><span>Novos logins por Google ou e-mail aparecerão aqui automaticamente.</span></div></td></tr>`;
+    const currentUid=window.FirebaseCRM?.auth?.currentUser?.uid||'';
+    const userRows=permissionUsers.length?permissionUsers.map(item=>{const self=item.id===currentUid;return `<tr><td><strong>${escapeHtml(item.name||'Usuário')}</strong>${self?' <span class="status blue">Você</span>':''}</td><td>${escapeHtml(item.email||'')}</td><td><select class="compact-select" data-user-role="${item.id}" ${self?'disabled':''}>${permissionRoleOptions(item.role||'seller')}</select></td><td><select class="compact-select" data-user-status="${item.id}" ${self?'disabled':''}><option value="Ativo" ${item.status==='Ativo'?'selected':''}>Ativo</option><option value="Inativo" ${item.status==='Inativo'?'selected':''}>Inativo</option></select></td><td>${escapeHtml((item.companyIds||[]).join(', ')||item.companyId||'')}</td><td>${self?'—':`<button class="btn btn-ghost btn-sm" data-save-user-access="${item.id}" type="button">Salvar</button>`}</td></tr>`;}).join(''):`<tr><td colspan="6"><div class="empty-state"><strong>Nenhum usuário aprovado</strong><span>O primeiro administrador aparecerá após a inicialização.</span></div></td></tr>`;
+    const reviewedHtml=reviewed.length?`<div class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Histórico recente</h3><p>Solicitações já analisadas.</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Usuário</th><th>E-mail</th><th>Status</th><th>Perfil</th></tr></thead><tbody>${reviewed.map(item=>`<tr><td>${escapeHtml(item.name||'')}</td><td>${escapeHtml(item.email||'')}</td><td><span class="status ${item.status==='Aprovado'?'green':'red'}">${escapeHtml(item.status||'')}</span></td><td>${escapeHtml(permissionRoleLabel(item.approvedRole||item.requestedRole))}</td></tr>`).join('')}</tbody></table></div></div>`:'';
+    return `<div class="notice"><strong>Aprovação obrigatória</strong><br>Todo novo usuário, inclusive quem entrar pelo Google, fica sem acesso até um administrador aprovar e definir o perfil.</div><div style="display:flex;justify-content:flex-end;margin:12px 0"><button class="btn btn-ghost" id="refreshUserPermissions" type="button">↻ Atualizar lista</button></div><div class="form-section"><div class="form-section-head"><div><h3>Solicitações pendentes</h3><p>Aprove o usuário e escolha as permissões antes de liberar o sistema.</p></div><span class="status yellow">${pending.length} pendente(s)</span></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Usuário</th><th>E-mail</th><th>Solicitado em</th><th>Perfil</th><th>Ações</th></tr></thead><tbody>${pendingRows}</tbody></table></div></div><div class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Usuários aprovados</h3><p>Altere função ou desative o acesso. O usuário atual não pode desativar a própria conta.</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Nome</th><th>E-mail</th><th>Permissão</th><th>Status</th><th>Empresa</th><th>Ações</th></tr></thead><tbody>${userRows}</tbody></table></div></div>${reviewedHtml}`;
+  }
+  async function loadUserPermissionData(force=false){
+    if(state.role!=='admin'||!window.FirebaseCRM?.syncReady||permissionUsersLoading)return;
+    if(permissionUsersLoaded&&!force)return;
+    permissionUsersLoading=true;
+    try{
+      const [users,requests]=await Promise.all([window.FirebaseCRM.listUsers(state.currentCompanyId),window.FirebaseCRM.listAccessRequests(state.currentCompanyId)]);
+      permissionUsers=users;permissionRequests=requests;permissionUsersLoaded=true;
+    }catch(error){toast('Não foi possível carregar os usuários',error.message||String(error),'error');}
+    finally{permissionUsersLoading=false;if(settingsTab==='users')renderSettings();}
+  }
+  async function approveAccessFromSettings(uid){
+    const request=permissionRequests.find(item=>item.id===uid);if(!request)return;
+    const role=document.querySelector(`[data-request-role="${CSS.escape(uid)}"]`)?.value||'seller';
+    try{await window.FirebaseCRM.approveAccessRequest(uid,{role,companyId:state.currentCompanyId,companyName:state.company.tradeName||state.company.name||''});toast('Usuário aprovado',`${request.email||request.name} · ${permissionRoleLabel(role)}`,'success');permissionUsersLoaded=false;await loadUserPermissionData(true);}catch(error){toast('Aprovação não concluída',error.message||String(error),'error');}
+  }
+  async function rejectAccessFromSettings(uid){
+    const request=permissionRequests.find(item=>item.id===uid);if(!request)return;
+    const reason=prompt('Motivo da rejeição (opcional):','')||'';
+    if(!confirm(`Rejeitar o acesso de ${request.email||request.name}?`))return;
+    try{await window.FirebaseCRM.rejectAccessRequest(uid,reason);toast('Solicitação rejeitada',request.email||request.name,'info');permissionUsersLoaded=false;await loadUserPermissionData(true);}catch(error){toast('Rejeição não concluída',error.message||String(error),'error');}
+  }
+  async function saveUserAccessFromSettings(uid){
+    const role=document.querySelector(`[data-user-role="${CSS.escape(uid)}"]`)?.value||'seller';
+    const status=document.querySelector(`[data-user-status="${CSS.escape(uid)}"]`)?.value||'Ativo';
+    try{await window.FirebaseCRM.updateUserPermissions(uid,{role,status,companyId:state.currentCompanyId});toast('Permissões atualizadas',`${permissionRoleLabel(role)} · ${status}`,'success');permissionUsersLoaded=false;await loadUserPermissionData(true);}catch(error){toast('Alteração não concluída',error.message||String(error),'error');}
   }
 
   const firebaseLabels={apiKey:'API Key',authDomain:'Auth Domain',databaseURL:'Realtime Database URL',projectId:'Project ID',storageBucket:'Storage Bucket',messagingSenderId:'Messaging Sender ID',appId:'App ID',functionsRegion:'Região das Functions'};
@@ -3845,7 +3901,6 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
   function bindSettingsEvents(){
     document.getElementById('userProfileForm')?.addEventListener('submit',saveUserProfile);
     document.getElementById('userAvatarInput')?.addEventListener('change',async event=>{const file=event.target.files?.[0];if(!file)return;state.currentUser.avatar=await resizeImage(file,500,500,.9);state.currentUser.initials=initials(state.currentUser.name);persist();updateTopbar();renderSettings();toast('Foto do usuário atualizada');});
-    document.querySelectorAll('[data-edit-settings-user]').forEach(button=>button.addEventListener('click',()=>{closeModal('settingsModal');openEntityModal('teams',button.dataset.editSettingsUser);}));
     document.getElementById('companySettingsForm')?.addEventListener('submit',e=>{e.preventDefault();const fd=new FormData(e.currentTarget);for(const [k,v] of fd.entries())state.company[k]=['proposalValidityDays','clientsCount','installedPowerMW','defaultCommissionPercent'].includes(k)?Number(v):v;syncCurrentCompanyRecord();persist();renderSidebar();updateTopbar();toast('Empresa atualizada');});
     document.getElementById('companyLogoInput')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;state.company.logo=await resizeImage(f,1000,400,.92);syncCurrentCompanyRecord();persist();renderSettings();toast('Logo atualizada');});
     document.getElementById('sellerSignatureInput')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;state.company.sellerSignature=await resizeImage(f,900,350,.92);syncCurrentCompanyRecord();persist();renderSettings();toast('Assinatura atualizada');});
@@ -3861,24 +3916,27 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     document.getElementById('firebaseLogoutBtn')?.addEventListener('click',firebaseLogout);
     document.getElementById('firebaseSyncBtn')?.addEventListener('click',syncLocalToFirebase);
     document.getElementById('firebasePullBtn')?.addEventListener('click',syncFirebaseToLocal);
-    document.getElementById('addUserFromSettings')?.addEventListener('click',()=>{closeModal('settingsModal');openEntityModal('teams');});
+    document.getElementById('refreshUserPermissions')?.addEventListener('click',()=>{permissionUsersLoaded=false;loadUserPermissionData(true);});
+    document.querySelectorAll('[data-approve-access]').forEach(button=>button.addEventListener('click',()=>approveAccessFromSettings(button.dataset.approveAccess)));
+    document.querySelectorAll('[data-reject-access]').forEach(button=>button.addEventListener('click',()=>rejectAccessFromSettings(button.dataset.rejectAccess)));
+    document.querySelectorAll('[data-save-user-access]').forEach(button=>button.addEventListener('click',()=>saveUserAccessFromSettings(button.dataset.saveUserAccess)));
     document.getElementById('settingsExportBackup')?.addEventListener('click',exportBackup);
     document.getElementById('settingsImportBackup')?.addEventListener('click',()=>document.getElementById('backupImportInput').click());
-    document.getElementById('resetDemoData')?.addEventListener('click',()=>{if(confirm('Apagar todos os dados locais e restaurar a demonstração?')){state=seedState();persist();closeModal('settingsModal');renderSidebar();renderView('dashboard');updateTopbar();toast('Demonstração restaurada');}});
+    document.getElementById('resetCleanData')?.addEventListener('click',()=>{if(confirm('Apagar definitivamente todos os dados locais deste navegador?')){safeStorageRemove(STORAGE_KEY);safeStorageRemove(ACTIVE_DRAFT_KEY);state=normalizeState(seedState());activeProposal=null;persist();closeModal('settingsModal');renderSidebar();renderView('dashboard');updateTopbar();toast('Base local limpa','Nenhum cadastro foi recriado.','success');}});
   }
 
   async function saveUserProfile(event){
-    event.preventDefault();const fd=new FormData(event.currentTarget);const values=Object.fromEntries(fd.entries());state.currentUser={...state.currentUser,...values,initials:initials(values.name),role:state.role||state.currentUser.role,companyIds:state.currentUser.companyIds||[state.currentCompanyId]};
-    let team=state.teams.find(item=>item.id===state.currentUser.teamRecordId)||(values.email&&state.teams.find(item=>item.email?.toLowerCase()===values.email.toLowerCase()));
-    const teamData={name:values.name,email:values.email,phone:values.phone,role:values.jobTitle,team:values.team,region:values.region,permission:state.currentUser.role||state.role,status:'Ativo',companyId:state.currentCompanyId,updatedAt:new Date().toISOString()};
-    if(team){Object.assign(team,teamData);state.currentUser.teamRecordId=team.id;}else{team={id:newId('team'),createdAt:todayISO(),...teamData};state.teams.unshift(team);state.currentUser.teamRecordId=team.id;}
-    persist();updateTopbar();renderSidebar();syncRecordToFirebase('teams',team);
-    if(window.FirebaseCRM?.syncReady){window.FirebaseCRM.saveRecord('users',{...state.currentUser,id:state.currentUser.id,companyId:state.currentCompanyId}).catch(error=>console.warn('Perfil salvo somente localmente:',error));}
+    event.preventDefault();const fd=new FormData(event.currentTarget);const values=Object.fromEntries(fd.entries());
+    state.currentUser={...state.currentUser,...values,initials:initials(values.name),role:state.role||state.currentUser.role,companyIds:state.currentUser.companyIds||[state.currentCompanyId]};
+    persist();updateTopbar();renderSidebar();
+    if(window.FirebaseCRM?.syncReady){
+      try{await window.FirebaseCRM.saveRecord('users',{...state.currentUser,id:window.FirebaseCRM.auth.currentUser.uid,companyId:state.currentCompanyId,companyIds:state.currentUser.companyIds,status:'Ativo'});}catch(error){console.warn('Perfil salvo somente localmente:',error);}
+    }
     toast('Dados do usuário atualizados',values.name);renderSettings();
   }
 
   function applyFirebaseProfile(profile,user=window.FirebaseCRM?.auth?.currentUser){
-    if(!profile||!user)return false;
+    if(!profile||!user||String(profile.status||'').toLowerCase()!=='ativo')return false;
     state.currentUser={...state.currentUser,id:user.uid,email:user.email||profile.email||state.currentUser.email,name:profile.name||user.displayName||state.currentUser.name,avatar:profile.avatar||user.photoURL||state.currentUser.avatar||'',initials:initials(profile.name||user.displayName||user.email||'Usuário'),role:profile.role||'seller',companyIds:profile.companyIds||[]};
     state.role=state.currentUser.role;
     let authorized=state.companies.find(company=>state.currentUser.companyIds.includes(company.id));
@@ -3935,13 +3993,15 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     const title=document.getElementById('loginAccessTitle');const text=document.getElementById('loginAccessText');const action=document.getElementById('loginActivateProfile');
     const code=diagnostic?.code||'';
     if(code==='profile-missing-bootstrap-available'){
-      if(title)title.textContent='Primeiro acesso';if(text)text.textContent='Esta é a primeira conta da empresa. Ative-a como administradora para começar.';if(action){action.style.display='inline-flex';action.textContent='Ativar administrador';}
+      if(title)title.textContent='Primeiro administrador';if(text)text.textContent='Esta é a primeira conta. Ative-a como administradora para iniciar o sistema.';if(action){action.style.display='inline-flex';action.textContent='Ativar administrador';}
     }else if(code==='bootstrap-owner-profile-missing'){
       if(title)title.textContent='Perfil recuperável';if(text)text.textContent='Esta conta é a administradora original. Clique para reconstruir o perfil.';if(action){action.style.display='inline-flex';action.textContent='Reparar perfil';}
+    }else if(code==='access-rejected'){
+      if(title)title.textContent='Acesso rejeitado';if(text)text.textContent=diagnostic?.message||'A solicitação foi rejeitada pelo administrador.';if(action)action.style.display='none';
     }else{
-      if(title)title.textContent='Acesso pendente';if(text)text.textContent=diagnostic?.message||'Um administrador precisa liberar esta conta no CRM.';if(action)action.style.display='none';
+      if(title)title.textContent='Aguardando aprovação';if(text)text.textContent=diagnostic?.message||'Um administrador precisa aprovar sua conta e definir as permissões.';if(action){action.style.display='inline-flex';action.textContent='Verificar aprovação';}
     }
-    setLoginStatus('Login confirmado','A conta foi autenticada, mas o perfil ainda precisa ser autorizado.','info');
+    setLoginStatus('Login confirmado','Sua identidade foi confirmada. O acesso ao CRM depende da aprovação administrativa.','info');
   }
 
   async function finishAuthenticatedSession(user,{automatic=true}={}){
@@ -3949,22 +4009,18 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     authFlowBusy=true;
     try{
       setLoginStatus('Validando perfil',`Verificando as permissões de ${user.email||user.displayName||'sua conta'}.`,'info');
-      let profile=window.FirebaseCRM.profile||await window.FirebaseCRM.refreshProfile(user.uid).catch(()=>null);
+      let profile=await window.FirebaseCRM.refreshProfile(user.uid).catch(()=>null);
       let diagnostic=await window.FirebaseCRM.diagnose(state.currentCompanyId);
-      if(!profile&&automatic&&['profile-missing-bootstrap-available','bootstrap-owner-profile-missing'].includes(diagnostic.code)){
-        try{
-          profile=await window.FirebaseCRM.bootstrapAdmin({name:user.displayName||state.currentUser.name||'Administrador',email:user.email||'',companyId:state.currentCompanyId,companyName:state.company.tradeName||state.company.name});
-          await window.FirebaseCRM.saveRecord('companies',{...state.company,id:state.currentCompanyId,companyId:state.currentCompanyId});
-          diagnostic=await window.FirebaseCRM.diagnose(state.currentCompanyId);
-        }catch(error){console.warn('Ativação automática do perfil:',error);diagnostic=await window.FirebaseCRM.diagnose(state.currentCompanyId).catch(()=>diagnostic);}
-      }
-      profile=window.FirebaseCRM.profile||profile;
-      if(profile){
+      if(profile&&window.FirebaseCRM.syncReady){
         applyFirebaseProfile(profile,user);firebaseLastDiagnostic=diagnostic;unlockSystemAfterAuthentication();return true;
+      }
+      if(!profile && diagnostic.bootstrapExists && !diagnostic.bootstrapOwner && diagnostic.code!=='access-rejected'){
+        try{await window.FirebaseCRM.requestAccess({companyId:diagnostic.bootstrapCompanyId||state.currentCompanyId,companyName:state.company.tradeName||state.company.name||''});}catch(error){console.warn('Solicitação de acesso:',error);}
+        diagnostic=await window.FirebaseCRM.diagnose(state.currentCompanyId);
       }
       firebaseLastDiagnostic=diagnostic;showPendingProfile(diagnostic);return false;
     }catch(error){
-      console.error(error);setLoginStatus('Não foi possível liberar o acesso',error.message||'Verifique o Firebase Authentication e as regras do Firestore.','error');return false;
+      console.error(error);setLoginStatus('Não foi possível validar o acesso',error.message||'Verifique o Firebase Authentication e as regras do Firestore.','error');return false;
     }finally{authFlowBusy=false;}
   }
 
@@ -4012,22 +4068,24 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     const {email,password}=screenCredentials();
     if(!email||password.length<6){setLoginStatus('Dados incompletos','Informe um e-mail válido e uma senha com pelo menos 6 caracteres.','error');return;}
     try{
-      setLoginStatus('Criando administrador','Aguarde enquanto criamos a conta e o perfil inicial.','info');
+      setLoginStatus('Criando conta','Aguarde enquanto registramos seu usuário.','info');
       const user=await window.FirebaseCRM.register(email,password);
-      const profile=await window.FirebaseCRM.bootstrapAdmin({name:state.currentUser.name||user.displayName||'Administrador',email:user.email,companyId:state.currentCompanyId,companyName:state.company.tradeName||state.company.name});
-      await window.FirebaseCRM.saveRecord('companies',{...state.company,id:state.currentCompanyId,companyId:state.currentCompanyId});
-      applyFirebaseProfile(profile,user);unlockSystemAfterAuthentication();
-    }catch(error){setLoginStatus('Não foi possível criar o administrador',error.message||'Confira se este e-mail já possui uma conta.','error');}
+      await finishAuthenticatedSession(user,{automatic:false});
+    }catch(error){setLoginStatus('Não foi possível criar a conta',error.message||'Confira se este e-mail já possui uma conta.','error');}
   }
 
   async function activateProfileFromSystemScreen(){
     const user=window.FirebaseCRM?.auth?.currentUser;if(!user)return;
+    const code=pendingAuthDiagnostic?.code||firebaseLastDiagnostic?.code||'';
+    if(!['profile-missing-bootstrap-available','bootstrap-owner-profile-missing'].includes(code)){
+      await finishAuthenticatedSession(user,{automatic:false});return;
+    }
     try{
-      setLoginStatus('Ativando perfil','Aguarde a autorização da conta.','info');
-      const profile=await window.FirebaseCRM.bootstrapAdmin({name:user.displayName||state.currentUser.name||'Administrador',email:user.email,companyId:state.currentCompanyId,companyName:state.company.tradeName||state.company.name});
+      setLoginStatus('Ativando administrador','Aguarde a configuração inicial da empresa.','info');
+      const profile=await window.FirebaseCRM.bootstrapAdmin({name:user.displayName||user.email?.split('@')[0]||'Administrador',email:user.email,companyId:state.currentCompanyId,companyName:state.company.tradeName||state.company.name||''});
       await window.FirebaseCRM.saveRecord('companies',{...state.company,id:state.currentCompanyId,companyId:state.currentCompanyId});
       applyFirebaseProfile(profile,user);unlockSystemAfterAuthentication();
-    }catch(error){setLoginStatus('Perfil não ativado',error.message||'Um administrador precisa liberar esta conta.','error');}
+    }catch(error){setLoginStatus('Perfil não ativado',error.message||'Publique as regras da versão 2.9 e tente novamente.','error');}
   }
 
   function firebaseCredentials(){
@@ -4084,12 +4142,9 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     if(password.length<6){toast('Senha muito curta','Use pelo menos 6 caracteres.','error');return;}
     try{
       const user=await window.FirebaseCRM.register(email,password);
-      const profile=await window.FirebaseCRM.bootstrapAdmin({name:state.currentUser.name||'Administrador',email:user.email,companyId:state.currentCompanyId,companyName:state.company.tradeName||state.company.name});
-      applyFirebaseProfile(profile,user);
-      await window.FirebaseCRM.saveRecord('companies',{...state.company,id:state.currentCompanyId,companyId:state.currentCompanyId});
-      firebaseLastDiagnostic=await window.FirebaseCRM.diagnose(state.currentCompanyId);
-      toast('Administrador criado','A conta, o perfil e a empresa ativa estão prontos para sincronizar.','success');renderSettings();
-    }catch(error){console.error(error);toast('Não foi possível concluir o cadastro',error.message||'Verifique Authentication e publique as regras da versão 2.8.','error');}
+      await finishAuthenticatedSession(user,{automatic:false});
+      toast('Conta criada','Se já existir um administrador, a solicitação ficará pendente até a aprovação.','success');renderSettings();
+    }catch(error){console.error(error);toast('Não foi possível concluir o cadastro',error.message||'Verifique Authentication e publique as regras da versão 2.9.','error');}
   }
 
   async function firebaseBootstrapAdmin(){
@@ -4104,7 +4159,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
       toast('Perfil ativado','A sincronização foi liberada para esta conta.','success');renderSettings();
     }catch(error){
       firebaseLastDiagnostic=await window.FirebaseCRM.diagnose(state.currentCompanyId).catch(()=>firebaseLastDiagnostic);
-      toast('Perfil não ativado',error.message||'Publique as regras da versão 2.8 e tente novamente.','error');renderSettings();
+      toast('Perfil não ativado',error.message||'Publique as regras da versão 2.9 e tente novamente.','error');renderSettings();
     }
   }
 
@@ -4156,7 +4211,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
       try{const result=await window.FirebaseCRM.callFunction('generateSalesText',{prompt,company:{name:state.company.tradeName,city:state.company.city}});output.textContent=result?.data?.text||result?.data||'Resposta recebida sem texto.';return;}catch(error){output.textContent=`Erro no backend: ${error.message}`;return;}
     }
     const leadName=companyRows('leads').find(l=>!['Fechado','Perdido'].includes(l.stage))?.name||'cliente';
-    output.textContent=`Olá, ${leadName}! Tudo bem?\n\nPreparei uma análise personalizada para mostrar como a energia solar pode reduzir seus gastos e proteger você dos reajustes da tarifa. Podemos revisar juntos o consumo, o sistema ideal e as melhores condições de pagamento.\n\nEste texto foi gerado pelo modo demonstração. Conecte o Firebase e configure a chave da OpenAI no Secret Manager para respostas reais baseadas no prompt:\n\n“${prompt}”`;
+    output.textContent=`Olá, ${leadName}! Tudo bem?\n\nPreparei uma análise personalizada para mostrar como a energia solar pode reduzir seus gastos e proteger você dos reajustes da tarifa. Podemos revisar juntos o consumo, o sistema ideal e as melhores condições de pagamento.\n\nEste texto foi gerado pelo modo local. Conecte o Firebase e configure a chave da OpenAI no Secret Manager para respostas reais baseadas no prompt:\n\n“${prompt}”`;
   }
 
   // Conecta o Firebase e mantém o CRM bloqueado até autenticação e perfil autorizado.
@@ -4201,7 +4256,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
   async function runWorkflowSelfTests(){
     const snapshot=deepClone(state);const tests=[];const check=(name,condition,details='')=>tests.push({name,passed:Boolean(condition),details});
     try{
-      const proposal=defaultProposal();proposal.id=newId('test-prop');proposal.number='TESTE-FLUXO';proposal.client={...proposal.client,name:'Cliente Teste Fluxo',phone:'47999998888',email:'fluxo@teste.local',city:'Jaraguá do Sul - SC'};proposal.commercial.price=50000;
+      const proposal=defaultProposal();proposal.id=newId('test-prop');proposal.number='TESTE-FLUXO';proposal.client={...proposal.client,name:'Cliente de teste',phone:'',email:'',city:''};proposal.commercial.price=50000;
       await saveProposalRecord(proposal,{silent:true});
       check('Salvar proposta cria cliente',companyRows('clients').some(client=>client.proposalId===proposal.id));
       await sendProposal(proposal);
@@ -4218,7 +4273,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     return {passed:tests.every(test=>test.passed),total:tests.length,success:tests.filter(test=>test.passed).length,tests};
   }
 
-  window.SolarCRMDebug={SYSTEM_VERSION,calculateProposal,extractBillFields,normalizeState,renderProposalDocument,projectStages,projectDocumentCategories,defaultAutomationRule,executeAutomationRules,queueAutomationRule,ensureProjectStructure,ensureAllProjectStructures,updateProjectStage,runSystemSelfTests,runWorkflowSelfTests,loadFirebaseConfig,clearFirebaseConfig,firebaseApiKeyLooksValid,finishAuthenticatedSession,lockSystemForAuthentication,unlockSystemAfterAuthentication,getState:()=>deepClone(state)};
+  window.SolarCRMDebug={SYSTEM_VERSION,calculateProposal,extractBillFields,normalizeState,renderProposalDocument,projectStages,projectDocumentCategories,defaultAutomationRule,executeAutomationRules,queueAutomationRule,ensureProjectStructure,ensureAllProjectStructures,updateProjectStage,runSystemSelfTests,runWorkflowSelfTests,loadFirebaseConfig,clearFirebaseConfig,firebaseApiKeyLooksValid,finishAuthenticatedSession,loadUserPermissionData,lockSystemForAuthentication,unlockSystemAfterAuthentication,getState:()=>deepClone(state)};
   document.addEventListener('DOMContentLoaded',()=>{init();autoConnectFirebase();});
 })();
 
