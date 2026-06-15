@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#08111f" />
-  <title>SolarCRM Pro v2.9.2 — CRM para Energia Solar</title>
+  <title>SolarCRM Pro v2.9.3 — CRM para Energia Solar</title>
   <meta name="description" content="CRM completo para empresas de energia solar com propostas profissionais, Kanban, Firebase, financeiro, obras e pós-venda." />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <style>
@@ -1033,7 +1033,7 @@ body.auth-ready #loginScreen { display:none !important; }
   <input id="backupImportInput" type="file" accept="application/json" hidden />
 
   <script>
-/* Adaptador Firebase modular — SolarCRM Pro v2.9.2. */
+/* Adaptador Firebase modular — SolarCRM Pro v2.9.3. */
 (() => {
   'use strict';
   const SDK_VERSION = '11.10.0';
@@ -1084,8 +1084,8 @@ body.auth-ready #loginScreen { display:none !important; }
     'functions/permission-denied': 'O usuário não tem permissão para executar essa função.',
     'unavailable': 'O serviço Firebase está temporariamente indisponível.',
     'crm/bootstrap-owned-by-another-user': 'O primeiro administrador já está vinculado a outra conta. Entre com a conta original ou peça ao administrador para liberar este usuário.',
-    'crm/bootstrap-profile-repair-denied': 'O login é o administrador inicial, mas o Firestore não permitiu reconstruir o perfil. Publique as regras da versão 2.9.2 e tente novamente.',
-    'crm/preapproved-admin-denied': 'A conta administradora pré-aprovada foi reconhecida, mas o Firestore bloqueou a ativação. Publique o arquivo firestore.rules da versão 2.9.2.'
+    'crm/bootstrap-profile-repair-denied': 'O login é o administrador inicial, mas o Firestore não permitiu reconstruir o perfil. Publique as regras da versão 2.9.3 e tente novamente.',
+    'crm/preapproved-admin-denied': 'A conta administradora pré-aprovada foi reconhecida, mas o Firestore bloqueou a ativação. Publique o arquivo firestore.rules da versão 2.9.3.'
   };
 
   function friendlyError(error, fallback = 'O Firebase não conseguiu concluir a operação.') {
@@ -1363,7 +1363,7 @@ body.auth-ready #loginScreen { display:none !important; }
         await setDoc(doc(this.db, 'access_requests', user.uid), request, { merge: true });
         return { ...request, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
       } catch (error) {
-        throw friendlyError(error, 'Não foi possível registrar a solicitação de acesso. Publique as regras da versão 2.9.2.');
+        throw friendlyError(error, 'Não foi possível registrar a solicitação de acesso. Publique as regras da versão 2.9.3.');
       }
     },
 
@@ -1380,7 +1380,7 @@ body.auth-ready #loginScreen { display:none !important; }
       } catch (error) {
         const wrapped = friendlyError(error, 'Não foi possível carregar os usuários e permissões.');
         if (wrapped.code === 'permission-denied' || wrapped.code === 'firestore/permission-denied') {
-          wrapped.message = 'O Firestore bloqueou a lista de usuários. Publique o arquivo firestore.rules da versão 2.9.2, que alinha a consulta e a permissão pelo campo companyId.';
+          wrapped.message = 'O Firestore bloqueou a lista de usuários. Publique o arquivo firestore.rules da versão 2.9.3, que alinha a consulta e a permissão pelo campo companyId.';
         }
         throw wrapped;
       }
@@ -1399,7 +1399,7 @@ body.auth-ready #loginScreen { display:none !important; }
       } catch (error) {
         const wrapped = friendlyError(error, 'Não foi possível carregar as solicitações pendentes.');
         if (wrapped.code === 'permission-denied' || wrapped.code === 'firestore/permission-denied') {
-          wrapped.message = 'O Firestore bloqueou as solicitações de acesso. Publique o arquivo firestore.rules da versão 2.9.2 e confirme que o administrador está Ativo na empresa atual.';
+          wrapped.message = 'O Firestore bloqueou as solicitações de acesso. Publique o arquivo firestore.rules da versão 2.9.3 e confirme que o administrador está Ativo na empresa atual.';
         }
         throw wrapped;
       }
@@ -1464,6 +1464,26 @@ body.auth-ready #loginScreen { display:none !important; }
         && String(user.email || '').trim().toLowerCase() === PREAPPROVED_ADMIN.email;
     },
 
+    buildPreapprovedAdminProfile(user = this.auth?.currentUser, extra = {}) {
+      if (!this.isPreapprovedAdmin(user)) return null;
+      return {
+        id: user.uid,
+        uid: user.uid,
+        name: PREAPPROVED_ADMIN.name,
+        email: PREAPPROVED_ADMIN.email,
+        avatar: user.photoURL || '',
+        photoURL: user.photoURL || '',
+        role: 'admin',
+        permission: 'admin',
+        companyId: PREAPPROVED_ADMIN.companyId,
+        companyIds: [PREAPPROVED_ADMIN.companyId],
+        companyName: PREAPPROVED_ADMIN.companyName,
+        status: 'Ativo',
+        preapproved: true,
+        ...extra
+      };
+    },
+
     async ensurePreapprovedAdminProfile() {
       this.ensureAuthenticated();
       const user = this.auth.currentUser;
@@ -1484,25 +1504,12 @@ body.auth-ready #loginScreen { display:none !important; }
             && (Array.isArray(raw.companyIds) ? raw.companyIds : [raw.companyId]).includes(PREAPPROVED_ADMIN.companyId);
           if (valid) return this.refreshProfile(user.uid);
         }
-        const profile = {
-          id: user.uid,
-          uid: user.uid,
-          name: PREAPPROVED_ADMIN.name,
-          email: PREAPPROVED_ADMIN.email,
-          avatar: user.photoURL || '',
-          photoURL: user.photoURL || '',
-          role: 'admin',
-          permission: 'admin',
-          companyId: PREAPPROVED_ADMIN.companyId,
-          companyIds: [PREAPPROVED_ADMIN.companyId],
-          companyName: PREAPPROVED_ADMIN.companyName,
-          status: 'Ativo',
-          preapproved: true,
+        const profile = this.buildPreapprovedAdminProfile(user, {
           approvedBy: user.uid,
           approvedAt: new Date().toISOString(),
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
-        };
+        });
         const batch = writeBatch(this.db);
         batch.set(userRef, profile, { merge: true });
         batch.set(requestRef, {
@@ -1534,10 +1541,19 @@ body.auth-ready #loginScreen { display:none !important; }
         this.syncReady = true;
         return profile;
       } catch (error) {
-        const wrapped = friendlyError(error, 'Não foi possível ativar o administrador pré-aprovado.');
-        if (wrapped.code === 'permission-denied' || wrapped.code === 'firestore/permission-denied') {
-          wrapped.code = 'crm/preapproved-admin-denied';
-          wrapped.message = firebaseErrorMessages[wrapped.code];
+        const wrapped = friendlyError(error, 'Não foi possível gravar o perfil administrativo no Firestore.');
+        // Modo de resgate: o UID/e-mail pré-aprovado recebe o perfil local imediatamente.
+        // Com as regras 2.9.3 publicadas, ele também terá acesso à nuvem mesmo antes de users/{uid} existir.
+        if (this.isPreapprovedAdmin(user)) {
+          const fallback = this.buildPreapprovedAdminProfile(user, {
+            virtual: true,
+            profileWritePending: true,
+            activationWarning: wrapped.message
+          });
+          this.profile = fallback;
+          this.syncReady = true;
+          this.lastProfileRepairError = wrapped;
+          return fallback;
         }
         throw wrapped;
       }
@@ -1625,7 +1641,7 @@ body.auth-ready #loginScreen { display:none !important; }
         return profile;
       } catch (error) {
         if (error?.code === 'crm/bootstrap-owned-by-another-user') throw error;
-        throw friendlyError(error, 'Não foi possível criar ou recuperar o primeiro administrador. Publique as regras da versão 2.9.2.');
+        throw friendlyError(error, 'Não foi possível criar ou recuperar o primeiro administrador. Publique as regras da versão 2.9.3.');
       }
     },
 
@@ -1781,13 +1797,13 @@ body.auth-ready #loginScreen { display:none !important; }
 (() => {
   'use strict';
 
-  const STORAGE_KEY = 'solarcrm-pro-v2-9-2-preapproved-clean';
+  const STORAGE_KEY = 'solarcrm-pro-v2-9-3-rescue-clean';
   const LEGACY_STORAGE_KEY = ''; // versão limpa: não importa cadastros anteriores
   const FIREBASE_CONFIG_KEY = 'solarcrm-firebase-config-v2-9-2';
   const LEGACY_FIREBASE_CONFIG_KEYS = ['solarcrm-firebase-config-v2-8','solarcrm-firebase-config-v2-7','solarcrm-firebase-config-v2-6','solarcrm-firebase-config'];
   const DEFAULT_FIREBASE_CONFIG = Object.freeze({"apiKey":"AIzaSyCYSQfnPLyV9B6osiZhsLYYrF64YLhGkMA","authDomain":"energiasolar-67b14.firebaseapp.com","databaseURL":"https://energiasolar-67b14-default-rtdb.firebaseio.com","projectId":"energiasolar-67b14","storageBucket":"energiasolar-67b14.firebasestorage.app","messagingSenderId":"394822890491","appId":"1:394822890491:web:5afc55e01902bbf142915e","functionsRegion":"southamerica-east1"});
   const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-2';
-  const SYSTEM_VERSION = '2.9.2';
+  const SYSTEM_VERSION = '2.9.3';
   let storageWarningShown = false;
   let draftSaveTimer = null;
   let firebaseLastDiagnostic = null;
@@ -3916,7 +3932,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
       const status=getFirebaseUiState();
       const loggedEmail=window.FirebaseCRM?.auth?.currentUser?.email||state.currentUser.email||'';
       const profileActionLabel=firebaseLastDiagnostic?.code==='bootstrap-owner-profile-missing'?'Reparar meu perfil':firebaseLastDiagnostic?.code==='profile-missing-bootstrap-available'?'Ativar meu perfil administrador':'Ativar ou reparar meu perfil';
-      return `<div class="firebase-status"><div><strong>${escapeHtml(status.title)}</strong><span>${escapeHtml(status.detail)}</span></div><span class="status ${status.className}">${escapeHtml(status.badge)}</span></div>${firebaseDiagnosticHtml()}<div class="notice" style="margin-top:14px"><strong>Perfil Firebase:</strong> a conta lucas@igenergia.com.br está pré-aprovada como administradora da empresa company-demo. As demais contas continuam dependendo de aprovação em Usuários e permissões.</div><form id="firebaseSettingsForm" style="margin-top:15px"><div class="form-grid">${['apiKey','authDomain','databaseURL','projectId','storageBucket','messagingSenderId','appId','functionsRegion'].map(key=>settingsInput(key,firebaseLabels[key],firebaseConfig[key]||'',key==='apiKey'?'password':'text')).join('')}</div><div class="notice" style="margin-top:12px"><strong>Configuração carregada:</strong> projeto ${escapeHtml(firebaseConfig.projectId||'—')} · chave ${escapeHtml(firebaseKeyPreview(firebaseConfig.apiKey))} · origem ${escapeHtml(location.origin==='null'?location.protocol:location.origin)}.${location.protocol==='file:'?' O arquivo está aberto por file://; se a chave tiver restrição de site, use Firebase Hosting ou localhost.':''}</div><div style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px"><button class="btn btn-ghost" id="firebaseRestoreConfigBtn" type="button">Restaurar configuração oficial</button><button class="btn btn-ghost" id="firebaseTestBtn" type="button">Testar conexão</button><button class="btn btn-primary" type="submit">Salvar e conectar</button></div></form><div class="form-section" style="margin-top:15px"><div class="form-section-head"><div><h3>Acesso ao Firebase</h3><p>Use e-mail e senha. A conta pré-aprovada é ativada automaticamente. As demais contas são enviadas para aprovação.</p></div></div><div class="inline-fields"><label class="field"><span>E-mail</span><input id="firebaseLoginEmail" type="email" value="${attr(loggedEmail)}"></label><label class="field"><span>Senha</span><input id="firebaseLoginPassword" type="password" minlength="6"></label><button class="btn btn-secondary" id="firebaseLoginBtn" type="button" style="align-self:end">Entrar</button></div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-primary" id="firebaseRegisterBtn" type="button">Criar conta / solicitar acesso</button><button class="btn btn-ghost" id="firebaseBootstrapBtn" type="button">${escapeHtml(profileActionLabel)}</button><button class="btn btn-ghost" id="firebaseDiagnoseBtn" type="button">Diagnosticar</button><button class="btn btn-ghost" id="firebaseLogoutBtn" type="button">Sair</button></div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost" id="firebasePullBtn" type="button">Carregar dados da nuvem</button><button class="btn btn-primary" id="firebaseSyncBtn" type="button">Enviar dados locais</button></div></div>`;
+      return `<div class="firebase-status"><div><strong>${escapeHtml(status.title)}</strong><span>${escapeHtml(status.detail)}</span></div><span class="status ${status.className}">${escapeHtml(status.badge)}</span></div>${firebaseDiagnosticHtml()}<div class="notice" style="margin-top:14px"><strong>Perfil Firebase:</strong> a conta lucas@igenergia.com.br está pré-aprovada como administradora da empresa company-demo. As demais contas continuam dependendo de aprovação em Usuários e permissões.</div><form id="firebaseSettingsForm" style="margin-top:15px"><div class="form-grid">${['apiKey','authDomain','databaseURL','projectId','storageBucket','messagingSenderId','appId','functionsRegion'].map(key=>settingsInput(key,firebaseLabels[key],firebaseConfig[key]||'',key==='apiKey'?'password':'text')).join('')}</div><div class="notice" style="margin-top:12px"><strong>Configuração carregada:</strong> projeto ${escapeHtml(firebaseConfig.projectId||'—')} · chave ${escapeHtml(firebaseKeyPreview(firebaseConfig.apiKey))} · origem ${escapeHtml(location.origin==='null'?location.protocol:location.origin)}.${location.protocol==='file:'?' O arquivo está aberto por file://; se a chave tiver restrição de site, use Firebase Hosting ou localhost.':''}</div><div style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px"><button class="btn btn-ghost" id="firebaseRestoreConfigBtn" type="button">Restaurar configuração oficial</button><button class="btn btn-ghost" id="firebaseTestBtn" type="button">Testar conexão</button><button class="btn btn-primary" type="submit">Salvar e conectar</button></div></form><div class="form-section" style="margin-top:15px"><div class="form-section-head"><div><h3>Acesso ao Firebase</h3><p>Use e-mail e senha. No primeiro acesso, o botão de criação prepara automaticamente o administrador inicial e a empresa ativa.</p></div></div><div class="inline-fields"><label class="field"><span>E-mail</span><input id="firebaseLoginEmail" type="email" value="${attr(loggedEmail)}"></label><label class="field"><span>Senha</span><input id="firebaseLoginPassword" type="password" minlength="6"></label><button class="btn btn-secondary" id="firebaseLoginBtn" type="button" style="align-self:end">Entrar</button></div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-primary" id="firebaseRegisterBtn" type="button">Criar conta e primeiro administrador</button><button class="btn btn-ghost" id="firebaseBootstrapBtn" type="button">${escapeHtml(profileActionLabel)}</button><button class="btn btn-ghost" id="firebaseDiagnoseBtn" type="button">Diagnosticar</button><button class="btn btn-ghost" id="firebaseLogoutBtn" type="button">Sair</button></div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost" id="firebasePullBtn" type="button">Carregar dados da nuvem</button><button class="btn btn-primary" id="firebaseSyncBtn" type="button">Enviar dados locais</button></div></div>`;
     }
     if(tab==='users')return renderUserPermissionsPanel();
     return `<div class="grid grid-2"><div class="form-section"><div class="form-section-head"><div><h3>Exportar backup</h3><p>Baixe todas as informações cadastradas em JSON.</p></div></div><button class="btn btn-primary" id="settingsExportBackup" type="button">Exportar backup completo</button></div><div class="form-section"><div class="form-section-head"><div><h3>Importar backup</h3><p>Restaure um arquivo exportado anteriormente.</p></div></div><button class="btn btn-ghost" id="settingsImportBackup" type="button">Selecionar arquivo JSON</button></div></div><div class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Apagar dados locais</h3><p>Remove definitivamente os cadastros deste navegador e retorna para uma base vazia. Os dados já enviados ao Firebase não são apagados.</p></div></div><button class="btn btn-danger" id="resetCleanData" type="button">Apagar dados locais</button></div>`;
@@ -4054,7 +4070,9 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
       state.companies.push(authorized);
     }
     if(authorized){state.currentCompanyId=authorized.id;state.company={...defaultCompany,...authorized};}
-    persist();renderSidebar();updateTopbar();return true;
+    persist();renderSidebar();updateTopbar();
+    if(profile.virtual){setTimeout(()=>toast('Administrador liberado em modo de resgate','Publique o firestore.rules da versão 2.9.3 para concluir a gravação do perfil e a sincronização na nuvem.','info'),350);}
+    return true;
   }
 
   function initAuthenticationScreen(){
@@ -4104,10 +4122,10 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     const authUser=window.FirebaseCRM?.auth?.currentUser;
     if(window.FirebaseCRM?.isPreapprovedAdmin(authUser)){
       if(title)title.textContent='Administrador já aprovado';
-      if(text)text.textContent='A conta foi reconhecida. Publique as regras da versão 2.9.2 e clique em verificar para concluir a ativação automática.';
+      if(text)text.textContent='A conta foi reconhecida. Clique em concluir ativação. Se o perfil não puder ser gravado, o sistema abrirá em modo de resgate e mostrará como publicar as regras 2.9.3.';
       if(action){action.style.display='inline-flex';action.textContent='Concluir ativação';}
     }else if(code==='profile-missing-bootstrap-available'){
-      if(title)title.textContent='Aguardando administrador principal';if(text)text.textContent='Somente a conta pré-aprovada pode inicializar o sistema. Sua solicitação ficará pendente até a aprovação.';if(action){action.style.display='inline-flex';action.textContent='Verificar aprovação';}
+      if(title)title.textContent='Primeiro administrador';if(text)text.textContent='Esta é a primeira conta. Ative-a como administradora para iniciar o sistema.';if(action){action.style.display='inline-flex';action.textContent='Ativar administrador';}
     }else if(code==='bootstrap-owner-profile-missing'){
       if(title)title.textContent='Perfil recuperável';if(text)text.textContent='Esta conta é a administradora original. Clique para reconstruir o perfil.';if(action){action.style.display='inline-flex';action.textContent='Reparar perfil';}
     }else if(code==='access-rejected'){
@@ -4132,9 +4150,9 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
       if(profile&&window.FirebaseCRM.syncReady){
         applyFirebaseProfile(profile,user);firebaseLastDiagnostic=diagnostic;unlockSystemAfterAuthentication();return true;
       }
-      if(!profile && !window.FirebaseCRM.isPreapprovedAdmin(user) && diagnostic.code!=='access-rejected'){
-        try{await window.FirebaseCRM.requestAccess({companyId:diagnostic.bootstrapCompanyId||'company-demo',companyName:state.company.tradeName||state.company.name||'Empresa'});}catch(error){console.warn('Solicitação de acesso:',error);}
-        diagnostic=await window.FirebaseCRM.diagnose(diagnostic.bootstrapCompanyId||'company-demo');
+      if(!profile && diagnostic.bootstrapExists && !diagnostic.bootstrapOwner && diagnostic.code!=='access-rejected'){
+        try{await window.FirebaseCRM.requestAccess({companyId:diagnostic.bootstrapCompanyId||state.currentCompanyId,companyName:state.company.tradeName||state.company.name||''});}catch(error){console.warn('Solicitação de acesso:',error);}
+        diagnostic=await window.FirebaseCRM.diagnose(state.currentCompanyId);
       }
       firebaseLastDiagnostic=diagnostic;showPendingProfile(diagnostic);return false;
     }catch(error){
@@ -4200,12 +4218,17 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
         setLoginStatus('Ativando administrador aprovado','Aguarde enquanto o perfil é gravado no Firestore.','info');
         const profile=await window.FirebaseCRM.ensurePreapprovedAdminProfile();
         applyFirebaseProfile(profile,user);unlockSystemAfterAuthentication();return;
-      }catch(error){setLoginStatus('Perfil não ativado',error.message||'Publique as regras da versão 2.9.2 e tente novamente.','error');return;}
+      }catch(error){setLoginStatus('Perfil não ativado',error.message||'Publique as regras da versão 2.9.3 e tente novamente.','error');return;}
+    }
+    if(!['profile-missing-bootstrap-available','bootstrap-owner-profile-missing'].includes(code)){
+      await finishAuthenticatedSession(user,{automatic:false});return;
     }
     try{
-      await window.FirebaseCRM.requestAccess({companyId:'company-demo',companyName:state.company.tradeName||state.company.name||'Empresa'});
-      await finishAuthenticatedSession(user,{automatic:false});
-    }catch(error){setLoginStatus('Solicitação não enviada',error.message||'Aguarde a aprovação de um administrador.','error');}
+      setLoginStatus('Ativando administrador','Aguarde a configuração inicial da empresa.','info');
+      const profile=await window.FirebaseCRM.bootstrapAdmin({name:user.displayName||user.email?.split('@')[0]||'Administrador',email:user.email,companyId:state.currentCompanyId,companyName:state.company.tradeName||state.company.name||''});
+      await window.FirebaseCRM.saveRecord('companies',{...state.company,id:state.currentCompanyId,companyId:state.currentCompanyId});
+      applyFirebaseProfile(profile,user);unlockSystemAfterAuthentication();
+    }catch(error){setLoginStatus('Perfil não ativado',error.message||'Publique as regras da versão 2.9.3 e tente novamente.','error');}
   }
 
   function firebaseCredentials(){
@@ -4215,7 +4238,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
   function ensureFirebaseSyncReady(){
     if(!window.FirebaseCRM?.connected){toast('Firebase não conectado','Clique em Salvar e conectar.','error');return false;}
     if(!window.FirebaseCRM?.auth?.currentUser){toast('Login necessário','Entre com e-mail e senha antes de sincronizar.','error');return false;}
-    if(!window.FirebaseCRM?.profile){toast('Perfil não configurado','Entre com a conta pré-aprovada ou aguarde a aprovação de um administrador.','error');return false;}
+    if(!window.FirebaseCRM?.profile){toast('Perfil não configurado','Use “Inicializar primeiro administrador” ou peça acesso a um administrador.','error');return false;}
     if(!window.FirebaseCRM?.syncReady){toast('Empresa não autorizada',`O usuário não tem acesso à empresa ${state.currentCompanyId}.`,'error');return false;}
     return true;
   }
@@ -4272,19 +4295,14 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     if(!window.FirebaseCRM?.auth?.currentUser){toast('Faça login primeiro','Use uma conta já criada no Authentication.','error');return;}
     try{
       const user=window.FirebaseCRM.auth.currentUser;
-      if(window.FirebaseCRM.isPreapprovedAdmin(user)){
-        const profile=await window.FirebaseCRM.ensurePreapprovedAdminProfile();
-        applyFirebaseProfile(profile,user);
-        await window.FirebaseCRM.saveRecord('companies',{...state.company,id:'company-demo',companyId:'company-demo'});
-        firebaseLastDiagnostic=await window.FirebaseCRM.diagnose('company-demo');
-        toast('Administrador ativado','A conta pré-aprovada está liberada.','success');renderSettings();return;
-      }
-      await window.FirebaseCRM.requestAccess({companyId:'company-demo',companyName:state.company.tradeName||state.company.name||'Empresa'});
-      firebaseLastDiagnostic=await window.FirebaseCRM.diagnose('company-demo');
-      toast('Solicitação enviada','Aguarde a aprovação do administrador.','info');renderSettings();
+      const profile=await window.FirebaseCRM.bootstrapAdmin({name:state.currentUser.name||user.displayName||'Administrador',email:user.email,companyId:state.currentCompanyId,companyName:state.company.tradeName||state.company.name});
+      applyFirebaseProfile(profile,user);
+      await window.FirebaseCRM.saveRecord('companies',{...state.company,id:state.currentCompanyId,companyId:state.currentCompanyId});
+      firebaseLastDiagnostic=await window.FirebaseCRM.diagnose(state.currentCompanyId);
+      toast('Perfil ativado','A sincronização foi liberada para esta conta.','success');renderSettings();
     }catch(error){
-      firebaseLastDiagnostic=await window.FirebaseCRM.diagnose('company-demo').catch(()=>firebaseLastDiagnostic);
-      toast('Ação não concluída',error.message||'Publique as regras da versão 2.9.2 e tente novamente.','error');renderSettings();
+      firebaseLastDiagnostic=await window.FirebaseCRM.diagnose(state.currentCompanyId).catch(()=>firebaseLastDiagnostic);
+      toast('Perfil não ativado',error.message||'Publique as regras da versão 2.9.3 e tente novamente.','error');renderSettings();
     }
   }
 
