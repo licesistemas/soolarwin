@@ -2,9 +2,12 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#08111f" />
-  <title>SolarCRM Pro v2.9.3 — CRM para Energia Solar</title>
+  <title>SolarCRM Pro v2.9.4 — CRM para Energia Solar</title>
   <meta name="description" content="CRM completo para empresas de energia solar com propostas profissionais, Kanban, Firebase, financeiro, obras e pós-venda." />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <style>
@@ -1033,7 +1036,7 @@ body.auth-ready #loginScreen { display:none !important; }
   <input id="backupImportInput" type="file" accept="application/json" hidden />
 
   <script>
-/* Adaptador Firebase modular — SolarCRM Pro v2.9.3. */
+/* Adaptador Firebase modular — SolarCRM Pro v2.9.4. */
 (() => {
   'use strict';
   const SDK_VERSION = '11.10.0';
@@ -1075,8 +1078,8 @@ body.auth-ready #loginScreen { display:none !important; }
     'auth/provider-already-linked': 'A conta Google já está vinculada a este usuário.',
     'auth/user-not-found': 'Usuário não encontrado.',
 
-    'permission-denied': 'Permissão negada pelo Firestore. Verifique o perfil do usuário e publique as regras da versão 2.6.',
-    'firestore/permission-denied': 'Permissão negada pelo Firestore. Verifique o perfil do usuário e publique as regras da versão 2.6.',
+    'permission-denied': 'Permissão negada pelo Firestore. Verifique o perfil do usuário e publique as regras da versão 2.9.4.',
+    'firestore/permission-denied': 'Permissão negada pelo Firestore. Verifique o perfil do usuário e publique as regras da versão 2.9.4.',
     'storage/unauthorized': 'Sem permissão para acessar o Storage. Verifique o usuário e as regras publicadas.',
     'storage/object-not-found': 'O arquivo solicitado não foi encontrado no Storage.',
     'functions/not-found': 'A Cloud Function ainda não foi publicada.',
@@ -1084,8 +1087,8 @@ body.auth-ready #loginScreen { display:none !important; }
     'functions/permission-denied': 'O usuário não tem permissão para executar essa função.',
     'unavailable': 'O serviço Firebase está temporariamente indisponível.',
     'crm/bootstrap-owned-by-another-user': 'O primeiro administrador já está vinculado a outra conta. Entre com a conta original ou peça ao administrador para liberar este usuário.',
-    'crm/bootstrap-profile-repair-denied': 'O login é o administrador inicial, mas o Firestore não permitiu reconstruir o perfil. Publique as regras da versão 2.9.3 e tente novamente.',
-    'crm/preapproved-admin-denied': 'A conta administradora pré-aprovada foi reconhecida, mas o Firestore bloqueou a ativação. Publique o arquivo firestore.rules da versão 2.9.3.'
+    'crm/bootstrap-profile-repair-denied': 'O login é o administrador inicial, mas o Firestore não permitiu reconstruir o perfil. Publique as regras da versão 2.9.4 e tente novamente.',
+    'crm/preapproved-admin-denied': 'A conta administradora pré-aprovada foi reconhecida, mas o Firestore bloqueou a ativação. Publique o arquivo firestore.rules da versão 2.9.4.'
   };
 
   function friendlyError(error, fallback = 'O Firebase não conseguiu concluir a operação.') {
@@ -1200,20 +1203,30 @@ body.auth-ready #loginScreen { display:none !important; }
 
     async login(email, password) {
       this.ensureConnected();
+      let result;
       try {
-        const result = await this.modules.authMod.signInWithEmailAndPassword(this.auth, email, password);
-        this.user = result.user;
-        await this.refreshProfile();
-        if (!this.profile) await this.repairBootstrapOwnerProfile().catch(() => null);
-        return result.user;
+        result = await this.modules.authMod.signInWithEmailAndPassword(this.auth, email, password);
       } catch (error) {
         this.syncReady = false;
         throw friendlyError(error, 'Não foi possível entrar no Firebase.');
       }
+      this.user = result.user;
+      // O login já foi concluído. Uma falha do Firestore não pode transformar
+      // autenticação válida em erro de senha nem bloquear o administrador aprovado.
+      try {
+        await this.refreshProfile();
+        if (!this.profile) await this.repairBootstrapOwnerProfile().catch(() => null);
+      } catch (error) {
+        this.lastProfileLoadError = friendlyError(error, 'Não foi possível carregar o perfil do Firestore.');
+        this.profile = null;
+        this.syncReady = false;
+      }
+      return result.user;
     },
 
     async loginWithGoogle({ redirect = false } = {}) {
       this.ensureConnected();
+      let result;
       try {
         const provider = new this.modules.authMod.GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' });
@@ -1221,15 +1234,21 @@ body.auth-ready #loginScreen { display:none !important; }
           await this.modules.authMod.signInWithRedirect(this.auth, provider);
           return null;
         }
-        const result = await this.modules.authMod.signInWithPopup(this.auth, provider);
-        this.user = result.user;
-        await this.refreshProfile();
-        if (!this.profile) await this.repairBootstrapOwnerProfile().catch(() => null);
-        return result.user;
+        result = await this.modules.authMod.signInWithPopup(this.auth, provider);
       } catch (error) {
         this.syncReady = false;
         throw friendlyError(error, 'Não foi possível entrar com Google.');
       }
+      this.user = result.user;
+      try {
+        await this.refreshProfile();
+        if (!this.profile) await this.repairBootstrapOwnerProfile().catch(() => null);
+      } catch (error) {
+        this.lastProfileLoadError = friendlyError(error, 'Não foi possível carregar o perfil do Firestore.');
+        this.profile = null;
+        this.syncReady = false;
+      }
+      return result.user;
     },
 
     async sendPasswordReset(email) {
@@ -1309,7 +1328,10 @@ body.auth-ready #loginScreen { display:none !important; }
       } catch (error) {
         this.profile = null;
         this.syncReady = false;
-        throw friendlyError(error, 'Não foi possível carregar o perfil do usuário.');
+        const wrapped = friendlyError(error, 'Não foi possível carregar o perfil do usuário.');
+        this.lastProfileLoadError = wrapped;
+        if (this.isPreapprovedAdmin(this.auth?.currentUser)) return null;
+        throw wrapped;
       }
     },
 
@@ -1363,7 +1385,7 @@ body.auth-ready #loginScreen { display:none !important; }
         await setDoc(doc(this.db, 'access_requests', user.uid), request, { merge: true });
         return { ...request, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
       } catch (error) {
-        throw friendlyError(error, 'Não foi possível registrar a solicitação de acesso. Publique as regras da versão 2.9.3.');
+        throw friendlyError(error, 'Não foi possível registrar a solicitação de acesso. Publique as regras da versão 2.9.4.');
       }
     },
 
@@ -1380,7 +1402,7 @@ body.auth-ready #loginScreen { display:none !important; }
       } catch (error) {
         const wrapped = friendlyError(error, 'Não foi possível carregar os usuários e permissões.');
         if (wrapped.code === 'permission-denied' || wrapped.code === 'firestore/permission-denied') {
-          wrapped.message = 'O Firestore bloqueou a lista de usuários. Publique o arquivo firestore.rules da versão 2.9.3, que alinha a consulta e a permissão pelo campo companyId.';
+          wrapped.message = 'O Firestore bloqueou a lista de usuários. Publique o arquivo firestore.rules da versão 2.9.4, que alinha a consulta e a permissão pelo campo companyId.';
         }
         throw wrapped;
       }
@@ -1399,7 +1421,7 @@ body.auth-ready #loginScreen { display:none !important; }
       } catch (error) {
         const wrapped = friendlyError(error, 'Não foi possível carregar as solicitações pendentes.');
         if (wrapped.code === 'permission-denied' || wrapped.code === 'firestore/permission-denied') {
-          wrapped.message = 'O Firestore bloqueou as solicitações de acesso. Publique o arquivo firestore.rules da versão 2.9.3 e confirme que o administrador está Ativo na empresa atual.';
+          wrapped.message = 'O Firestore bloqueou as solicitações de acesso. Publique o arquivo firestore.rules da versão 2.9.4 e confirme que o administrador está Ativo na empresa atual.';
         }
         throw wrapped;
       }
@@ -1460,102 +1482,81 @@ body.auth-ready #loginScreen { display:none !important; }
 
     isPreapprovedAdmin(user = this.auth?.currentUser) {
       if (!user) return false;
-      return user.uid === PREAPPROVED_ADMIN.uid
-        && String(user.email || '').trim().toLowerCase() === PREAPPROVED_ADMIN.email;
-    },
-
-    buildPreapprovedAdminProfile(user = this.auth?.currentUser, extra = {}) {
-      if (!this.isPreapprovedAdmin(user)) return null;
-      return {
-        id: user.uid,
-        uid: user.uid,
-        name: PREAPPROVED_ADMIN.name,
-        email: PREAPPROVED_ADMIN.email,
-        avatar: user.photoURL || '',
-        photoURL: user.photoURL || '',
-        role: 'admin',
-        permission: 'admin',
-        companyId: PREAPPROVED_ADMIN.companyId,
-        companyIds: [PREAPPROVED_ADMIN.companyId],
-        companyName: PREAPPROVED_ADMIN.companyName,
-        status: 'Ativo',
-        preapproved: true,
-        ...extra
-      };
+      // O e-mail é a identidade estável. O UID pode mudar se a conta for excluída e recriada.
+      return String(user.email || '').trim().toLowerCase() === PREAPPROVED_ADMIN.email;
     },
 
     async ensurePreapprovedAdminProfile() {
       this.ensureAuthenticated();
       const user = this.auth.currentUser;
       if (!this.isPreapprovedAdmin(user)) return null;
+
+      const profile = this.buildPreapprovedAdminProfile(user, {
+        approvedBy: user.uid,
+        approvedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+
       try {
-        const { doc, getDoc, writeBatch, serverTimestamp } = this.modules.firestoreMod;
+        const { doc, getDoc, setDoc, serverTimestamp } = this.modules.firestoreMod;
         const userRef = doc(this.db, 'users', user.uid);
         const requestRef = doc(this.db, 'access_requests', user.uid);
         const bootstrapRef = doc(this.db, 'system', 'bootstrap');
-        const [existingProfile, bootstrapSnapshot] = await Promise.all([
-          getDoc(userRef),
-          getDoc(bootstrapRef)
-        ]);
-        if (existingProfile.exists()) {
-          const raw = { id:existingProfile.id, ...existingProfile.data() };
-          const valid = raw.role === 'admin'
-            && String(raw.status || '').toLowerCase() === 'ativo'
-            && (Array.isArray(raw.companyIds) ? raw.companyIds : [raw.companyId]).includes(PREAPPROVED_ADMIN.companyId);
-          if (valid) return this.refreshProfile(user.uid);
-        }
-        const profile = this.buildPreapprovedAdminProfile(user, {
-          approvedBy: user.uid,
-          approvedAt: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        });
-        const batch = writeBatch(this.db);
-        batch.set(userRef, profile, { merge: true });
-        batch.set(requestRef, {
-          id: user.uid,
-          uid: user.uid,
-          name: PREAPPROVED_ADMIN.name,
-          email: PREAPPROVED_ADMIN.email,
-          provider: user.providerData?.[0]?.providerId === 'google.com' ? 'google' : 'password',
-          requestedRole: 'admin',
-          approvedRole: 'admin',
-          companyId: PREAPPROVED_ADMIN.companyId,
-          companyName: PREAPPROVED_ADMIN.companyName,
-          status: 'Aprovado',
-          approvedBy: user.uid,
-          approvedAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        }, { merge: true });
-        if (!bootstrapSnapshot.exists()) {
-          batch.set(bootstrapRef, {
+
+        // Primeiro grava o perfil isoladamente. Um documento antigo ou malformado em
+        // access_requests/system não pode mais impedir a ativação do administrador.
+        await setDoc(userRef, profile, { merge: true });
+
+        const secondaryWrites = await Promise.allSettled([
+          setDoc(requestRef, {
+            id: user.uid,
+            uid: user.uid,
+            name: PREAPPROVED_ADMIN.name,
+            email: PREAPPROVED_ADMIN.email,
+            provider: user.providerData?.[0]?.providerId === 'google.com' ? 'google' : 'password',
+            requestedRole: 'admin',
+            approvedRole: 'admin',
+            companyId: PREAPPROVED_ADMIN.companyId,
+            companyName: PREAPPROVED_ADMIN.companyName,
+            status: 'Aprovado',
+            approvedBy: user.uid,
+            approvedAt: serverTimestamp(),
+            updatedAt: serverTimestamp()
+          }, { merge: true }),
+          setDoc(bootstrapRef, {
             uid: user.uid,
             email: PREAPPROVED_ADMIN.email,
             companyId: PREAPPROVED_ADMIN.companyId,
             companyName: PREAPPROVED_ADMIN.companyName,
+            updatedAt: serverTimestamp(),
             createdAt: serverTimestamp()
-          }, { merge: false });
-        }
-        await batch.commit();
-        this.profile = profile;
+          }, { merge: true })
+        ]);
+        this.lastProfileSecondaryErrors = secondaryWrites
+          .filter(item => item.status === 'rejected')
+          .map(item => friendlyError(item.reason));
+
+        const snapshot = await getDoc(userRef);
+        this.profile = snapshot.exists()
+          ? { id:snapshot.id, ...snapshot.data(), companyIds:[PREAPPROVED_ADMIN.companyId] }
+          : profile;
         this.syncReady = true;
-        return profile;
+        this.lastProfileRepairError = null;
+        return this.profile;
       } catch (error) {
         const wrapped = friendlyError(error, 'Não foi possível gravar o perfil administrativo no Firestore.');
-        // Modo de resgate: o UID/e-mail pré-aprovado recebe o perfil local imediatamente.
-        // Com as regras 2.9.3 publicadas, ele também terá acesso à nuvem mesmo antes de users/{uid} existir.
-        if (this.isPreapprovedAdmin(user)) {
-          const fallback = this.buildPreapprovedAdminProfile(user, {
-            virtual: true,
-            profileWritePending: true,
-            activationWarning: wrapped.message
-          });
-          this.profile = fallback;
-          this.syncReady = true;
-          this.lastProfileRepairError = wrapped;
-          return fallback;
-        }
-        throw wrapped;
+        // A conta aprovada nunca fica bloqueada pelo Firestore. O CRM abre localmente e
+        // o autorreparo da nuvem pode ser repetido depois em Configurações → Firebase.
+        const fallback = this.buildPreapprovedAdminProfile(user, {
+          virtual: true,
+          profileWritePending: true,
+          activationWarning: wrapped.message
+        });
+        this.profile = fallback;
+        this.syncReady = true;
+        this.lastProfileRepairError = wrapped;
+        return fallback;
       }
     },
 
@@ -1641,7 +1642,7 @@ body.auth-ready #loginScreen { display:none !important; }
         return profile;
       } catch (error) {
         if (error?.code === 'crm/bootstrap-owned-by-another-user') throw error;
-        throw friendlyError(error, 'Não foi possível criar ou recuperar o primeiro administrador. Publique as regras da versão 2.9.3.');
+        throw friendlyError(error, 'Não foi possível criar ou recuperar o primeiro administrador. Publique as regras da versão 2.9.4.');
       }
     },
 
@@ -1797,13 +1798,13 @@ body.auth-ready #loginScreen { display:none !important; }
 (() => {
   'use strict';
 
-  const STORAGE_KEY = 'solarcrm-pro-v2-9-3-rescue-clean';
+  const STORAGE_KEY = 'solarcrm-pro-v2-9-4-admin-direto-clean';
   const LEGACY_STORAGE_KEY = ''; // versão limpa: não importa cadastros anteriores
-  const FIREBASE_CONFIG_KEY = 'solarcrm-firebase-config-v2-9-2';
+  const FIREBASE_CONFIG_KEY = 'solarcrm-firebase-config-v2-9-4';
   const LEGACY_FIREBASE_CONFIG_KEYS = ['solarcrm-firebase-config-v2-8','solarcrm-firebase-config-v2-7','solarcrm-firebase-config-v2-6','solarcrm-firebase-config'];
   const DEFAULT_FIREBASE_CONFIG = Object.freeze({"apiKey":"AIzaSyCYSQfnPLyV9B6osiZhsLYYrF64YLhGkMA","authDomain":"energiasolar-67b14.firebaseapp.com","databaseURL":"https://energiasolar-67b14-default-rtdb.firebaseio.com","projectId":"energiasolar-67b14","storageBucket":"energiasolar-67b14.firebasestorage.app","messagingSenderId":"394822890491","appId":"1:394822890491:web:5afc55e01902bbf142915e","functionsRegion":"southamerica-east1"});
-  const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-2';
-  const SYSTEM_VERSION = '2.9.3';
+  const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-4';
+  const SYSTEM_VERSION = '2.9.4';
   let storageWarningShown = false;
   let draftSaveTimer = null;
   let firebaseLastDiagnostic = null;
@@ -4070,9 +4071,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
       state.companies.push(authorized);
     }
     if(authorized){state.currentCompanyId=authorized.id;state.company={...defaultCompany,...authorized};}
-    persist();renderSidebar();updateTopbar();
-    if(profile.virtual){setTimeout(()=>toast('Administrador liberado em modo de resgate','Publique o firestore.rules da versão 2.9.3 para concluir a gravação do perfil e a sincronização na nuvem.','info'),350);}
-    return true;
+    persist();renderSidebar();updateTopbar();return true;
   }
 
   function initAuthenticationScreen(){
@@ -4122,7 +4121,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     const authUser=window.FirebaseCRM?.auth?.currentUser;
     if(window.FirebaseCRM?.isPreapprovedAdmin(authUser)){
       if(title)title.textContent='Administrador já aprovado';
-      if(text)text.textContent='A conta foi reconhecida. Clique em concluir ativação. Se o perfil não puder ser gravado, o sistema abrirá em modo de resgate e mostrará como publicar as regras 2.9.3.';
+      if(text)text.textContent='A conta foi reconhecida como administradora. Clique em “Concluir ativação”; o CRM será aberto mesmo se a sincronização do Firestore ainda estiver pendente.';
       if(action){action.style.display='inline-flex';action.textContent='Concluir ativação';}
     }else if(code==='profile-missing-bootstrap-available'){
       if(title)title.textContent='Primeiro administrador';if(text)text.textContent='Esta é a primeira conta. Ative-a como administradora para iniciar o sistema.';if(action){action.style.display='inline-flex';action.textContent='Ativar administrador';}
@@ -4146,17 +4145,45 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
         setLoginStatus('Ativando administrador aprovado','Esta conta já está autorizada. Preparando o perfil administrativo.','info');
         profile=await window.FirebaseCRM.ensurePreapprovedAdminProfile();
       }
-      let diagnostic=await window.FirebaseCRM.diagnose(profile?.companyId||state.currentCompanyId);
+
+      // Libera o administrador aprovado antes do diagnóstico. Assim uma regra antiga
+      // ou uma falha temporária do Firestore não prende a conta na tela de login.
       if(profile&&window.FirebaseCRM.syncReady){
-        applyFirebaseProfile(profile,user);firebaseLastDiagnostic=diagnostic;unlockSystemAfterAuthentication();return true;
+        applyFirebaseProfile(profile,user);
+        unlockSystemAfterAuthentication();
+        try{
+          firebaseLastDiagnostic=await window.FirebaseCRM.diagnose(profile.companyId||state.currentCompanyId);
+          if(profile.profileWritePending){
+            toast('Acesso administrativo liberado','O CRM está aberto. Publique as regras 2.9.4 para concluir a sincronização na nuvem.','info');
+          }
+        }catch(error){
+          firebaseLastDiagnostic={code:'cloud-rules-pending',message:error.message||'Acesso local liberado; sincronização da nuvem pendente.'};
+          toast('Acesso liberado em modo local','O Firestore ainda negou o diagnóstico. Publique as regras 2.9.4 para sincronizar.','info');
+        }
+        return true;
+      }
+
+      let diagnostic;
+      try{
+        diagnostic=await window.FirebaseCRM.diagnose(profile?.companyId||state.currentCompanyId);
+      }catch(error){
+        diagnostic={code:'permission-denied',message:error.message||'O Firestore negou a validação do perfil.'};
       }
       if(!profile && diagnostic.bootstrapExists && !diagnostic.bootstrapOwner && diagnostic.code!=='access-rejected'){
         try{await window.FirebaseCRM.requestAccess({companyId:diagnostic.bootstrapCompanyId||state.currentCompanyId,companyName:state.company.tradeName||state.company.name||''});}catch(error){console.warn('Solicitação de acesso:',error);}
-        diagnostic=await window.FirebaseCRM.diagnose(state.currentCompanyId);
+        try{diagnostic=await window.FirebaseCRM.diagnose(state.currentCompanyId);}catch(_){}
       }
       firebaseLastDiagnostic=diagnostic;showPendingProfile(diagnostic);return false;
     }catch(error){
-      console.error(error);setLoginStatus('Não foi possível validar o acesso',error.message||'Verifique o Firebase Authentication e as regras do Firestore.','error');return false;
+      console.error(error);
+      if(window.FirebaseCRM?.isPreapprovedAdmin(user)){
+        const fallback=window.FirebaseCRM.buildPreapprovedAdminProfile(user,{virtual:true,profileWritePending:true,activationWarning:error.message||''});
+        window.FirebaseCRM.profile=fallback;window.FirebaseCRM.syncReady=true;
+        applyFirebaseProfile(fallback,user);unlockSystemAfterAuthentication();
+        toast('Administrador liberado','A sincronização com o Firestore ficou pendente, mas o acesso ao CRM foi autorizado.','info');
+        return true;
+      }
+      setLoginStatus('Não foi possível validar o acesso',error.message||'Verifique o Firebase Authentication e as regras do Firestore.','error');return false;
     }finally{authFlowBusy=false;}
   }
 
@@ -4218,7 +4245,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
         setLoginStatus('Ativando administrador aprovado','Aguarde enquanto o perfil é gravado no Firestore.','info');
         const profile=await window.FirebaseCRM.ensurePreapprovedAdminProfile();
         applyFirebaseProfile(profile,user);unlockSystemAfterAuthentication();return;
-      }catch(error){setLoginStatus('Perfil não ativado',error.message||'Publique as regras da versão 2.9.3 e tente novamente.','error');return;}
+      }catch(error){setLoginStatus('Perfil não ativado',error.message||'Publique as regras da versão 2.9.4 e tente novamente.','error');return;}
     }
     if(!['profile-missing-bootstrap-available','bootstrap-owner-profile-missing'].includes(code)){
       await finishAuthenticatedSession(user,{automatic:false});return;
@@ -4228,7 +4255,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
       const profile=await window.FirebaseCRM.bootstrapAdmin({name:user.displayName||user.email?.split('@')[0]||'Administrador',email:user.email,companyId:state.currentCompanyId,companyName:state.company.tradeName||state.company.name||''});
       await window.FirebaseCRM.saveRecord('companies',{...state.company,id:state.currentCompanyId,companyId:state.currentCompanyId});
       applyFirebaseProfile(profile,user);unlockSystemAfterAuthentication();
-    }catch(error){setLoginStatus('Perfil não ativado',error.message||'Publique as regras da versão 2.9.3 e tente novamente.','error');}
+    }catch(error){setLoginStatus('Perfil não ativado',error.message||'Publique as regras da versão 2.9.4 e tente novamente.','error');}
   }
 
   function firebaseCredentials(){
@@ -4302,7 +4329,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
       toast('Perfil ativado','A sincronização foi liberada para esta conta.','success');renderSettings();
     }catch(error){
       firebaseLastDiagnostic=await window.FirebaseCRM.diagnose(state.currentCompanyId).catch(()=>firebaseLastDiagnostic);
-      toast('Perfil não ativado',error.message||'Publique as regras da versão 2.9.3 e tente novamente.','error');renderSettings();
+      toast('Perfil não ativado',error.message||'Publique as regras da versão 2.9.4 e tente novamente.','error');renderSettings();
     }
   }
 
