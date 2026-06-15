@@ -2,12 +2,9 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#08111f" />
-  <title>SolarCRM Pro v2.9.4 — CRM para Energia Solar</title>
+  <title>SolarCRM Pro v2.9.5 — CRM para Energia Solar</title>
   <meta name="description" content="CRM completo para empresas de energia solar com propostas profissionais, Kanban, Firebase, financeiro, obras e pós-venda." />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <style>
@@ -787,6 +784,26 @@ body.auth-ready #loginScreen { display:none !important; }
   .login-card-head h2 { font-size:27px; }
 }
 
+
+  .permission-summary{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+  .permission-matrix-dialog{max-width:1120px;width:min(1120px,96vw)}
+  .permission-matrix-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .permission-matrix-toolbar .toolbar-group{display:flex;gap:8px;flex-wrap:wrap}
+  .permission-matrix-wrap{overflow:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+  .permission-matrix-table{width:100%;border-collapse:collapse;min-width:820px}
+  .permission-matrix-table th,.permission-matrix-table td{padding:10px 11px;border-bottom:1px solid var(--line);text-align:center;font-size:11px}
+  .permission-matrix-table th:first-child,.permission-matrix-table td:first-child{text-align:left;position:sticky;left:0;background:var(--surface);z-index:1;min-width:210px}
+  .permission-matrix-table thead th{position:sticky;top:0;background:var(--surface-2);z-index:2;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+  .permission-matrix-table thead th:first-child{z-index:3;background:var(--surface-2)}
+  .permission-matrix-table tr:last-child td{border-bottom:0}
+  .permission-matrix-table .module-copy strong{display:block;font-size:12px;color:var(--text)}
+  .permission-matrix-table .module-copy span{display:block;color:var(--muted);font-size:9px;margin-top:2px}
+  .permission-check{width:17px;height:17px;accent-color:var(--primary);cursor:pointer}
+  .permission-check:disabled{opacity:.22;cursor:not-allowed}
+  .permission-matrix-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;flex-wrap:wrap}
+  .permission-matrix-footer small{color:var(--muted);max-width:650px;line-height:1.45}
+  .permission-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:999px;background:var(--primary-soft);color:var(--primary);font-weight:800;font-size:9px}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -1036,7 +1053,7 @@ body.auth-ready #loginScreen { display:none !important; }
   <input id="backupImportInput" type="file" accept="application/json" hidden />
 
   <script>
-/* Adaptador Firebase modular — SolarCRM Pro v2.9.4. */
+/* Adaptador Firebase modular — SolarCRM Pro v2.9.5. */
 (() => {
   'use strict';
   const SDK_VERSION = '11.10.0';
@@ -1078,8 +1095,8 @@ body.auth-ready #loginScreen { display:none !important; }
     'auth/provider-already-linked': 'A conta Google já está vinculada a este usuário.',
     'auth/user-not-found': 'Usuário não encontrado.',
 
-    'permission-denied': 'Permissão negada pelo Firestore. Verifique o perfil do usuário e publique as regras da versão 2.9.4.',
-    'firestore/permission-denied': 'Permissão negada pelo Firestore. Verifique o perfil do usuário e publique as regras da versão 2.9.4.',
+    'permission-denied': 'Permissão negada pelo Firestore. Verifique o perfil do usuário e publique as regras da versão 2.9.5.',
+    'firestore/permission-denied': 'Permissão negada pelo Firestore. Verifique o perfil do usuário e publique as regras da versão 2.9.5.',
     'storage/unauthorized': 'Sem permissão para acessar o Storage. Verifique o usuário e as regras publicadas.',
     'storage/object-not-found': 'O arquivo solicitado não foi encontrado no Storage.',
     'functions/not-found': 'A Cloud Function ainda não foi publicada.',
@@ -1087,8 +1104,8 @@ body.auth-ready #loginScreen { display:none !important; }
     'functions/permission-denied': 'O usuário não tem permissão para executar essa função.',
     'unavailable': 'O serviço Firebase está temporariamente indisponível.',
     'crm/bootstrap-owned-by-another-user': 'O primeiro administrador já está vinculado a outra conta. Entre com a conta original ou peça ao administrador para liberar este usuário.',
-    'crm/bootstrap-profile-repair-denied': 'O login é o administrador inicial, mas o Firestore não permitiu reconstruir o perfil. Publique as regras da versão 2.9.4 e tente novamente.',
-    'crm/preapproved-admin-denied': 'A conta administradora pré-aprovada foi reconhecida, mas o Firestore bloqueou a ativação. Publique o arquivo firestore.rules da versão 2.9.4.'
+    'crm/bootstrap-profile-repair-denied': 'O login é o administrador inicial, mas o Firestore não permitiu reconstruir o perfil. Publique as regras da versão 2.9.5 e tente novamente.',
+    'crm/preapproved-admin-denied': 'A conta administradora pré-aprovada foi reconhecida, mas o Firestore bloqueou a ativação. Publique o arquivo firestore.rules da versão 2.9.5.'
   };
 
   function friendlyError(error, fallback = 'O Firebase não conseguiu concluir a operação.') {
@@ -1203,30 +1220,20 @@ body.auth-ready #loginScreen { display:none !important; }
 
     async login(email, password) {
       this.ensureConnected();
-      let result;
       try {
-        result = await this.modules.authMod.signInWithEmailAndPassword(this.auth, email, password);
+        const result = await this.modules.authMod.signInWithEmailAndPassword(this.auth, email, password);
+        this.user = result.user;
+        await this.refreshProfile();
+        if (!this.profile) await this.repairBootstrapOwnerProfile().catch(() => null);
+        return result.user;
       } catch (error) {
         this.syncReady = false;
         throw friendlyError(error, 'Não foi possível entrar no Firebase.');
       }
-      this.user = result.user;
-      // O login já foi concluído. Uma falha do Firestore não pode transformar
-      // autenticação válida em erro de senha nem bloquear o administrador aprovado.
-      try {
-        await this.refreshProfile();
-        if (!this.profile) await this.repairBootstrapOwnerProfile().catch(() => null);
-      } catch (error) {
-        this.lastProfileLoadError = friendlyError(error, 'Não foi possível carregar o perfil do Firestore.');
-        this.profile = null;
-        this.syncReady = false;
-      }
-      return result.user;
     },
 
     async loginWithGoogle({ redirect = false } = {}) {
       this.ensureConnected();
-      let result;
       try {
         const provider = new this.modules.authMod.GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' });
@@ -1234,21 +1241,15 @@ body.auth-ready #loginScreen { display:none !important; }
           await this.modules.authMod.signInWithRedirect(this.auth, provider);
           return null;
         }
-        result = await this.modules.authMod.signInWithPopup(this.auth, provider);
+        const result = await this.modules.authMod.signInWithPopup(this.auth, provider);
+        this.user = result.user;
+        await this.refreshProfile();
+        if (!this.profile) await this.repairBootstrapOwnerProfile().catch(() => null);
+        return result.user;
       } catch (error) {
         this.syncReady = false;
         throw friendlyError(error, 'Não foi possível entrar com Google.');
       }
-      this.user = result.user;
-      try {
-        await this.refreshProfile();
-        if (!this.profile) await this.repairBootstrapOwnerProfile().catch(() => null);
-      } catch (error) {
-        this.lastProfileLoadError = friendlyError(error, 'Não foi possível carregar o perfil do Firestore.');
-        this.profile = null;
-        this.syncReady = false;
-      }
-      return result.user;
     },
 
     async sendPasswordReset(email) {
@@ -1328,10 +1329,7 @@ body.auth-ready #loginScreen { display:none !important; }
       } catch (error) {
         this.profile = null;
         this.syncReady = false;
-        const wrapped = friendlyError(error, 'Não foi possível carregar o perfil do usuário.');
-        this.lastProfileLoadError = wrapped;
-        if (this.isPreapprovedAdmin(this.auth?.currentUser)) return null;
-        throw wrapped;
+        throw friendlyError(error, 'Não foi possível carregar o perfil do usuário.');
       }
     },
 
@@ -1385,7 +1383,7 @@ body.auth-ready #loginScreen { display:none !important; }
         await setDoc(doc(this.db, 'access_requests', user.uid), request, { merge: true });
         return { ...request, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
       } catch (error) {
-        throw friendlyError(error, 'Não foi possível registrar a solicitação de acesso. Publique as regras da versão 2.9.4.');
+        throw friendlyError(error, 'Não foi possível registrar a solicitação de acesso. Publique as regras da versão 2.9.5.');
       }
     },
 
@@ -1402,7 +1400,7 @@ body.auth-ready #loginScreen { display:none !important; }
       } catch (error) {
         const wrapped = friendlyError(error, 'Não foi possível carregar os usuários e permissões.');
         if (wrapped.code === 'permission-denied' || wrapped.code === 'firestore/permission-denied') {
-          wrapped.message = 'O Firestore bloqueou a lista de usuários. Publique o arquivo firestore.rules da versão 2.9.4, que alinha a consulta e a permissão pelo campo companyId.';
+          wrapped.message = 'O Firestore bloqueou a lista de usuários. Publique o arquivo firestore.rules da versão 2.9.5, que alinha a consulta e a permissão pelo campo companyId.';
         }
         throw wrapped;
       }
@@ -1421,13 +1419,13 @@ body.auth-ready #loginScreen { display:none !important; }
       } catch (error) {
         const wrapped = friendlyError(error, 'Não foi possível carregar as solicitações pendentes.');
         if (wrapped.code === 'permission-denied' || wrapped.code === 'firestore/permission-denied') {
-          wrapped.message = 'O Firestore bloqueou as solicitações de acesso. Publique o arquivo firestore.rules da versão 2.9.4 e confirme que o administrador está Ativo na empresa atual.';
+          wrapped.message = 'O Firestore bloqueou as solicitações de acesso. Publique o arquivo firestore.rules da versão 2.9.5 e confirme que o administrador está Ativo na empresa atual.';
         }
         throw wrapped;
       }
     },
 
-    async approveAccessRequest(uid, { role='seller', companyId, companyName='' } = {}) {
+    async approveAccessRequest(uid, { role='seller', companyId, companyName='', permissions={}, permissionArrays={} } = {}) {
       this.ensureSyncReady();
       if (this.profile?.role !== 'admin') throw new Error('Somente administradores podem aprovar novos usuários.');
       try {
@@ -1439,7 +1437,7 @@ body.auth-ready #loginScreen { display:none !important; }
         const targetCompany = companyId || request.companyId;
         const profile = {
           id:uid, name:request.name || request.email || 'Usuário', email:request.email || '', avatar:request.photoURL || '',
-          role, permission:role, companyId:targetCompany, companyIds:[targetCompany], companyName,
+          role, permission:role, permissions, ...permissionArrays, companyId:targetCompany, companyIds:[targetCompany], companyName,
           status:'Ativo', approvedBy:this.auth.currentUser.uid, approvedAt:new Date().toISOString(),
           createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()
         };
@@ -1465,14 +1463,14 @@ body.auth-ready #loginScreen { display:none !important; }
       }
     },
 
-    async updateUserPermissions(uid, { role, status, companyId } = {}) {
+    async updateUserPermissions(uid, { role, status, companyId, permissions={}, permissionArrays={} } = {}) {
       this.ensureSyncReady();
       if (this.profile?.role !== 'admin') throw new Error('Somente administradores podem alterar permissões.');
       if (uid === this.auth.currentUser.uid && status !== 'Ativo') throw new Error('Você não pode desativar o próprio usuário.');
       try {
         const { doc, setDoc, serverTimestamp } = this.modules.firestoreMod;
         await setDoc(doc(this.db, 'users', uid), {
-          role, permission:role, status, companyId, companyIds:[companyId], updatedBy:this.auth.currentUser.uid, updatedAt:serverTimestamp()
+          role, permission:role, permissions, ...permissionArrays, status, companyId, companyIds:[companyId], updatedBy:this.auth.currentUser.uid, updatedAt:serverTimestamp()
         }, { merge:true });
         return true;
       } catch (error) {
@@ -1642,7 +1640,7 @@ body.auth-ready #loginScreen { display:none !important; }
         return profile;
       } catch (error) {
         if (error?.code === 'crm/bootstrap-owned-by-another-user') throw error;
-        throw friendlyError(error, 'Não foi possível criar ou recuperar o primeiro administrador. Publique as regras da versão 2.9.4.');
+        throw friendlyError(error, 'Não foi possível criar ou recuperar o primeiro administrador. Publique as regras da versão 2.9.5.');
       }
     },
 
@@ -1800,11 +1798,11 @@ body.auth-ready #loginScreen { display:none !important; }
 
   const STORAGE_KEY = 'solarcrm-pro-v2-9-4-admin-direto-clean';
   const LEGACY_STORAGE_KEY = ''; // versão limpa: não importa cadastros anteriores
-  const FIREBASE_CONFIG_KEY = 'solarcrm-firebase-config-v2-9-4';
+  const FIREBASE_CONFIG_KEY = 'solarcrm-firebase-config-v2-9-2';
   const LEGACY_FIREBASE_CONFIG_KEYS = ['solarcrm-firebase-config-v2-8','solarcrm-firebase-config-v2-7','solarcrm-firebase-config-v2-6','solarcrm-firebase-config'];
   const DEFAULT_FIREBASE_CONFIG = Object.freeze({"apiKey":"AIzaSyCYSQfnPLyV9B6osiZhsLYYrF64YLhGkMA","authDomain":"energiasolar-67b14.firebaseapp.com","databaseURL":"https://energiasolar-67b14-default-rtdb.firebaseio.com","projectId":"energiasolar-67b14","storageBucket":"energiasolar-67b14.firebasestorage.app","messagingSenderId":"394822890491","appId":"1:394822890491:web:5afc55e01902bbf142915e","functionsRegion":"southamerica-east1"});
-  const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-4';
-  const SYSTEM_VERSION = '2.9.4';
+  const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-2';
+  const SYSTEM_VERSION = '2.9.5';
   let storageWarningShown = false;
   let draftSaveTimer = null;
   let firebaseLastDiagnostic = null;
@@ -1884,12 +1882,144 @@ body.auth-ready #loginScreen { display:none !important; }
   ];
 
   const rolePermissions = {
-    admin: ['dashboard','leads','kanban','clients','proposals','contracts','works','homologations','financial','aftersales','tickets','commissions','inventory','teams','reports','automations','settings'],
-    manager: ['dashboard','leads','kanban','clients','proposals','contracts','works','homologations','financial','aftersales','tickets','commissions','inventory','teams','reports','automations'],
+    admin: ['dashboard','leads','kanban','clients','proposals','contracts','works','homologations','financial','aftersales','tickets','commissions','inventory','teams','reports','automations','projectDocuments','settings'],
+    manager: ['dashboard','leads','kanban','clients','proposals','contracts','works','homologations','financial','aftersales','tickets','commissions','inventory','teams','reports','automations','projectDocuments'],
     seller: ['dashboard','leads','kanban','clients','proposals','contracts','commissions','automations'],
-    technical: ['dashboard','clients','works','homologations','aftersales','tickets','inventory','teams'],
+    technical: ['dashboard','clients','works','homologations','aftersales','tickets','inventory','teams','projectDocuments'],
     finance: ['dashboard','clients','contracts','financial','commissions','reports']
   };
+
+  const permissionActions = [
+    { id:'view', label:'Visualizar' },
+    { id:'create', label:'Cadastrar' },
+    { id:'edit', label:'Editar' },
+    { id:'delete', label:'Excluir' },
+    { id:'export', label:'Exportar' },
+    { id:'approve', label:'Aprovar / executar' }
+  ];
+
+  const permissionModules = [
+    { id:'dashboard', label:'Dashboard', description:'Indicadores e visão geral', actions:['view'] },
+    { id:'leads', label:'Leads', description:'Cadastro e oportunidades comerciais', actions:['view','create','edit','delete','export'] },
+    { id:'kanban', label:'Funil Kanban', description:'Visualização do funil e projetos', actions:['view'] },
+    { id:'clients', label:'Clientes', description:'Dados cadastrais e unidades consumidoras', actions:['view','create','edit','delete','export'] },
+    { id:'proposals', label:'Propostas', description:'Dimensionamento, PDF, envio e aceite', actions:['view','create','edit','delete','export','approve'] },
+    { id:'contracts', label:'Contratos', description:'Contratos e assinaturas', actions:['view','create','edit','delete','export','approve'] },
+    { id:'works', label:'Obras e projetos', description:'Etapas, tarefas e cronograma', actions:['view','create','edit','delete','export','approve'] },
+    { id:'projectDocuments', label:'Documentos dos projetos', description:'Upload, abertura e dossiê pós-venda', actions:['view','create','delete','export'] },
+    { id:'homologations', label:'Homologação', description:'Protocolos, vistoria e distribuidora', actions:['view','create','edit','delete','export','approve'] },
+    { id:'financial', label:'Financeiro', description:'Contas, cobranças e pagamentos', actions:['view','create','edit','delete','export','approve'] },
+    { id:'aftersales', label:'Pós-venda', description:'Usinas, performance e NPS', actions:['view','create','edit','delete','export','approve'] },
+    { id:'tickets', label:'Chamados', description:'Atendimento técnico e suporte', actions:['view','create','edit','delete','export','approve'] },
+    { id:'commissions', label:'Comissões', description:'Valores previstos, liberados e pagos', actions:['view','create','edit','delete','export','approve'] },
+    { id:'inventory', label:'Estoque', description:'Produtos, fornecedores e movimentações', actions:['view','create','edit','delete','export','approve'] },
+    { id:'teams', label:'Equipes', description:'Equipe operacional e vendedores', actions:['view','create','edit','delete','export'] },
+    { id:'reports', label:'Relatórios', description:'Indicadores executivos e impressão', actions:['view','export'] },
+    { id:'automations', label:'Automações e IA', description:'Regras, filas, mensagens e IA', actions:['view','create','edit','delete','export','approve'] },
+    { id:'settings', label:'Configurações', description:'Empresa, identidade, Firebase e backup', actions:['view','edit','export'] }
+  ];
+
+  const permissionCollectionModules = {
+    leads:'leads', clients:'clients', proposals:'proposals', contracts:'contracts', works:'works', projects:'works',
+    homologations:'homologations', financial:'financial', aftersales:'aftersales', installations:'aftersales', tickets:'tickets',
+    commissions:'commissions', inventory:'inventory', products:'inventory', suppliers:'inventory', teams:'teams', team_members:'teams',
+    projectDocuments:'projectDocuments', project_documents:'projectDocuments', tasks:'works', automationRules:'automations', automation_rules:'automations',
+    automationQueue:'automations', automation_queue:'automations', automationLogs:'automations', automation_logs:'automations', stockMovements:'inventory', notifications:'dashboard'
+  };
+
+  function emptyPermissionMatrix(){
+    const matrix={};
+    permissionModules.forEach(module=>{
+      matrix[module.id]={};
+      permissionActions.forEach(action=>matrix[module.id][action.id]=false);
+    });
+    return matrix;
+  }
+
+  function defaultPermissionMatrix(role='seller'){
+    const matrix=emptyPermissionMatrix();
+    const visible=new Set(rolePermissions[role]||rolePermissions.seller);
+    visible.forEach(module=>{if(matrix[module])matrix[module].view=true;});
+    if(visible.has('works')&&matrix.projectDocuments)matrix.projectDocuments.view=true;
+    if(role==='admin'){
+      permissionModules.forEach(module=>module.actions.forEach(action=>matrix[module.id][action]=true));
+      return matrix;
+    }
+    const writable={
+      manager:['leads','clients','proposals','contracts','works','projectDocuments','homologations','financial','aftersales','tickets','commissions','inventory','teams','automations'],
+      seller:['leads','clients','proposals','automations'],
+      technical:['clients','works','projectDocuments','homologations','aftersales','tickets','inventory','teams'],
+      finance:['contracts','financial','commissions']
+    }[role]||[];
+    writable.forEach(moduleId=>{
+      const module=permissionModules.find(item=>item.id===moduleId);if(!module)return;
+      ['create','edit','export'].forEach(action=>{if(module.actions.includes(action))matrix[moduleId][action]=true;});
+    });
+    if(role==='manager'){
+      writable.forEach(moduleId=>{const module=permissionModules.find(item=>item.id===moduleId);if(module?.actions.includes('delete'))matrix[moduleId].delete=true;if(module?.actions.includes('approve'))matrix[moduleId].approve=true;});
+      if(matrix.reports){matrix.reports.view=true;matrix.reports.export=true;}
+    }
+    if(role==='seller'&&matrix.proposals)matrix.proposals.approve=true;
+    if(role==='technical'){
+      if(matrix.projectDocuments)matrix.projectDocuments.delete=true;
+      if(matrix.works)matrix.works.approve=true;
+      if(matrix.homologations)matrix.homologations.approve=true;
+      if(matrix.tickets)matrix.tickets.approve=true;
+    }
+    if(role==='finance'){
+      if(matrix.financial)matrix.financial.approve=true;
+      if(matrix.contracts)matrix.contracts.approve=true;
+      if(matrix.reports){matrix.reports.view=true;matrix.reports.export=true;}
+    }
+    return matrix;
+  }
+
+  function permissionArraysFromMatrix(matrix){
+    const normalized=matrix||emptyPermissionMatrix();
+    const output={};
+    permissionActions.forEach(action=>{
+      output[`permissions${action.id[0].toUpperCase()}${action.id.slice(1)}`]=permissionModules.filter(module=>Boolean(normalized[module.id]?.[action.id])).map(module=>module.id);
+    });
+    return output;
+  }
+
+  function normalizePermissionMatrix(raw,role='seller',profile={}){
+    const matrix=emptyPermissionMatrix();let custom=false;
+    if(raw&&typeof raw==='object'&&!Array.isArray(raw)){
+      permissionModules.forEach(module=>{
+        const source=raw[module.id];
+        if(source&&typeof source==='object')module.actions.forEach(action=>{if(typeof source[action]==='boolean'){matrix[module.id][action]=source[action];custom=true;}});
+      });
+    }
+    permissionActions.forEach(action=>{
+      const key=`permissions${action.id[0].toUpperCase()}${action.id.slice(1)}`;
+      if(Array.isArray(profile?.[key])){custom=true;profile[key].forEach(moduleId=>{if(matrix[moduleId])matrix[moduleId][action.id]=true;});}
+    });
+    return custom?matrix:defaultPermissionMatrix(role);
+  }
+
+  function permissionSummary(matrix){
+    const normalized=matrix||emptyPermissionMatrix();
+    const modules=permissionModules.filter(module=>normalized[module.id]?.view).length;
+    const actions=permissionModules.reduce((total,module)=>total+module.actions.filter(action=>normalized[module.id]?.[action]).length,0);
+    return `${modules} módulo(s) · ${actions} ação(ões)`;
+  }
+
+  function permissionModuleForCollection(collection){return permissionCollectionModules[collection]||collection;}
+
+  function hasPermission(module,action='view'){
+    const role=state?.role||state?.currentUser?.role||'seller';
+    if(role==='admin')return true;
+    const matrix=normalizePermissionMatrix(state?.currentUser?.permissions,role,state?.currentUser||{});
+    return Boolean(matrix[module]?.[action]);
+  }
+
+  function denyPermission(module,action='view'){
+    const moduleLabel=permissionModules.find(item=>item.id===module)?.label||module;
+    const actionLabel=permissionActions.find(item=>item.id===action)?.label||action;
+    toast('Acesso não liberado',`${actionLabel}: ${moduleLabel}. Solicite essa permissão ao administrador.`,'error');
+    return false;
+  }
 
   const navItems = [
     { section: 'Visão geral', id: 'dashboard', label: 'Dashboard', icon: '⌂' },
@@ -1995,7 +2125,7 @@ body.auth-ready #loginScreen { display:none !important; }
     return {
       version: 3,
       theme: 'dark', role: 'seller', currentView: 'dashboard', currentCompanyId: 'company-demo',
-      currentUser: { id: '', name: '', email: '', initials: 'US', role: 'seller', companyIds: [] },
+      currentUser: { id: '', name: '', email: '', initials: 'US', role: 'seller', companyIds: [], permissions: defaultPermissionMatrix('seller') },
       company: { ...defaultCompany }, companies: [{ ...defaultCompany }],
       users: [], accessRequests: [], notifications: [], leads: [], clients: [], proposals: [], contracts: [], works: [],
       homologations: [], financial: [], aftersales: [], tickets: [], commissions: [], inventory: [], teams: [], products: [], suppliers: [],
@@ -2052,6 +2182,7 @@ body.auth-ready #loginScreen { display:none !important; }
   let permissionRequests = [];
   let permissionUsersLoaded = false;
   let permissionUsersLoading = false;
+  let permissionDrafts = {};
 
   function normalizeState(data) {
     data = data && typeof data === 'object' ? data : seedState();
@@ -2070,9 +2201,10 @@ body.auth-ready #loginScreen { display:none !important; }
       ...rule, companyId:rule.companyId || data.currentCompanyId
     }));
     data.activity = Array.isArray(data.activity) ? data.activity : [];
-    data.currentUser = data.currentUser || { id:'', name:'', email:'', initials:'US', role:'seller', companyIds:[] };
+    data.currentUser = data.currentUser || { id:'', name:'', email:'', initials:'US', role:'seller', companyIds:[], permissions:defaultPermissionMatrix('seller') };
     data.currentUser.companyIds = [...new Set([...(data.currentUser.companyIds || []), ...data.companies.map(c => c.id)])];
     data.role = data.role || data.currentUser.role || 'seller';
+    data.currentUser.permissions = normalizePermissionMatrix(data.currentUser.permissions,data.role,data.currentUser);
     data.works = data.works.map(work => ({
       ...work,
       projectStage: normalizeProjectStage(work.projectStage || work.status),
@@ -2511,8 +2643,7 @@ body.auth-ready #loginScreen { display:none !important; }
   }
 
   function canAccess(view) {
-    const role = state.role || state.currentUser?.role || 'admin';
-    return (rolePermissions[role] || rolePermissions.admin).includes(view);
+    return hasPermission(view,'view');
   }
 
   function init() {
@@ -2774,9 +2905,13 @@ body.auth-ready #loginScreen { display:none !important; }
   }
 
   function rowActionButtons(collection,row){
-    const paid=collection==='financial'&&row.status!=='Pago'&&row.status!=='Cancelado'?`<button class="btn btn-secondary btn-sm" data-action="mark-paid" data-id="${row.id}" title="Confirmar pagamento">Pago</button>`:'';
-    const project=collection==='works'?`<button class="btn btn-primary btn-sm" data-action="open-project" data-id="${row.id}" title="Abrir Kanban e documentos">Projeto</button><button class="btn btn-secondary btn-sm btn-icon" data-action="project-documents" data-id="${row.id}" title="Documentos do projeto">▤</button>`:'';
-    return `${paid}${project}<button class="btn btn-ghost btn-sm btn-icon" data-action="view-entity" data-collection="${collection}" data-id="${row.id}" title="Detalhes">⌕</button><button class="btn btn-ghost btn-sm btn-icon" data-action="edit-entity" data-collection="${collection}" data-id="${row.id}" title="Editar">✎</button><button class="btn btn-danger btn-sm btn-icon" data-action="delete-entity" data-collection="${collection}" data-id="${row.id}" title="Excluir">×</button>`;
+    const module=permissionModuleForCollection(collection);
+    const paid=collection==='financial'&&row.status!=='Pago'&&row.status!=='Cancelado'&&hasPermission('financial','approve')?`<button class="btn btn-secondary btn-sm" data-action="mark-paid" data-id="${row.id}" title="Confirmar pagamento">Pago</button>`:'';
+    const project=collection==='works'&&hasPermission('works','view')?`<button class="btn btn-primary btn-sm" data-action="open-project" data-id="${row.id}" title="Abrir Kanban e documentos">Projeto</button>${hasPermission('projectDocuments','view')?`<button class="btn btn-secondary btn-sm btn-icon" data-action="project-documents" data-id="${row.id}" title="Documentos do projeto">▤</button>`:''}`:'';
+    const view=hasPermission(module,'view')?`<button class="btn btn-ghost btn-sm btn-icon" data-action="view-entity" data-collection="${collection}" data-id="${row.id}" title="Detalhes">⌕</button>`:'';
+    const edit=hasPermission(module,'edit')?`<button class="btn btn-ghost btn-sm btn-icon" data-action="edit-entity" data-collection="${collection}" data-id="${row.id}" title="Editar">✎</button>`:'';
+    const remove=hasPermission(module,'delete')?`<button class="btn btn-danger btn-sm btn-icon" data-action="delete-entity" data-collection="${collection}" data-id="${row.id}" title="Excluir">×</button>`:'';
+    return `${paid}${project}${view}${edit}${remove}`;
   }
 
   function renderEntityTable(collection) {
@@ -2784,7 +2919,7 @@ body.auth-ready #loginScreen { display:none !important; }
     const rows=filteredRows(collection);
     const addLabel=collection==='tickets'?'Abrir chamado':collection==='inventory'?'Novo produto':`Novo ${entitySchemas[collection]?.title?.toLowerCase()||'registro'}`;
     const summary=collection==='works'?`<div class="pipeline-summary">${['Planejamento','Compras','Em instalação','Vistoria','Concluída'].map(status=>`<div class="pipeline-pill"><span>${status}</span><strong>${companyRows('works').filter(w=>w.status===status).length}</strong></div>`).join('')}</div>`:'';
-    return `${pageHead(cfg.title,cfg.subtitle,`<button class="btn btn-ghost" data-action="export-csv" data-collection="${collection}">Exportar CSV</button><button class="btn btn-primary" data-action="add-entity" data-collection="${collection}">＋ ${addLabel}</button>`)}${summary}
+    return `${pageHead(cfg.title,cfg.subtitle,`${hasPermission(permissionModuleForCollection(collection),'export')?`<button class="btn btn-ghost" data-action="export-csv" data-collection="${collection}">Exportar CSV</button>`:''}${hasPermission(permissionModuleForCollection(collection),'create')?`<button class="btn btn-primary" data-action="add-entity" data-collection="${collection}">＋ ${addLabel}</button>`:''}`)}${summary}
       <section class="card table-card">
         <div class="table-toolbar"><div><strong style="font-size:12px">${rows.length} registros</strong><span style="display:block;color:var(--muted);font-size:9px;margin-top:3px">Dados da empresa ativa</span></div><div class="table-tools"><input class="table-search" data-local-search="${collection}" placeholder="Filtrar nesta lista..." /></div></div>
         <div class="data-table-wrap"><table class="data-table"><thead><tr>${cfg.columns.map(c=>`<th>${escapeHtml(c[1])}</th>`).join('')}<th style="text-align:right">Ações</th></tr></thead>
@@ -2825,6 +2960,7 @@ body.auth-ready #loginScreen { display:none !important; }
   }
 
   function updateLeadStage(leadId,stage){
+    if(!hasPermission('leads','edit')){denyPermission('leads','edit');renderView('kanban');return;}
     const lead=getCompanyRecord('leads',leadId);if(!lead||!pipelineStages.some(item=>item.id===stage))return;
     const previous=lead.stage;lead.stage=stage;lead.updatedAt=new Date().toISOString();
     if(stage==='Fechado')upsertClientFromLead(lead);
@@ -2854,6 +2990,7 @@ body.auth-ready #loginScreen { display:none !important; }
   }
 
   function updateProjectStage(projectId,stageId,{render=true,notify=true}={}){
+    if(!hasPermission('works','approve')&&!hasPermission('works','edit')){denyPermission('works','approve');if(render)renderView(activeView);return;}
     const work=getCompanyRecord('works',projectId);if(!work||!projectStages.some(stage=>stage.id===stageId))return;
     ensureProjectStructure(work);const previous=normalizeProjectStage(work.projectStage);const targetIndex=projectStages.findIndex(stage=>stage.id===stageId);work.projectStage=stageId;work.stageHistory=work.stageHistory||[];
     if(previous!==stageId)work.stageHistory.unshift({stage:stageId,previous,at:new Date().toISOString(),user:state.currentUser.name});
@@ -2953,12 +3090,13 @@ body.auth-ready #loginScreen { display:none !important; }
   }
 
   function saveProjectTask(event){
-    event.preventDefault();const work=getCompanyRecord('works',activeProjectId);if(!work)return;const values=Object.fromEntries(new FormData(event.currentTarget).entries());let task=projectTaskEditor?.id?projectTasksFor(work.id).find(item=>item.id===projectTaskEditor.id):null;
+    event.preventDefault();if(!hasPermission('works',projectTaskEditor?.id?'edit':'create')){denyPermission('works',projectTaskEditor?.id?'edit':'create');return;}const work=getCompanyRecord('works',activeProjectId);if(!work)return;const values=Object.fromEntries(new FormData(event.currentTarget).entries());let task=projectTaskEditor?.id?projectTasksFor(work.id).find(item=>item.id===projectTaskEditor.id):null;
     if(task)Object.assign(task,values,{updatedAt:new Date().toISOString()});else{task={id:newId('task'),companyId:state.currentCompanyId,projectId:work.id,clientName:work.clientName,...values,isMilestone:false,createdAt:todayISO(),updatedAt:new Date().toISOString()};state.tasks.unshift(task);}
     recalculateProject(work);projectTaskEditor=null;persist();syncRecordToFirebase('tasks',task);syncRecordToFirebase('works',work);renderProjectWorkspace();toast('Tarefa salva',task.title);
   }
 
   function updateProjectTaskStatus(taskId,status){
+    if(!hasPermission('works','edit')){denyPermission('works','edit');renderProjectWorkspace();return;}
     const work=getCompanyRecord('works',activeProjectId);const task=projectTasksFor(activeProjectId).find(item=>item.id===taskId);if(!task||!work)return;const previousStatus=task.status;task.status=status;task.updatedAt=new Date().toISOString();
     if(status==='Em andamento'&&projectStages.findIndex(stage=>stage.id===task.stage)>projectStages.findIndex(stage=>stage.id===work.projectStage))work.projectStage=task.stage;
     const currentIndex=projectStages.findIndex(stage=>stage.id===normalizeProjectStage(work.projectStage));
@@ -2971,11 +3109,12 @@ body.auth-ready #loginScreen { display:none !important; }
   }
 
   function deleteProjectTask(taskId){
+    if(!hasPermission('works','delete')){denyPermission('works','delete');return;}
     const task=projectTasksFor(activeProjectId).find(item=>item.id===taskId);if(!task||task.isMilestone)return;if(!confirm(`Excluir a tarefa “${task.title}”?`))return;state.tasks=state.tasks.filter(item=>item.id!==taskId);const work=getCompanyRecord('works',activeProjectId);recalculateProject(work);persist();window.FirebaseCRM?.syncReady&&window.FirebaseCRM.deleteRecord('tasks',taskId).catch(console.warn);renderProjectWorkspace();toast('Tarefa excluída','','info');
   }
 
   async function uploadProjectDocuments(event,work){
-    event.preventDefault();const form=event.currentTarget;const fd=new FormData(form);const files=[...(form.elements.files.files||[])];if(!files.length){toast('Selecione pelo menos um arquivo','','error');return;}const button=form.querySelector('button[type=submit]');button.disabled=true;const old=button.textContent;let added=0;
+    event.preventDefault();if(!hasPermission('projectDocuments','create')){denyPermission('projectDocuments','create');return;}const form=event.currentTarget;const fd=new FormData(form);const files=[...(form.elements.files.files||[])];if(!files.length){toast('Selecione pelo menos um arquivo','','error');return;}const button=form.querySelector('button[type=submit]');button.disabled=true;const old=button.textContent;let added=0;
     try{for(const file of files){if(file.size>20*1024*1024){toast('Arquivo ignorado',`${file.name} excede 20 MB.`,'error');continue;}const doc={id:newId('doc'),companyId:state.currentCompanyId,projectId:work.id,proposalId:work.proposalId||'',clientName:work.clientName,name:file.name,fileName:file.name,mimeType:file.type||'application/octet-stream',size:file.size,category:fd.get('category'),stage:fd.get('stage'),notes:fd.get('notes')||'',uploadedBy:state.currentUser.name,uploadedAt:new Date().toISOString(),storage:'indexeddb',url:''};button.textContent=`Enviando ${added+1}/${files.length}...`;
       if(window.FirebaseCRM?.syncReady){try{doc.url=await window.FirebaseCRM.uploadFile(state.currentCompanyId,`projects/${work.id}/documents`,file,file.name);doc.storage='firebase';}catch(error){console.warn('Upload Firebase falhou, usando armazenamento local:',error);await ProjectFileDB.put(doc.id,file);}}else await ProjectFileDB.put(doc.id,file);
       state.projectDocuments.unshift(doc);syncRecordToFirebase('projectDocuments',doc);executeAutomationRules('project_document_added',work,{stage:doc.stage,documentName:doc.name,eventKey:`document-${doc.id}`});added++;}
@@ -2984,14 +3123,17 @@ body.auth-ready #loginScreen { display:none !important; }
   }
 
   async function openProjectDocument(id,download=false){
+    if(!hasPermission('projectDocuments','view')){denyPermission('projectDocuments','view');return;}
     const doc=getCompanyRecord('projectDocuments',id);if(!doc)return;try{if(doc.url){if(download){const link=document.createElement('a');link.href=doc.url;link.target='_blank';link.rel='noopener';link.download=doc.fileName||doc.name;link.click();}else safeOpen(doc.url);return;}const blob=await ProjectFileDB.get(id);if(!blob)throw new Error('Arquivo local não encontrado neste navegador.');const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.target=download?'_self':'_blank';link.rel='noopener';if(download)link.download=doc.fileName||doc.name;document.body.appendChild(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),60000);}catch(error){toast('Arquivo indisponível',error.message,'error');}
   }
 
   async function deleteProjectDocument(id){
+    if(!hasPermission('projectDocuments','delete')){denyPermission('projectDocuments','delete');return;}
     const doc=getCompanyRecord('projectDocuments',id);if(!doc||!confirm(`Excluir “${doc.name||doc.fileName}” do dossiê?`))return;try{if(doc.url&&window.FirebaseCRM?.syncReady)await window.FirebaseCRM.deleteFileByUrl(doc.url);else await ProjectFileDB.delete(id);}catch(error){console.warn(error);}state.projectDocuments=state.projectDocuments.filter(item=>item.id!==id);persist();if(window.FirebaseCRM?.syncReady)window.FirebaseCRM.deleteRecord('projectDocuments',id).catch(console.warn);renderProjectWorkspace();toast('Documento excluído','','info');
   }
 
   function exportProjectDocumentIndex(work){
+    if(!hasPermission('projectDocuments','export')){denyPermission('projectDocuments','export');return;}
     const rows=projectDocumentsFor(work.id);if(!rows.length){toast('Não há documentos para exportar','','error');return;}const header=['Arquivo','Categoria','Etapa','Tamanho','Data','Responsável','Observações'];const csv='\ufeff'+[header,...rows.map(doc=>[doc.name,doc.category,doc.stage,formatBytes(doc.size),dateTimeBR(doc.uploadedAt),doc.uploadedBy,doc.notes].map(value=>`"${String(value||'').replace(/"/g,'""')}"`))].map(row=>row.join(';')).join('\n');downloadBlob(new Blob([csv],{type:'text/csv;charset=utf-8'}),`documentos-${slugify(work.clientName)}.csv`);toast('Índice exportado',`${rows.length} documentos.`);
   }
 
@@ -2999,11 +3141,11 @@ body.auth-ready #loginScreen { display:none !important; }
     const rows=filteredRows('proposals');
     const total=sum(rows.map(p=>p.commercial?.price));
     const accepted=sum(rows.filter(p=>p.status==='Aceita').map(p=>p.commercial?.price));
-    return `${pageHead('Propostas','Crie dimensionamentos e PDFs comerciais profissionais em 10 páginas.',`<button class="btn btn-ghost" data-action="equipment-bank">Banco de equipamentos</button><button class="btn btn-primary" data-action="new-proposal">＋ Nova proposta</button>`)}
+    return `${pageHead('Propostas','Crie dimensionamentos e PDFs comerciais profissionais em 10 páginas.',`<button class="btn btn-ghost" data-action="equipment-bank">Banco de equipamentos</button>${hasPermission('proposals','create')?'<button class="btn btn-primary" data-action="new-proposal">＋ Nova proposta</button>':''}`)}
       <div class="pipeline-summary"><div class="pipeline-pill"><span>Total em propostas</span><strong>${currency(total,0)}</strong></div><div class="pipeline-pill"><span>Aceitas</span><strong>${currency(accepted,0)}</strong></div><div class="pipeline-pill"><span>Em negociação</span><strong>${rows.filter(p=>p.status==='Negociação').length}</strong></div><div class="pipeline-pill"><span>Taxa de aceite</span><strong>${rows.length?number(rows.filter(p=>p.status==='Aceita').length/rows.length*100,1):0}%</strong></div></div>
       <div class="proposal-card-grid">${rows.map(p=>{
         const calc=calculateProposal(p);
-        return `<article class="proposal-card"><div class="proposal-card-head"><div><h3>${escapeHtml(p.client?.name||'Cliente')}</h3><p>${escapeHtml(p.number||p.id)} · ${dateBR(p.createdAt)}</p></div><span class="status ${colorClass(p.status)}">${escapeHtml(p.status)}</span></div><div class="proposal-value">${currency(p.commercial?.price,0)}</div><div class="proposal-metrics"><div><span>Sistema</span><strong>${number(calc.actualPower,2)} kWp</strong></div><div><span>Módulos</span><strong>${calc.moduleQty}</strong></div><div><span>Payback</span><strong>${number(calc.payback,1)} anos</strong></div></div><div class="proposal-card-actions"><button class="btn btn-ghost btn-sm" data-action="edit-proposal" data-id="${p.id}">Editar</button><button class="btn btn-secondary btn-sm" data-action="preview-proposal" data-id="${p.id}">Visualizar</button><button class="btn btn-primary btn-sm" data-action="send-proposal" data-id="${p.id}">Enviar</button><button class="btn btn-ghost btn-sm btn-icon" data-action="duplicate-proposal" data-id="${p.id}" title="Duplicar">⧉</button><button class="btn btn-danger btn-sm btn-icon" data-action="delete-proposal" data-id="${p.id}" title="Excluir">×</button></div></article>`;
+        return `<article class="proposal-card"><div class="proposal-card-head"><div><h3>${escapeHtml(p.client?.name||'Cliente')}</h3><p>${escapeHtml(p.number||p.id)} · ${dateBR(p.createdAt)}</p></div><span class="status ${colorClass(p.status)}">${escapeHtml(p.status)}</span></div><div class="proposal-value">${currency(p.commercial?.price,0)}</div><div class="proposal-metrics"><div><span>Sistema</span><strong>${number(calc.actualPower,2)} kWp</strong></div><div><span>Módulos</span><strong>${calc.moduleQty}</strong></div><div><span>Payback</span><strong>${number(calc.payback,1)} anos</strong></div></div><div class="proposal-card-actions">${hasPermission('proposals','edit')?`<button class="btn btn-ghost btn-sm" data-action="edit-proposal" data-id="${p.id}">Editar</button>`:''}<button class="btn btn-secondary btn-sm" data-action="preview-proposal" data-id="${p.id}">Visualizar</button>${hasPermission('proposals','approve')?`<button class="btn btn-primary btn-sm" data-action="send-proposal" data-id="${p.id}">Enviar</button>`:''}${hasPermission('proposals','create')?`<button class="btn btn-ghost btn-sm btn-icon" data-action="duplicate-proposal" data-id="${p.id}" title="Duplicar">⧉</button>`:''}${hasPermission('proposals','delete')?`<button class="btn btn-danger btn-sm btn-icon" data-action="delete-proposal" data-id="${p.id}" title="Excluir">×</button>`:''}</div></article>`;
       }).join('')}</div>`;
   }
   function renderFinancial() {
@@ -3161,7 +3303,23 @@ body.auth-ready #loginScreen { display:none !important; }
     if(view==='reports')initReportCharts();
   }
 
+  function actionPermission(action,data={}){
+    const collectionModule=permissionModuleForCollection(data.collection||'');
+    const map={
+      'new-lead':['leads','create'],'new-ticket':['tickets','create'],'new-aftersales':['aftersales','create'],'new-proposal':['proposals','create'],
+      'add-entity':[collectionModule,'create'],'edit-entity':[collectionModule,'edit'],'view-entity':[collectionModule,'view'],'delete-entity':[collectionModule,'delete'],
+      'mark-paid':['financial','approve'],'open-project':['works','view'],'project-documents':['projectDocuments','view'],
+      'edit-proposal':['proposals','edit'],'preview-proposal':['proposals','view'],'send-proposal':['proposals','approve'],'duplicate-proposal':['proposals','create'],'delete-proposal':['proposals','delete'],
+      'equipment-bank':['proposals','view'],'export-backup':['settings','export'],'export-csv':[collectionModule,'export'],'send-collections':['financial','approve'],
+      'run-nps':['aftersales','approve'],'automation-log':['automations','view'],'automation-outbox':['automations','view'],'process-automations':['automations','approve'],
+      'test-automation':['automations','approve'],'run-ai':['automations','approve'],'print-report':['reports','export']
+    };
+    return map[action]||null;
+  }
+
   function handleAction(action,data={}){
+    const required=actionPermission(action,data);
+    if(required&&!hasPermission(required[0],required[1])){denyPermission(required[0],required[1]);return;}
     const actions={
       'new-lead':()=>openEntityModal('leads'),
       'new-ticket':()=>openEntityModal('tickets',null,{clientName:data.client||''}),
@@ -3195,6 +3353,7 @@ body.auth-ready #loginScreen { display:none !important; }
   }
 
   function openEntityModal(collection,id=null,prefill={}){
+    const module=permissionModuleForCollection(collection);const action=id?'edit':'create';if(!hasPermission(module,action)){denyPermission(module,action);return;}
     const schema=entitySchemas[collection]; if(!schema)return;
     entityContext={collection,id};
     const existing=id?(state[collection]||[]).find(r=>r.id===id):null;
@@ -3213,7 +3372,8 @@ body.auth-ready #loginScreen { display:none !important; }
 
   async function saveEntityFromModal(event){
     event.preventDefault();
-    const {collection,id}=entityContext; const schema=entitySchemas[collection]; if(!schema)return;
+    const {collection,id}=entityContext;const permissionAction=id?'edit':'create';if(!hasPermission(permissionModuleForCollection(collection),permissionAction)){denyPermission(permissionModuleForCollection(collection),permissionAction);return;}
+ const schema=entitySchemas[collection]; if(!schema)return;
     const fd=new FormData(event.currentTarget); const record={};
     schema.fields.forEach(([key,,type])=>{ const raw=fd.get(key); record[key]=type==='number'?(raw===''?'':Number(raw)):raw; });
     const previous=id?(state[collection]||[]).find(r=>r.id===id):null;
@@ -3258,10 +3418,12 @@ body.auth-ready #loginScreen { display:none !important; }
   }
 
   function markFinancialPaid(id){
+    if(!hasPermission('financial','approve')){denyPermission('financial','approve');return;}
     const row=getCompanyRecord('financial',id);if(!row)return;row.status='Pago';row.paidAt=todayISO();row.updatedAt=new Date().toISOString();addActivity('R$','Pagamento confirmado',`${row.description} · ${currency(row.value)}`);persist();syncRecordToFirebase('financial',row);renderView(activeView);toast('Pagamento confirmado',currency(row.value));
   }
 
   function deleteEntity(collection,id){
+    if(!hasPermission(permissionModuleForCollection(collection),'delete')){denyPermission(permissionModuleForCollection(collection),'delete');return;}
     const row=(state[collection]||[]).find(r=>r.id===id); if(!row)return;
     if(!confirm(`Excluir este registro?\n\n${row.name||row.clientName||row.subject||row.description||id}`))return;
     state[collection]=state[collection].filter(r=>r.id!==id);persist();renderSidebar();renderView(activeView);toast('Registro excluído','A exclusão foi aplicada localmente.','info');
@@ -3277,6 +3439,7 @@ body.auth-ready #loginScreen { display:none !important; }
   }
 
   function exportCSV(collection){
+    if(!hasPermission(permissionModuleForCollection(collection),'export')){denyPermission(permissionModuleForCollection(collection),'export');return;}
     const rows=companyRows(collection); if(!rows.length){toast('Nada para exportar','','error');return;}
     const keys=[...new Set(rows.flatMap(r=>Object.keys(r)))].filter(k=>!['companyId'].includes(k));
     const esc=v=>`"${String(v??'').replace(/"/g,'""')}"`;
@@ -3286,11 +3449,13 @@ body.auth-ready #loginScreen { display:none !important; }
   }
 
   function exportBackup(){
+    if(!hasPermission('settings','export')&&state.role!=='admin'){denyPermission('settings','export');return;}
     const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
     downloadBlob(blob,`solarcrm-backup-${todayISO()}.json`); toast('Backup exportado','Guarde o arquivo em local seguro.');
   }
 
   function importBackup(event){
+    if(!hasPermission('settings','edit')&&state.role!=='admin'){denyPermission('settings','edit');event.target.value='';return;}
     const file=event.target.files?.[0]; if(!file)return;
     const reader=new FileReader();
     reader.onload=()=>{try{const parsed=JSON.parse(reader.result);if(!parsed.version)throw new Error('Formato inválido');state=normalizeState(parsed);ensureAllProjectStructures();persist();renderSidebar();renderView(activeView);toast('Backup importado','Dados restaurados com sucesso.');}catch(err){toast('Backup inválido',err.message,'error');}};
@@ -3308,6 +3473,7 @@ body.auth-ready #loginScreen { display:none !important; }
       state.currentCompanyId=company.id;state.company={...defaultCompany,...company};persist();closeDrawer();renderSidebar();navigate('dashboard');toast('Empresa alterada',state.company.tradeName||state.company.name,'info');
     }));
     document.querySelector('[data-add-company]')?.addEventListener('click',()=>{
+      if(!hasPermission('settings','edit')){denyPermission('settings','edit');return;}
       const name=prompt('Nome da nova empresa:');if(!name?.trim())return;
       syncCurrentCompanyRecord();const id=newId('company');const company={...defaultCompany,id,name:name.trim(),tradeName:name.trim(),clientsCount:0,installedPowerMW:0,logo:'',workPhotos:[]};
       state.companies.push(company);state.currentCompanyId=id;state.company={...company};state.currentUser.companyIds=[...new Set([...(state.currentUser.companyIds||[]),id])];persist();closeDrawer();renderSidebar();navigate('dashboard');openSettings('company');toast('Nova empresa criada','Configure os dados e a identidade visual.');
@@ -3333,11 +3499,13 @@ body.auth-ready #loginScreen { display:none !important; }
   }
 
   function duplicateProposal(id){
+    if(!hasPermission('proposals','create')){denyPermission('proposals','create');return;}
     const p=state.proposals.find(x=>x.id===id); if(!p)return;
     const copy=deepClone(p);copy.id=newId('prop');copy.number=`PROP-${String(state.proposals.length+1).padStart(4,'0')}`;copy.status='Rascunho';copy.createdAt=todayISO();copy.acceptance=null;copy.updatedAt=new Date().toISOString();state.proposals.unshift(copy);persist();renderView('proposals');toast('Proposta duplicada',copy.number);
   }
 
   function deleteProposal(id){
+    if(!hasPermission('proposals','delete')){denyPermission('proposals','delete');return;}
     const p=state.proposals.find(x=>x.id===id);if(!p)return;if(!confirm(`Excluir a proposta ${p.number}?`))return;state.proposals=state.proposals.filter(x=>x.id!==id);persist();renderView('proposals');toast('Proposta excluída','','info');
   }
   // ---------- PROPOSTAS E DIMENSIONAMENTO ----------
@@ -3407,6 +3575,7 @@ body.auth-ready #loginScreen { display:none !important; }
   ];
 
   function openProposalBuilder(id=null){
+    if(!hasPermission('proposals',id?'edit':'create')){denyPermission('proposals',id?'edit':'create');return;}
     const found=id?state.proposals.find(p=>p.id===id):null;
     let restored=null;
     if(!found){
@@ -3648,6 +3817,7 @@ body.auth-ready #loginScreen { display:none !important; }
   async function saveActiveProposal(){return saveProposalRecord(activeProposal);}
 
   async function sendProposal(proposal){
+    if(!hasPermission('proposals','approve')){denyPermission('proposals','approve');return;}
     if(!proposal){toast('Proposta indisponível','','error');return;}
     activeProposal=deepClone(proposal);
     if(!await saveProposalRecord(activeProposal,{silent:true}))return;
@@ -3866,6 +4036,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
   }
 
   async function confirmAcceptance(){
+    if(!hasPermission('proposals','approve')){denyPermission('proposals','approve');return;}
     const name=document.getElementById('acceptanceClientName').value.trim();const documentNo=document.getElementById('acceptanceDocument').value.trim();const checked=document.getElementById('acceptanceCheck').checked;
     if(!name||!checked||!signaturePad||signaturePad.isEmpty()){toast('Aceite incompleto','Informe o nome, desenhe a assinatura e marque a declaração de aceite.','error');return;}
     const btn=document.getElementById('confirmAcceptanceBtn');btn.disabled=true;btn.textContent='Registrando...';
@@ -3892,7 +4063,10 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
 
   function renderSettings(){
     const root=document.getElementById('settingsBody');if(!root)return;
-    const tabs=[['profile','Meu usuário'],['company','Empresa'],['branding','Identidade e fotos'],['firebase','Firebase'],['users','Usuários e permissões'],['backup','Backup e dados']];
+    const tabs=[['profile','Meu usuário']];
+    if(hasPermission('settings','view'))tabs.push(['company','Empresa'],['branding','Identidade e fotos'],['firebase','Firebase'],['backup','Backup e dados']);
+    if(state.role==='admin')tabs.push(['users','Usuários e permissões']);
+    if(!tabs.some(([id])=>id===settingsTab))settingsTab='profile';
     root.innerHTML=`<div class="settings-tabs">${tabs.map(([id,label])=>`<button class="settings-tab ${settingsTab===id?'active':''}" data-settings-tab="${id}">${label}</button>`).join('')}</div><div id="settingsPanel">${renderSettingsPanel(settingsTab)}</div>`;
     root.querySelectorAll('[data-settings-tab]').forEach(btn=>btn.addEventListener('click',()=>{settingsTab=btn.dataset.settingsTab;renderSettings();}));
     bindSettingsEvents();
@@ -3944,16 +4118,58 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
   function firebaseDateLabel(value){
     try{const date=value?.toDate?value.toDate():value?.seconds?new Date(value.seconds*1000):new Date(value);return Number.isNaN(date.getTime())?'—':date.toLocaleString('pt-BR');}catch(_){return '—';}
   }
+  function permissionDraftKey(kind,uid){return `${kind}:${uid}`;}
+  function permissionMatrixForItem(item,role,kind='user'){
+    const draft=permissionDrafts[permissionDraftKey(kind,item.id)];
+    return draft?.permissions||normalizePermissionMatrix(item.permissions,role,item);
+  }
+  function permissionSummaryButton(kind,item,role){
+    const matrix=permissionMatrixForItem(item,role,kind);
+    return `<button class="btn btn-ghost btn-sm permission-summary" data-configure-${kind}-access="${item.id}" data-permission-summary="${permissionDraftKey(kind,item.id)}" type="button">⚙ ${escapeHtml(permissionSummary(matrix))}</button>`;
+  }
+  function openPermissionMatrix(kind,uid){
+    const item=(kind==='request'?permissionRequests:permissionUsers).find(row=>row.id===uid);if(!item)return;
+    const role=document.querySelector(`[data-${kind==='request'?'request':'user'}-role="${CSS.escape(uid)}"]`)?.value||item.approvedRole||item.role||item.requestedRole||'seller';
+    const key=permissionDraftKey(kind,uid);const matrix=deepClone(permissionDrafts[key]?.permissions||normalizePermissionMatrix(item.permissions,role,item));
+    document.getElementById('permissionMatrixModal')?.remove();
+    const rows=permissionModules.map(module=>`<tr><td><div class="module-copy"><strong>${escapeHtml(module.label)}</strong><span>${escapeHtml(module.description)}</span></div></td>${permissionActions.map(action=>`<td><input class="permission-check" type="checkbox" data-permission-module="${module.id}" data-permission-action="${action.id}" ${matrix[module.id]?.[action.id]?'checked':''} ${module.actions.includes(action.id)?'':'disabled'} aria-label="${attr(action.label)} em ${attr(module.label)}"></td>`).join('')}</tr>`).join('');
+    document.body.insertAdjacentHTML('beforeend',`<div id="permissionMatrixModal" class="modal open" aria-hidden="false"><div class="modal-dialog permission-matrix-dialog"><div class="modal-header"><div><p class="eyebrow">Controle de acesso</p><h2>Permissões de ${escapeHtml(item.name||item.email||'usuário')}</h2></div><button class="icon-btn" data-close-permission-matrix type="button">✕</button></div><div class="modal-body"><div class="notice"><strong>Perfil-base: ${escapeHtml(permissionRoleLabel(role))}</strong><br>Marque exatamente os módulos e ações que serão liberados. Desmarcar “Visualizar” remove o módulo do menu.</div><div class="permission-matrix-toolbar"><div class="toolbar-group"><button class="btn btn-ghost btn-sm" data-permissions-preset type="button">Restaurar padrão do perfil</button><button class="btn btn-ghost btn-sm" data-permissions-view-only type="button">Somente visualização</button><button class="btn btn-ghost btn-sm" data-permissions-all type="button">Marcar tudo</button><button class="btn btn-ghost btn-sm" data-permissions-none type="button">Limpar tudo</button></div><span class="permission-chip" id="permissionMatrixSummary">${escapeHtml(permissionSummary(matrix))}</span></div><div class="permission-matrix-wrap"><table class="permission-matrix-table"><thead><tr><th>Módulo</th>${permissionActions.map(action=>`<th>${escapeHtml(action.label)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div><div class="permission-matrix-footer"><small>“Aprovar / executar” controla ações especiais, como enviar proposta, confirmar pagamento, avançar etapas e disparar automações. A gestão de usuários continua exclusiva de administradores.</small><div style="display:flex;gap:8px"><button class="btn btn-ghost" data-close-permission-matrix type="button">Cancelar</button><button class="btn btn-primary" data-save-permission-matrix type="button">Aplicar seleção</button></div></div></div></div></div>`);
+    const modal=document.getElementById('permissionMatrixModal');
+    const updateSummary=()=>{const temp=collectPermissionMatrix(modal);modal.querySelector('#permissionMatrixSummary').textContent=permissionSummary(temp);};
+    modal.querySelectorAll('[data-close-permission-matrix]').forEach(button=>button.addEventListener('click',()=>modal.remove()));
+    modal.addEventListener('click',event=>{if(event.target===modal)modal.remove();});
+    modal.querySelectorAll('.permission-check').forEach(input=>input.addEventListener('change',event=>{
+      const moduleId=event.target.dataset.permissionModule;const action=event.target.dataset.permissionAction;
+      if(action==='view'&&!event.target.checked)modal.querySelectorAll(`[data-permission-module="${moduleId}"]`).forEach(box=>{if(!box.disabled)box.checked=false;});
+      if(action!=='view'&&event.target.checked){const view=modal.querySelector(`[data-permission-module="${moduleId}"][data-permission-action="view"]`);if(view)view.checked=true;}
+      updateSummary();
+    }));
+    const applyMatrix=(next)=>{permissionModules.forEach(module=>permissionActions.forEach(action=>{const box=modal.querySelector(`[data-permission-module="${module.id}"][data-permission-action="${action.id}"]`);if(box&&!box.disabled)box.checked=Boolean(next[module.id]?.[action.id]);}));updateSummary();};
+    modal.querySelector('[data-permissions-preset]')?.addEventListener('click',()=>applyMatrix(defaultPermissionMatrix(role)));
+    modal.querySelector('[data-permissions-view-only]')?.addEventListener('click',()=>{const next=emptyPermissionMatrix();permissionModules.forEach(module=>{if(matrix[module.id]?.view)next[module.id].view=true;});applyMatrix(next);});
+    modal.querySelector('[data-permissions-all]')?.addEventListener('click',()=>{const next=emptyPermissionMatrix();permissionModules.forEach(module=>module.actions.forEach(action=>next[module.id][action]=true));applyMatrix(next);});
+    modal.querySelector('[data-permissions-none]')?.addEventListener('click',()=>applyMatrix(emptyPermissionMatrix()));
+    modal.querySelector('[data-save-permission-matrix]')?.addEventListener('click',()=>{
+      const permissions=collectPermissionMatrix(modal);permissionDrafts[key]={permissions,role};
+      const summaryButton=document.querySelector(`[data-permission-summary="${CSS.escape(key)}"]`);if(summaryButton)summaryButton.innerHTML=`⚙ ${escapeHtml(permissionSummary(permissions))}`;
+      modal.remove();toast('Acessos definidos',permissionSummary(permissions),'success');
+    });
+  }
+  function collectPermissionMatrix(root=document){
+    const matrix=emptyPermissionMatrix();
+    root.querySelectorAll('[data-permission-module][data-permission-action]').forEach(input=>{if(matrix[input.dataset.permissionModule])matrix[input.dataset.permissionModule][input.dataset.permissionAction]=Boolean(input.checked&&!input.disabled);});
+    return matrix;
+  }
   function renderUserPermissionsPanel(){
     if(state.role!=='admin')return `<div class="notice danger-note"><strong>Acesso restrito</strong><br>Somente administradores podem aprovar usuários e alterar permissões.</div>`;
     if(!window.FirebaseCRM?.syncReady)return `<div class="notice"><strong>Firebase necessário</strong><br>Entre com o administrador aprovado para carregar solicitações e permissões.</div>`;
     const pending=permissionRequests.filter(item=>item.status==='Pendente');
     const reviewed=permissionRequests.filter(item=>item.status!=='Pendente').slice(0,20);
-    const pendingRows=pending.length?pending.map(item=>`<tr><td><strong>${escapeHtml(item.name||'Novo usuário')}</strong><br><small>${escapeHtml(item.provider||'password')}</small></td><td>${escapeHtml(item.email||'')}</td><td>${firebaseDateLabel(item.createdAt)}</td><td><select class="compact-select" data-request-role="${item.id}">${permissionRoleOptions(item.requestedRole||'seller')}</select></td><td><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" data-approve-access="${item.id}" type="button">Aprovar</button><button class="btn btn-danger btn-sm" data-reject-access="${item.id}" type="button">Rejeitar</button></div></td></tr>`).join(''):`<tr><td colspan="5"><div class="empty-state"><strong>Nenhuma solicitação pendente</strong><span>Novos logins por Google ou e-mail aparecerão aqui automaticamente.</span></div></td></tr>`;
+    const pendingRows=pending.length?pending.map(item=>{const role=item.requestedRole||'seller';return `<tr><td><strong>${escapeHtml(item.name||'Novo usuário')}</strong><br><small>${escapeHtml(item.provider||'password')}</small></td><td>${escapeHtml(item.email||'')}</td><td>${firebaseDateLabel(item.createdAt)}</td><td><select class="compact-select" data-request-role="${item.id}">${permissionRoleOptions(role)}</select></td><td>${permissionSummaryButton('request',item,role)}</td><td><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" data-approve-access="${item.id}" type="button">Aprovar</button><button class="btn btn-danger btn-sm" data-reject-access="${item.id}" type="button">Rejeitar</button></div></td></tr>`;}).join(''):`<tr><td colspan="6"><div class="empty-state"><strong>Nenhuma solicitação pendente</strong><span>Novos logins por Google ou e-mail aparecerão aqui automaticamente.</span></div></td></tr>`;
     const currentUid=window.FirebaseCRM?.auth?.currentUser?.uid||'';
-    const userRows=permissionUsers.length?permissionUsers.map(item=>{const self=item.id===currentUid;return `<tr><td><strong>${escapeHtml(item.name||'Usuário')}</strong>${self?' <span class="status blue">Você</span>':''}</td><td>${escapeHtml(item.email||'')}</td><td><select class="compact-select" data-user-role="${item.id}" ${self?'disabled':''}>${permissionRoleOptions(item.role||'seller')}</select></td><td><select class="compact-select" data-user-status="${item.id}" ${self?'disabled':''}><option value="Ativo" ${item.status==='Ativo'?'selected':''}>Ativo</option><option value="Inativo" ${item.status==='Inativo'?'selected':''}>Inativo</option></select></td><td>${escapeHtml((item.companyIds||[]).join(', ')||item.companyId||'')}</td><td>${self?'—':`<button class="btn btn-ghost btn-sm" data-save-user-access="${item.id}" type="button">Salvar</button>`}</td></tr>`;}).join(''):`<tr><td colspan="6"><div class="empty-state"><strong>Nenhum usuário aprovado</strong><span>O primeiro administrador aparecerá após a inicialização.</span></div></td></tr>`;
+    const userRows=permissionUsers.length?permissionUsers.map(item=>{const self=item.id===currentUid;const role=item.role||'seller';return `<tr><td><strong>${escapeHtml(item.name||'Usuário')}</strong>${self?' <span class="status blue">Você</span>':''}</td><td>${escapeHtml(item.email||'')}</td><td><select class="compact-select" data-user-role="${item.id}" ${self?'disabled':''}>${permissionRoleOptions(role)}</select></td><td>${self?'<span class="permission-chip">Acesso administrativo total</span>':permissionSummaryButton('user',item,role)}</td><td><select class="compact-select" data-user-status="${item.id}" ${self?'disabled':''}><option value="Ativo" ${item.status==='Ativo'?'selected':''}>Ativo</option><option value="Inativo" ${item.status==='Inativo'?'selected':''}>Inativo</option></select></td><td>${escapeHtml((item.companyIds||[]).join(', ')||item.companyId||'')}</td><td>${self?'—':`<button class="btn btn-primary btn-sm" data-save-user-access="${item.id}" type="button">Salvar acesso</button>`}</td></tr>`;}).join(''):`<tr><td colspan="7"><div class="empty-state"><strong>Nenhum usuário aprovado</strong><span>O primeiro administrador aparecerá após a inicialização.</span></div></td></tr>`;
     const reviewedHtml=reviewed.length?`<div class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Histórico recente</h3><p>Solicitações já analisadas.</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Usuário</th><th>E-mail</th><th>Status</th><th>Perfil</th></tr></thead><tbody>${reviewed.map(item=>`<tr><td>${escapeHtml(item.name||'')}</td><td>${escapeHtml(item.email||'')}</td><td><span class="status ${item.status==='Aprovado'?'green':'red'}">${escapeHtml(item.status||'')}</span></td><td>${escapeHtml(permissionRoleLabel(item.approvedRole||item.requestedRole))}</td></tr>`).join('')}</tbody></table></div></div>`:'';
-    return `<div class="notice"><strong>Aprovação obrigatória</strong><br>Todo novo usuário, inclusive quem entrar pelo Google, fica sem acesso até um administrador aprovar e definir o perfil.</div><div style="display:flex;justify-content:flex-end;margin:12px 0"><button class="btn btn-ghost" id="refreshUserPermissions" type="button">↻ Atualizar lista</button></div><div class="form-section"><div class="form-section-head"><div><h3>Solicitações pendentes</h3><p>Aprove o usuário e escolha as permissões antes de liberar o sistema.</p></div><span class="status yellow">${pending.length} pendente(s)</span></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Usuário</th><th>E-mail</th><th>Solicitado em</th><th>Perfil</th><th>Ações</th></tr></thead><tbody>${pendingRows}</tbody></table></div></div><div class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Usuários aprovados</h3><p>Altere função ou desative o acesso. O usuário atual não pode desativar a própria conta.</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Nome</th><th>E-mail</th><th>Permissão</th><th>Status</th><th>Empresa</th><th>Ações</th></tr></thead><tbody>${userRows}</tbody></table></div></div>${reviewedHtml}`;
+    return `<div class="notice"><strong>Liberação detalhada</strong><br>Escolha o perfil-base e clique em “Acessos” para definir exatamente os módulos e ações disponíveis ao usuário.</div><div style="display:flex;justify-content:flex-end;margin:12px 0"><button class="btn btn-ghost" id="refreshUserPermissions" type="button">↻ Atualizar lista</button></div><div class="form-section"><div class="form-section-head"><div><h3>Solicitações pendentes</h3><p>Defina perfil e acessos antes de aprovar.</p></div><span class="status yellow">${pending.length} pendente(s)</span></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Usuário</th><th>E-mail</th><th>Solicitado em</th><th>Perfil-base</th><th>Acessos</th><th>Ações</th></tr></thead><tbody>${pendingRows}</tbody></table></div></div><div class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Usuários aprovados</h3><p>Altere o perfil, selecione módulos e determine o que cada pessoa pode fazer.</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Nome</th><th>E-mail</th><th>Perfil-base</th><th>Acessos liberados</th><th>Status</th><th>Empresa</th><th>Ações</th></tr></thead><tbody>${userRows}</tbody></table></div></div>${reviewedHtml}`;
   }
   async function loadUserPermissionData(force=false){
     if(state.role!=='admin'||!window.FirebaseCRM?.syncReady||permissionUsersLoading)return;
@@ -3968,18 +4184,21 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
   async function approveAccessFromSettings(uid){
     const request=permissionRequests.find(item=>item.id===uid);if(!request)return;
     const role=document.querySelector(`[data-request-role="${CSS.escape(uid)}"]`)?.value||'seller';
-    try{await window.FirebaseCRM.approveAccessRequest(uid,{role,companyId:state.currentCompanyId,companyName:state.company.tradeName||state.company.name||''});toast('Usuário aprovado',`${request.email||request.name} · ${permissionRoleLabel(role)}`,'success');permissionUsersLoaded=false;await loadUserPermissionData(true);}catch(error){toast('Aprovação não concluída',error.message||String(error),'error');}
+    const permissions=permissionDrafts[permissionDraftKey('request',uid)]?.permissions||defaultPermissionMatrix(role);
+    try{await window.FirebaseCRM.approveAccessRequest(uid,{role,permissions,permissionArrays:permissionArraysFromMatrix(permissions),companyId:state.currentCompanyId,companyName:state.company.tradeName||state.company.name||''});delete permissionDrafts[permissionDraftKey('request',uid)];toast('Usuário aprovado',`${request.email||request.name} · ${permissionRoleLabel(role)} · ${permissionSummary(permissions)}`,'success');permissionUsersLoaded=false;await loadUserPermissionData(true);}catch(error){toast('Aprovação não concluída',error.message||String(error),'error');}
   }
   async function rejectAccessFromSettings(uid){
     const request=permissionRequests.find(item=>item.id===uid);if(!request)return;
     const reason=prompt('Motivo da rejeição (opcional):','')||'';
     if(!confirm(`Rejeitar o acesso de ${request.email||request.name}?`))return;
-    try{await window.FirebaseCRM.rejectAccessRequest(uid,reason);toast('Solicitação rejeitada',request.email||request.name,'info');permissionUsersLoaded=false;await loadUserPermissionData(true);}catch(error){toast('Rejeição não concluída',error.message||String(error),'error');}
+    try{await window.FirebaseCRM.rejectAccessRequest(uid,reason);delete permissionDrafts[permissionDraftKey('request',uid)];toast('Solicitação rejeitada',request.email||request.name,'info');permissionUsersLoaded=false;await loadUserPermissionData(true);}catch(error){toast('Rejeição não concluída',error.message||String(error),'error');}
   }
   async function saveUserAccessFromSettings(uid){
+    const item=permissionUsers.find(row=>row.id===uid);if(!item)return;
     const role=document.querySelector(`[data-user-role="${CSS.escape(uid)}"]`)?.value||'seller';
     const status=document.querySelector(`[data-user-status="${CSS.escape(uid)}"]`)?.value||'Ativo';
-    try{await window.FirebaseCRM.updateUserPermissions(uid,{role,status,companyId:state.currentCompanyId});toast('Permissões atualizadas',`${permissionRoleLabel(role)} · ${status}`,'success');permissionUsersLoaded=false;await loadUserPermissionData(true);}catch(error){toast('Alteração não concluída',error.message||String(error),'error');}
+    const permissions=permissionDrafts[permissionDraftKey('user',uid)]?.permissions||normalizePermissionMatrix(item.permissions,role,item);
+    try{await window.FirebaseCRM.updateUserPermissions(uid,{role,status,permissions,permissionArrays:permissionArraysFromMatrix(permissions),companyId:state.currentCompanyId});delete permissionDrafts[permissionDraftKey('user',uid)];toast('Acessos atualizados',`${permissionRoleLabel(role)} · ${permissionSummary(permissions)} · ${status}`,'success');permissionUsersLoaded=false;await loadUserPermissionData(true);}catch(error){toast('Alteração não concluída',error.message||String(error),'error');}
   }
 
   const firebaseLabels={apiKey:'API Key',authDomain:'Auth Domain',databaseURL:'Realtime Database URL',projectId:'Project ID',storageBucket:'Storage Bucket',messagingSenderId:'Messaging Sender ID',appId:'App ID',functionsRegion:'Região das Functions'};
@@ -4027,13 +4246,13 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
   function bindSettingsEvents(){
     document.getElementById('userProfileForm')?.addEventListener('submit',saveUserProfile);
     document.getElementById('userAvatarInput')?.addEventListener('change',async event=>{const file=event.target.files?.[0];if(!file)return;state.currentUser.avatar=await resizeImage(file,500,500,.9);state.currentUser.initials=initials(state.currentUser.name);persist();updateTopbar();renderSettings();toast('Foto do usuário atualizada');});
-    document.getElementById('companySettingsForm')?.addEventListener('submit',e=>{e.preventDefault();const fd=new FormData(e.currentTarget);for(const [k,v] of fd.entries())state.company[k]=['proposalValidityDays','clientsCount','installedPowerMW','defaultCommissionPercent'].includes(k)?Number(v):v;syncCurrentCompanyRecord();persist();renderSidebar();updateTopbar();toast('Empresa atualizada');});
-    document.getElementById('companyLogoInput')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;state.company.logo=await resizeImage(f,1000,400,.92);syncCurrentCompanyRecord();persist();renderSettings();toast('Logo atualizada');});
-    document.getElementById('sellerSignatureInput')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;state.company.sellerSignature=await resizeImage(f,900,350,.92);syncCurrentCompanyRecord();persist();renderSettings();toast('Assinatura atualizada');});
-    document.getElementById('workPhotosInput')?.addEventListener('change',async e=>{const files=[...(e.target.files||[])].slice(0,4-(state.company.workPhotos?.length||0));for(const f of files)state.company.workPhotos.push(await resizeImage(f,1200,800,.82));syncCurrentCompanyRecord();persist();renderSettings();toast('Fotos adicionadas');});
-    document.querySelectorAll('[data-remove-work-photo]').forEach(btn=>btn.addEventListener('click',()=>{state.company.workPhotos.splice(Number(btn.dataset.removeWorkPhoto),1);syncCurrentCompanyRecord();persist();renderSettings();}));
-    document.getElementById('firebaseSettingsForm')?.addEventListener('submit',async e=>{e.preventDefault();const config=normalizeFirebaseConfig(Object.fromEntries(new FormData(e.currentTarget).entries()));if(!firebaseApiKeyLooksValid(config.apiKey)){toast('API Key inválida','A chave precisa começar com AIza e possuir 39 caracteres. Remova a configuração antiga ou copie novamente do Firebase Console.','error');return;}safeStorageSet(FIREBASE_CONFIG_KEY,JSON.stringify(config));await connectFirebase(config);renderSettings();});
-    document.getElementById('firebaseRestoreConfigBtn')?.addEventListener('click',async()=>{const config=clearFirebaseConfig();toast('Configuração oficial restaurada','Os dados do aplicativo Web energiasolar-67b14 foram recarregados.','success');renderSettings();});
+    document.getElementById('companySettingsForm')?.addEventListener('submit',e=>{e.preventDefault();if(!hasPermission('settings','edit')){denyPermission('settings','edit');return;}const fd=new FormData(e.currentTarget);for(const [k,v] of fd.entries())state.company[k]=['proposalValidityDays','clientsCount','installedPowerMW','defaultCommissionPercent'].includes(k)?Number(v):v;syncCurrentCompanyRecord();persist();renderSidebar();updateTopbar();toast('Empresa atualizada');});
+    document.getElementById('companyLogoInput')?.addEventListener('change',async e=>{if(!hasPermission('settings','edit')){denyPermission('settings','edit');e.target.value='';return;}const f=e.target.files?.[0];if(!f)return;state.company.logo=await resizeImage(f,1000,400,.92);syncCurrentCompanyRecord();persist();renderSettings();toast('Logo atualizada');});
+    document.getElementById('sellerSignatureInput')?.addEventListener('change',async e=>{if(!hasPermission('settings','edit')){denyPermission('settings','edit');e.target.value='';return;}const f=e.target.files?.[0];if(!f)return;state.company.sellerSignature=await resizeImage(f,900,350,.92);syncCurrentCompanyRecord();persist();renderSettings();toast('Assinatura atualizada');});
+    document.getElementById('workPhotosInput')?.addEventListener('change',async e=>{if(!hasPermission('settings','edit')){denyPermission('settings','edit');e.target.value='';return;}const files=[...(e.target.files||[])].slice(0,4-(state.company.workPhotos?.length||0));for(const f of files)state.company.workPhotos.push(await resizeImage(f,1200,800,.82));syncCurrentCompanyRecord();persist();renderSettings();toast('Fotos adicionadas');});
+    document.querySelectorAll('[data-remove-work-photo]').forEach(btn=>btn.addEventListener('click',()=>{if(!hasPermission('settings','edit')){denyPermission('settings','edit');return;}state.company.workPhotos.splice(Number(btn.dataset.removeWorkPhoto),1);syncCurrentCompanyRecord();persist();renderSettings();}));
+    document.getElementById('firebaseSettingsForm')?.addEventListener('submit',async e=>{e.preventDefault();if(!hasPermission('settings','edit')){denyPermission('settings','edit');return;}const config=normalizeFirebaseConfig(Object.fromEntries(new FormData(e.currentTarget).entries()));if(!firebaseApiKeyLooksValid(config.apiKey)){toast('API Key inválida','A chave precisa começar com AIza e possuir 39 caracteres. Remova a configuração antiga ou copie novamente do Firebase Console.','error');return;}safeStorageSet(FIREBASE_CONFIG_KEY,JSON.stringify(config));await connectFirebase(config);renderSettings();});
+    document.getElementById('firebaseRestoreConfigBtn')?.addEventListener('click',async()=>{if(!hasPermission('settings','edit')){denyPermission('settings','edit');return;}const config=clearFirebaseConfig();toast('Configuração oficial restaurada','Os dados do aplicativo Web energiasolar-67b14 foram recarregados.','success');renderSettings();});
     document.getElementById('firebaseTestBtn')?.addEventListener('click',async()=>connectFirebase(loadFirebaseConfig()));
     document.getElementById('firebaseLoginBtn')?.addEventListener('click',firebaseLogin);
     document.getElementById('firebaseRegisterBtn')?.addEventListener('click',firebaseRegisterAndBootstrap);
@@ -4046,14 +4265,16 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     document.querySelectorAll('[data-approve-access]').forEach(button=>button.addEventListener('click',()=>approveAccessFromSettings(button.dataset.approveAccess)));
     document.querySelectorAll('[data-reject-access]').forEach(button=>button.addEventListener('click',()=>rejectAccessFromSettings(button.dataset.rejectAccess)));
     document.querySelectorAll('[data-save-user-access]').forEach(button=>button.addEventListener('click',()=>saveUserAccessFromSettings(button.dataset.saveUserAccess)));
+    document.querySelectorAll('[data-configure-request-access]').forEach(button=>button.addEventListener('click',()=>openPermissionMatrix('request',button.dataset.configureRequestAccess)));
+    document.querySelectorAll('[data-configure-user-access]').forEach(button=>button.addEventListener('click',()=>openPermissionMatrix('user',button.dataset.configureUserAccess)));
     document.getElementById('settingsExportBackup')?.addEventListener('click',exportBackup);
     document.getElementById('settingsImportBackup')?.addEventListener('click',()=>document.getElementById('backupImportInput').click());
-    document.getElementById('resetCleanData')?.addEventListener('click',()=>{if(confirm('Apagar definitivamente todos os dados locais deste navegador?')){safeStorageRemove(STORAGE_KEY);safeStorageRemove(ACTIVE_DRAFT_KEY);state=normalizeState(seedState());activeProposal=null;persist();closeModal('settingsModal');renderSidebar();renderView('dashboard');updateTopbar();toast('Base local limpa','Nenhum cadastro foi recriado.','success');}});
+    document.getElementById('resetCleanData')?.addEventListener('click',()=>{if(!hasPermission('settings','edit')){denyPermission('settings','edit');return;}if(confirm('Apagar definitivamente todos os dados locais deste navegador?')){safeStorageRemove(STORAGE_KEY);safeStorageRemove(ACTIVE_DRAFT_KEY);state=normalizeState(seedState());activeProposal=null;persist();closeModal('settingsModal');renderSidebar();renderView('dashboard');updateTopbar();toast('Base local limpa','Nenhum cadastro foi recriado.','success');}});
   }
 
   async function saveUserProfile(event){
     event.preventDefault();const fd=new FormData(event.currentTarget);const values=Object.fromEntries(fd.entries());
-    state.currentUser={...state.currentUser,...values,initials:initials(values.name),role:state.role||state.currentUser.role,companyIds:state.currentUser.companyIds||[state.currentCompanyId]};
+    state.currentUser={...state.currentUser,...values,initials:initials(values.name),role:state.role||state.currentUser.role,companyIds:state.currentUser.companyIds||[state.currentCompanyId],permissions:normalizePermissionMatrix(state.currentUser.permissions,state.role,state.currentUser),...permissionArraysFromMatrix(normalizePermissionMatrix(state.currentUser.permissions,state.role,state.currentUser))};
     persist();updateTopbar();renderSidebar();
     if(window.FirebaseCRM?.syncReady){
       try{await window.FirebaseCRM.saveRecord('users',{...state.currentUser,id:window.FirebaseCRM.auth.currentUser.uid,companyId:state.currentCompanyId,companyIds:state.currentUser.companyIds,status:'Ativo'});}catch(error){console.warn('Perfil salvo somente localmente:',error);}
@@ -4063,7 +4284,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
 
   function applyFirebaseProfile(profile,user=window.FirebaseCRM?.auth?.currentUser){
     if(!profile||!user||String(profile.status||'').toLowerCase()!=='ativo')return false;
-    state.currentUser={...state.currentUser,id:user.uid,email:user.email||profile.email||state.currentUser.email,name:profile.name||user.displayName||state.currentUser.name,avatar:profile.avatar||user.photoURL||state.currentUser.avatar||'',initials:initials(profile.name||user.displayName||user.email||'Usuário'),role:profile.role||'seller',companyIds:profile.companyIds||[]};
+    state.currentUser={...state.currentUser,...profile,id:user.uid,email:user.email||profile.email||state.currentUser.email,name:profile.name||user.displayName||state.currentUser.name,avatar:profile.avatar||user.photoURL||state.currentUser.avatar||'',initials:initials(profile.name||user.displayName||user.email||'Usuário'),role:profile.role||'seller',companyIds:profile.companyIds||[],permissions:normalizePermissionMatrix(profile.permissions,profile.role||'seller',profile)};
     state.role=state.currentUser.role;
     let authorized=state.companies.find(company=>state.currentUser.companyIds.includes(company.id));
     if(!authorized&&state.currentUser.companyIds.length){
@@ -4121,7 +4342,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     const authUser=window.FirebaseCRM?.auth?.currentUser;
     if(window.FirebaseCRM?.isPreapprovedAdmin(authUser)){
       if(title)title.textContent='Administrador já aprovado';
-      if(text)text.textContent='A conta foi reconhecida como administradora. Clique em “Concluir ativação”; o CRM será aberto mesmo se a sincronização do Firestore ainda estiver pendente.';
+      if(text)text.textContent='A conta foi reconhecida. Publique as regras da versão 2.9.5 e clique em verificar para concluir a ativação automática.';
       if(action){action.style.display='inline-flex';action.textContent='Concluir ativação';}
     }else if(code==='profile-missing-bootstrap-available'){
       if(title)title.textContent='Primeiro administrador';if(text)text.textContent='Esta é a primeira conta. Ative-a como administradora para iniciar o sistema.';if(action){action.style.display='inline-flex';action.textContent='Ativar administrador';}
@@ -4154,11 +4375,11 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
         try{
           firebaseLastDiagnostic=await window.FirebaseCRM.diagnose(profile.companyId||state.currentCompanyId);
           if(profile.profileWritePending){
-            toast('Acesso administrativo liberado','O CRM está aberto. Publique as regras 2.9.4 para concluir a sincronização na nuvem.','info');
+            toast('Acesso administrativo liberado','O CRM está aberto. Publique as regras 2.9.5 para concluir a sincronização na nuvem.','info');
           }
         }catch(error){
           firebaseLastDiagnostic={code:'cloud-rules-pending',message:error.message||'Acesso local liberado; sincronização da nuvem pendente.'};
-          toast('Acesso liberado em modo local','O Firestore ainda negou o diagnóstico. Publique as regras 2.9.4 para sincronizar.','info');
+          toast('Acesso liberado em modo local','O Firestore ainda negou o diagnóstico. Publique as regras 2.9.5 para sincronizar.','info');
         }
         return true;
       }
@@ -4245,7 +4466,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
         setLoginStatus('Ativando administrador aprovado','Aguarde enquanto o perfil é gravado no Firestore.','info');
         const profile=await window.FirebaseCRM.ensurePreapprovedAdminProfile();
         applyFirebaseProfile(profile,user);unlockSystemAfterAuthentication();return;
-      }catch(error){setLoginStatus('Perfil não ativado',error.message||'Publique as regras da versão 2.9.4 e tente novamente.','error');return;}
+      }catch(error){setLoginStatus('Perfil não ativado',error.message||'Publique as regras da versão 2.9.5 e tente novamente.','error');return;}
     }
     if(!['profile-missing-bootstrap-available','bootstrap-owner-profile-missing'].includes(code)){
       await finishAuthenticatedSession(user,{automatic:false});return;
@@ -4255,7 +4476,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
       const profile=await window.FirebaseCRM.bootstrapAdmin({name:user.displayName||user.email?.split('@')[0]||'Administrador',email:user.email,companyId:state.currentCompanyId,companyName:state.company.tradeName||state.company.name||''});
       await window.FirebaseCRM.saveRecord('companies',{...state.company,id:state.currentCompanyId,companyId:state.currentCompanyId});
       applyFirebaseProfile(profile,user);unlockSystemAfterAuthentication();
-    }catch(error){setLoginStatus('Perfil não ativado',error.message||'Publique as regras da versão 2.9.4 e tente novamente.','error');}
+    }catch(error){setLoginStatus('Perfil não ativado',error.message||'Publique as regras da versão 2.9.5 e tente novamente.','error');}
   }
 
   function firebaseCredentials(){
@@ -4329,7 +4550,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
       toast('Perfil ativado','A sincronização foi liberada para esta conta.','success');renderSettings();
     }catch(error){
       firebaseLastDiagnostic=await window.FirebaseCRM.diagnose(state.currentCompanyId).catch(()=>firebaseLastDiagnostic);
-      toast('Perfil não ativado',error.message||'Publique as regras da versão 2.9.4 e tente novamente.','error');renderSettings();
+      toast('Perfil não ativado',error.message||'Publique as regras da versão 2.9.5 e tente novamente.','error');renderSettings();
     }
   }
 
@@ -4352,7 +4573,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     const collections=['teams','clients','leads','proposals','contracts','works','homologations','tickets','financial','commissions','inventory','aftersales','suppliers','notifications','projectDocuments','tasks','automationRules','automationQueue'];
     try{
       await window.FirebaseCRM.saveRecord('companies',{...state.company,id:state.currentCompanyId,companyId:state.currentCompanyId});
-      await window.FirebaseCRM.saveRecord('users',{...state.currentUser,id:window.FirebaseCRM.auth.currentUser.uid,role:state.role,companyId:state.currentCompanyId,companyIds:state.currentUser.companyIds||[state.currentCompanyId],status:'Ativo'});
+      await window.FirebaseCRM.saveRecord('users',{...state.currentUser,...permissionArraysFromMatrix(normalizePermissionMatrix(state.currentUser.permissions,state.role,state.currentUser)),id:window.FirebaseCRM.auth.currentUser.uid,role:state.role,companyId:state.currentCompanyId,companyIds:state.currentUser.companyIds||[state.currentCompanyId],status:'Ativo'});
       for(const collection of collections){for(const record of companyRows(collection)){record.companyId=state.currentCompanyId;await window.FirebaseCRM.saveRecord(collection,record);}}
       firebaseLastDiagnostic=await window.FirebaseCRM.diagnose(state.currentCompanyId);
       toast('Sincronização concluída','Empresa e registros locais foram enviados para a nuvem.','success');renderSettings();
@@ -4443,7 +4664,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     return {passed:tests.every(test=>test.passed),total:tests.length,success:tests.filter(test=>test.passed).length,tests};
   }
 
-  window.SolarCRMDebug={SYSTEM_VERSION,calculateProposal,extractBillFields,normalizeState,renderProposalDocument,projectStages,projectDocumentCategories,defaultAutomationRule,executeAutomationRules,queueAutomationRule,ensureProjectStructure,ensureAllProjectStructures,updateProjectStage,runSystemSelfTests,runWorkflowSelfTests,loadFirebaseConfig,clearFirebaseConfig,firebaseApiKeyLooksValid,finishAuthenticatedSession,loadUserPermissionData,lockSystemForAuthentication,unlockSystemAfterAuthentication,getState:()=>deepClone(state)};
+  window.SolarCRMDebug={SYSTEM_VERSION,calculateProposal,extractBillFields,normalizeState,renderProposalDocument,projectStages,projectDocumentCategories,defaultAutomationRule,executeAutomationRules,queueAutomationRule,ensureProjectStructure,ensureAllProjectStructures,updateProjectStage,runSystemSelfTests,runWorkflowSelfTests,loadFirebaseConfig,clearFirebaseConfig,firebaseApiKeyLooksValid,finishAuthenticatedSession,loadUserPermissionData,openPermissionMatrix,defaultPermissionMatrix,normalizePermissionMatrix,permissionArraysFromMatrix,hasPermission,lockSystemForAuthentication,unlockSystemAfterAuthentication,getState:()=>deepClone(state)};
   document.addEventListener('DOMContentLoaded',()=>{init();autoConnectFirebase();});
 })();
 
