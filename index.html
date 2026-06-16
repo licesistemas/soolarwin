@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#08111f" />
-  <title>SunOps — CRM para Energia Solar</title>
+  <title>SolarCRM Pro v2.9.6 — CRM para Energia Solar</title>
   <meta name="description" content="CRM completo para empresas de energia solar com propostas profissionais, Kanban, Firebase, financeiro, obras e pós-venda." />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <style>
@@ -814,11 +814,11 @@ body.auth-ready #loginScreen { display:none !important; }
 </head>
 <body data-theme="dark" class="auth-locked">
 
-  <section id="loginScreen" class="login-screen" aria-label="Autenticação do SunOps">
+  <section id="loginScreen" class="login-screen" aria-label="Autenticação do SolarCRM Pro">
     <div class="login-hero">
       <div class="login-brand">
         <div class="login-brand-mark">☀</div>
-        <div><strong>SunOps</strong><span>Gestão completa para empresas de energia solar</span></div>
+        <div><strong>SolarCRM Pro</strong><span>Gestão completa para empresas de energia solar</span></div>
       </div>
       <div class="login-hero-copy">
         <span class="login-kicker">⚡ Plataforma comercial e operacional</span>
@@ -884,7 +884,7 @@ body.auth-ready #loginScreen { display:none !important; }
         <div class="topbar-left">
           <button id="mobileMenuBtn" class="icon-btn mobile-only" type="button" aria-label="Abrir menu">☰</button>
           <div>
-            <p class="eyebrow" id="companyBreadcrumb">SunOps</p>
+            <p class="eyebrow" id="companyBreadcrumb">SolarCRM Pro</p>
             <h1 id="viewTitle">Dashboard</h1>
           </div>
         </div>
@@ -1053,7 +1053,7 @@ body.auth-ready #loginScreen { display:none !important; }
   <input id="backupImportInput" type="file" accept="application/json" hidden />
 
   <script>
-/* Adaptador Firebase modular — SunOps v2.9.5. */
+/* Adaptador Firebase modular — SolarCRM Pro v2.9.6. */
 (() => {
   'use strict';
   const SDK_VERSION = '11.10.0';
@@ -1095,17 +1095,21 @@ body.auth-ready #loginScreen { display:none !important; }
     'auth/provider-already-linked': 'A conta Google já está vinculada a este usuário.',
     'auth/user-not-found': 'Usuário não encontrado.',
 
-    'permission-denied': 'Permissão negada pelo Firestore. Verifique o perfil do usuário e publique as regras da versão 2.9.5.',
-    'firestore/permission-denied': 'Permissão negada pelo Firestore. Verifique o perfil do usuário e publique as regras da versão 2.9.5.',
+    'permission-denied': 'Permissão negada pelo Firestore. Verifique o perfil do usuário e publique as regras da versão 2.9.6.',
+    'firestore/permission-denied': 'Permissão negada pelo Firestore. Verifique o perfil do usuário e publique as regras da versão 2.9.6.',
     'storage/unauthorized': 'Sem permissão para acessar o Storage. Verifique o usuário e as regras publicadas.',
     'storage/object-not-found': 'O arquivo solicitado não foi encontrado no Storage.',
-    'functions/not-found': 'A Cloud Function ainda não foi publicada.',
+    'functions/not-found': 'A Cloud Function ainda não foi publicada. Faça o deploy da pasta functions incluída no pacote.',
+    'functions/failed-precondition': 'O backend está publicado, mas falta configurar um segredo ou serviço obrigatório.',
+    'functions/resource-exhausted': 'O limite do serviço foi atingido. Verifique créditos e limites da API.',
+    'functions/deadline-exceeded': 'A função demorou além do tempo permitido.',
+    'functions/internal': 'O backend encontrou um erro interno. Consulte os logs das Cloud Functions.',
     'functions/unauthenticated': 'Faça login antes de usar o backend.',
     'functions/permission-denied': 'O usuário não tem permissão para executar essa função.',
     'unavailable': 'O serviço Firebase está temporariamente indisponível.',
     'crm/bootstrap-owned-by-another-user': 'O primeiro administrador já está vinculado a outra conta. Entre com a conta original ou peça ao administrador para liberar este usuário.',
-    'crm/bootstrap-profile-repair-denied': 'O login é o administrador inicial, mas o Firestore não permitiu reconstruir o perfil. Publique as regras da versão 2.9.5 e tente novamente.',
-    'crm/preapproved-admin-denied': 'A conta administradora pré-aprovada foi reconhecida, mas o Firestore bloqueou a ativação. Publique o arquivo firestore.rules da versão 2.9.5.'
+    'crm/bootstrap-profile-repair-denied': 'O login é o administrador inicial, mas o Firestore não permitiu reconstruir o perfil. Publique as regras da versão 2.9.6 e tente novamente.',
+    'crm/preapproved-admin-denied': 'A conta administradora pré-aprovada foi reconhecida, mas o Firestore bloqueou a ativação. Publique o arquivo firestore.rules da versão 2.9.6.'
   };
 
   function friendlyError(error, fallback = 'O Firebase não conseguiu concluir a operação.') {
@@ -1383,7 +1387,7 @@ body.auth-ready #loginScreen { display:none !important; }
         await setDoc(doc(this.db, 'access_requests', user.uid), request, { merge: true });
         return { ...request, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
       } catch (error) {
-        throw friendlyError(error, 'Não foi possível registrar a solicitação de acesso. Publique as regras da versão 2.9.5.');
+        throw friendlyError(error, 'Não foi possível registrar a solicitação de acesso. Publique as regras da versão 2.9.6.');
       }
     },
 
@@ -1400,7 +1404,7 @@ body.auth-ready #loginScreen { display:none !important; }
       } catch (error) {
         const wrapped = friendlyError(error, 'Não foi possível carregar os usuários e permissões.');
         if (wrapped.code === 'permission-denied' || wrapped.code === 'firestore/permission-denied') {
-          wrapped.message = 'O Firestore bloqueou a lista de usuários. Publique o arquivo firestore.rules da versão 2.9.5, que alinha a consulta e a permissão pelo campo companyId.';
+          wrapped.message = 'O Firestore bloqueou a lista de usuários. Publique o arquivo firestore.rules da versão 2.9.6, que alinha a consulta e a permissão pelo campo companyId.';
         }
         throw wrapped;
       }
@@ -1419,7 +1423,7 @@ body.auth-ready #loginScreen { display:none !important; }
       } catch (error) {
         const wrapped = friendlyError(error, 'Não foi possível carregar as solicitações pendentes.');
         if (wrapped.code === 'permission-denied' || wrapped.code === 'firestore/permission-denied') {
-          wrapped.message = 'O Firestore bloqueou as solicitações de acesso. Publique o arquivo firestore.rules da versão 2.9.5 e confirme que o administrador está Ativo na empresa atual.';
+          wrapped.message = 'O Firestore bloqueou as solicitações de acesso. Publique o arquivo firestore.rules da versão 2.9.6 e confirme que o administrador está Ativo na empresa atual.';
         }
         throw wrapped;
       }
@@ -1640,7 +1644,7 @@ body.auth-ready #loginScreen { display:none !important; }
         return profile;
       } catch (error) {
         if (error?.code === 'crm/bootstrap-owned-by-another-user') throw error;
-        throw friendlyError(error, 'Não foi possível criar ou recuperar o primeiro administrador. Publique as regras da versão 2.9.5.');
+        throw friendlyError(error, 'Não foi possível criar ou recuperar o primeiro administrador. Publique as regras da versão 2.9.6.');
       }
     },
 
@@ -1790,7 +1794,7 @@ body.auth-ready #loginScreen { display:none !important; }
 
 </script>
   <script>
-/* SunOps — aplicação front-end completa em JavaScript puro.
+/* SolarCRM Pro — aplicação front-end completa em JavaScript puro.
  * Funciona em modo local (localStorage) e pode sincronizar com Firebase via firebase-adapter.js.
  */
 (() => {
@@ -1802,7 +1806,7 @@ body.auth-ready #loginScreen { display:none !important; }
   const LEGACY_FIREBASE_CONFIG_KEYS = ['solarcrm-firebase-config-v2-8','solarcrm-firebase-config-v2-7','solarcrm-firebase-config-v2-6','solarcrm-firebase-config'];
   const DEFAULT_FIREBASE_CONFIG = Object.freeze({"apiKey":"AIzaSyCYSQfnPLyV9B6osiZhsLYYrF64YLhGkMA","authDomain":"energiasolar-67b14.firebaseapp.com","databaseURL":"https://energiasolar-67b14-default-rtdb.firebaseio.com","projectId":"energiasolar-67b14","storageBucket":"energiasolar-67b14.firebasestorage.app","messagingSenderId":"394822890491","appId":"1:394822890491:web:5afc55e01902bbf142915e","functionsRegion":"southamerica-east1"});
   const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-2';
-  const SYSTEM_VERSION = '2.9.5';
+  const SYSTEM_VERSION = '2.9.6';
   let storageWarningShown = false;
   let draftSaveTimer = null;
   let firebaseLastDiagnostic = null;
@@ -2163,6 +2167,8 @@ body.auth-ready #loginScreen { display:none !important; }
   let activeView = state.currentView || 'dashboard';
   let entityContext = { collection:null, id:null };
   let activeProposal = null;
+  let activeBillAiImages = [];
+  let activeBillExtractionMeta = {pages:0,textLength:0,source:'none'};
   let proposalStep = 0;
   let proposalCharts = [];
   let dashboardCharts = [];
@@ -2341,7 +2347,7 @@ body.auth-ready #loginScreen { display:none !important; }
 
   async function scheduleAutomationJobInBackend(job){
     if(!job||!window.FirebaseCRM?.syncReady)return false;
-    const payload=job.channel==='email'?{companyId:state.currentCompanyId,to:job.recipient,subject:job.subject||'SunOps',html:`<div style="font-family:Arial,sans-serif;line-height:1.6">${escapeHtml(job.message).replace(/\n/g,'<br>')}</div>`,metadata:{recordId:job.recordId,ruleId:job.ruleId}}:{companyId:state.currentCompanyId,to:job.recipient,message:job.message,metadata:{recordId:job.recordId,ruleId:job.ruleId}};
+    const payload=job.channel==='email'?{companyId:state.currentCompanyId,to:job.recipient,subject:job.subject||'SolarCRM Pro',html:`<div style="font-family:Arial,sans-serif;line-height:1.6">${escapeHtml(job.message).replace(/\n/g,'<br>')}</div>`,metadata:{recordId:job.recordId,ruleId:job.ruleId}}:{companyId:state.currentCompanyId,to:job.recipient,message:job.message,metadata:{recordId:job.recordId,ruleId:job.ruleId}};
     try{
       await window.FirebaseCRM.saveRecord('automationQueue',{...job,status:'pending',payload});
       job.status='Agendada no backend';job.updatedAt=new Date().toISOString();persist();if(activeView==='automations')renderView('automations');return true;
@@ -2547,7 +2553,7 @@ body.auth-ready #loginScreen { display:none !important; }
 
   function testAutomation(){
     const recipient=state.currentUser?.email||state.company.email||'';
-    queueAutomation({type:'test',channel:recipient?'email':'internal',recipient,subject:'Teste do SunOps',message:`Teste de automação executado em ${dateTimeBR(new Date().toISOString())}.`,dedupeKey:`test-${Date.now()}`});
+    queueAutomation({type:'test',channel:recipient?'email':'internal',recipient,subject:'Teste do SolarCRM Pro',message:`Teste de automação executado em ${dateTimeBR(new Date().toISOString())}.`,dedupeKey:`test-${Date.now()}`});
     persist();showAutomationOutbox();toast('Teste criado','Use o botão Enviar na fila para concluir o teste.','info');
   }
 
@@ -2556,19 +2562,19 @@ body.auth-ready #loginScreen { display:none !important; }
     job.status='Processando';job.updatedAt=new Date().toISOString();persist();
     try{
       if(job.useAI&&!job.aiProcessed&&window.FirebaseCRM?.syncReady){
-        const result=await window.FirebaseCRM.callFunction('generateSalesText',{prompt:job.aiPrompt||job.message,company:{name:state.company.tradeName||state.company.name,city:state.company.city}});
+        const result=await window.FirebaseCRM.callFunction('generateSalesText',{companyId:state.currentCompanyId,prompt:job.aiPrompt||job.message,company:{id:state.currentCompanyId,name:state.company.tradeName||state.company.name,city:state.company.city}});
         const generated=result?.data?.text||result?.data;if(generated){job.message=generated;job.aiProcessed=true;}
       }
       if(job.channel==='internal'){
         addNotification(job.subject||'Lembrete interno',job.message,'info');
       }else if(window.FirebaseCRM?.syncReady){
         if(job.channel==='whatsapp') await window.FirebaseCRM.callFunction('sendWhatsApp',{companyId:state.currentCompanyId,to:job.recipient,message:job.message,metadata:{recordId:job.recordId,ruleId:job.ruleId}});
-        else if(job.channel==='email') await window.FirebaseCRM.callFunction('sendEmail',{companyId:state.currentCompanyId,to:job.recipient,subject:job.subject||'SunOps',html:`<div style="font-family:Arial,sans-serif;line-height:1.6">${escapeHtml(job.message).replace(/\n/g,'<br>')}</div>`,metadata:{recordId:job.recordId,ruleId:job.ruleId}});
+        else if(job.channel==='email') await window.FirebaseCRM.callFunction('sendEmail',{companyId:state.currentCompanyId,to:job.recipient,subject:job.subject||'SolarCRM Pro',html:`<div style="font-family:Arial,sans-serif;line-height:1.6">${escapeHtml(job.message).replace(/\n/g,'<br>')}</div>`,metadata:{recordId:job.recordId,ruleId:job.ruleId}});
       }else if(job.channel==='whatsapp'){
         safeOpen(`https://wa.me/${normalizePhone(job.recipient)}?text=${encodeURIComponent(job.message)}`);
         job.status='Aberto no WhatsApp';
       }else if(job.channel==='email'){
-        safeOpen(`mailto:${encodeURIComponent(job.recipient)}?subject=${encodeURIComponent(job.subject||'SunOps')}&body=${encodeURIComponent(job.message)}`);
+        safeOpen(`mailto:${encodeURIComponent(job.recipient)}?subject=${encodeURIComponent(job.subject||'SolarCRM Pro')}&body=${encodeURIComponent(job.message)}`);
         job.status='Aberto no e-mail';
       }
       if(job.status==='Processando')job.status='Enviado';
@@ -2723,7 +2729,7 @@ body.auth-ready #loginScreen { display:none !important; }
     sidebar.innerHTML = `
       <div class="sidebar-brand">
         <div class="brand-mark">☀</div>
-        <div class="brand-copy"><strong>SunOps</strong><span>Gestão de energia solar · v${SYSTEM_VERSION}</span></div>
+        <div class="brand-copy"><strong>SolarCRM Pro</strong><span>Gestão de energia solar · v${SYSTEM_VERSION}</span></div>
       </div>
       <div class="sidebar-company">
         <div><strong>${escapeHtml(state.company.tradeName||state.company.name)}</strong><span>Empresa ativa · ${escapeHtml(state.company.city)}</span></div>
@@ -2772,7 +2778,7 @@ body.auth-ready #loginScreen { display:none !important; }
     setTimeout(()=>initViewCharts(view),0);
   }
 
-  function renderDashboardPlaceholder(text){ return `<div class="empty-state card"><strong>SunOps</strong>${escapeHtml(text)}</div>`; }
+  function renderDashboardPlaceholder(text){ return `<div class="empty-state card"><strong>SolarCRM Pro</strong>${escapeHtml(text)}</div>`; }
 
   function pageHead(title, subtitle, actions='') {
     return `<div class="page-head"><div><h2>${escapeHtml(title)}</h2><p>${escapeHtml(subtitle)}</p></div><div class="page-actions">${actions}</div></div>`;
@@ -3449,13 +3455,11 @@ body.auth-ready #loginScreen { display:none !important; }
   }
 
   function exportBackup(){
-    if(!hasPermission('settings','export')&&state.role!=='admin'){denyPermission('settings','export');return;}
     const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
     downloadBlob(blob,`solarcrm-backup-${todayISO()}.json`); toast('Backup exportado','Guarde o arquivo em local seguro.');
   }
 
   function importBackup(event){
-    if(!hasPermission('settings','edit')&&state.role!=='admin'){denyPermission('settings','edit');event.target.value='';return;}
     const file=event.target.files?.[0]; if(!file)return;
     const reader=new FileReader();
     reader.onload=()=>{try{const parsed=JSON.parse(reader.result);if(!parsed.version)throw new Error('Formato inválido');state=normalizeState(parsed);ensureAllProjectStructures();persist();renderSidebar();renderView(activeView);toast('Backup importado','Dados restaurados com sucesso.');}catch(err){toast('Backup inválido',err.message,'error');}};
@@ -3473,7 +3477,6 @@ body.auth-ready #loginScreen { display:none !important; }
       state.currentCompanyId=company.id;state.company={...defaultCompany,...company};persist();closeDrawer();renderSidebar();navigate('dashboard');toast('Empresa alterada',state.company.tradeName||state.company.name,'info');
     }));
     document.querySelector('[data-add-company]')?.addEventListener('click',()=>{
-      if(!hasPermission('settings','edit')){denyPermission('settings','edit');return;}
       const name=prompt('Nome da nova empresa:');if(!name?.trim())return;
       syncCurrentCompanyRecord();const id=newId('company');const company={...defaultCompany,id,name:name.trim(),tradeName:name.trim(),clientsCount:0,installedPowerMW:0,logo:'',workPhotos:[]};
       state.companies.push(company);state.currentCompanyId=id;state.company={...company};state.currentUser.companyIds=[...new Set([...(state.currentUser.companyIds||[]),id])];persist();closeDrawer();renderSidebar();navigate('dashboard');openSettings('company');toast('Nova empresa criada','Configure os dados e a identidade visual.');
@@ -3637,7 +3640,7 @@ body.auth-ready #loginScreen { display:none !important; }
       </div>${nav}`;
     if(step===1)return `
       <div class="form-section">${heading('Importar conta de energia','O sistema lê o texto do PDF e tenta identificar os principais campos.')}
-        <div class="grid grid-2"><label class="upload-drop"><div><strong>Importar PDF da fatura</strong><span>${p.billFileName?`Arquivo: ${escapeHtml(p.billFileName)}`:'Arraste ou selecione a conta de energia.'}</span><input id="energyBillInput" type="file" accept="application/pdf" style="margin-top:10px"></div></label><div><div class="notice warning">A extração local funciona em PDFs com texto selecionável. Faturas digitalizadas podem exigir a análise via OpenAI no backend.</div><button id="aiBillAnalyzeBtn" class="btn btn-secondary" type="button" style="margin-top:10px;width:100%">✦ Analisar dados com IA</button></div></div>
+        <div class="grid grid-2"><label class="upload-drop"><div><strong>Importar PDF da fatura</strong><span>${p.billFileName?`Arquivo: ${escapeHtml(p.billFileName)}`:'Arraste ou selecione a conta de energia.'}</span><input id="energyBillInput" type="file" accept="application/pdf" style="margin-top:10px"></div></label><div><div class="notice ${window.FirebaseCRM?.syncReady?'success':'warning'}">${window.FirebaseCRM?.syncReady?'Backend conectado: a IA validará texto e imagens das primeiras páginas.':'A extração local funciona sem backend. Para faturas digitalizadas, publique a função Firebase e configure a OpenAI.'}</div><button id="aiBillAnalyzeBtn" class="btn btn-secondary" type="button" style="margin-top:10px;width:100%">✦ Analisar dados com IA</button>${p.billAnalysis?`<div class="notice" style="margin-top:10px">Última análise: <strong>${p.billAnalysis.source==='openai'?'OpenAI':'local'}</strong>${p.billAnalysis.confidence?` · ${Math.round(p.billAnalysis.confidence*100)}% de confiança`:''}</div>`:''}</div></div>
       </div>
       <div class="form-section">${heading('Dados identificados','Revise os campos antes de continuar.')}
         <div class="form-grid">${proposalField('client.consumerUnit','Unidade consumidora','text')}${proposalField('client.className','Classe','text')}${proposalField('client.tariffGroup','Grupo tarifário','text')}${proposalField('client.distributor','Distribuidora','text')}${proposalField('currentTariff','Tarifa atual (R$/kWh)','number')}${proposalField('technical.targetCoverage','Cobertura desejada (%)','number')}</div>
@@ -3733,55 +3736,189 @@ body.auth-ready #loginScreen { display:none !important; }
     });
   }
 
+  async function renderPdfPageForAI(page,maxWidth=1200,quality=.72){
+    const baseViewport=page.getViewport({scale:1});
+    const scale=Math.min(2,Math.max(1,maxWidth/Math.max(baseViewport.width,1)));
+    const viewport=page.getViewport({scale});
+    const canvas=document.createElement('canvas');
+    canvas.width=Math.max(1,Math.round(viewport.width));canvas.height=Math.max(1,Math.round(viewport.height));
+    const ctx=canvas.getContext('2d',{alpha:false});
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+    await page.render({canvasContext:ctx,viewport}).promise;
+    return canvas.toDataURL('image/jpeg',quality);
+  }
+
+  function textItemsToLines(items=[]){
+    const rows=[];
+    items.filter(item=>String(item?.str||'').trim()).forEach(item=>{
+      const y=Number(item.transform?.[5]||0),x=Number(item.transform?.[4]||0);
+      let row=rows.find(r=>Math.abs(r.y-y)<=3);
+      if(!row){row={y,items:[]};rows.push(row);}
+      row.items.push({x,text:String(item.str).trim()});
+    });
+    return rows.sort((a,b)=>b.y-a.y).map(row=>row.items.sort((a,b)=>a.x-b.x).map(i=>i.text).join(' ').replace(/\s+/g,' ').trim()).filter(Boolean).join('\n');
+  }
+
+  function normalizeBillNumber(value){
+    const raw=String(value??'').replace(/\s/g,'').replace(/R\$/gi,'');
+    if(!raw)return 0;
+    if(raw.includes(',')&&raw.includes('.'))return Number(raw.replace(/\./g,'').replace(',','.'))||0;
+    if(raw.includes(','))return Number(raw.replace(',','.'))||0;
+    return Number(raw)||0;
+  }
+
+  function normalizeConsumption(values=[]){
+    const clean=values.map(normalizeBillNumber).filter(v=>Number.isFinite(v)&&v>=0&&v<=500000);
+    if(!clean.length)return[];
+    const last=clean.slice(-12);
+    while(last.length<12)last.unshift(Math.round(average(last)||0));
+    return last.map(v=>Math.round(v));
+  }
+
+  function extractConsumptionHistory(text){
+    const monthMap={JAN:1,JANEIRO:1,FEV:2,FEVEREIRO:2,MAR:3,MARCO:3,'MARÇO':3,ABR:4,ABRIL:4,MAI:5,MAIO:5,JUN:6,JUNHO:6,JUL:7,JULHO:7,AGO:8,AGOSTO:8,SET:9,SETEMBRO:9,OUT:10,OUTUBRO:10,NOV:11,NOVEMBRO:11,DEZ:12,DEZEMBRO:12};
+    const monthPattern='JAN(?:EIRO)?|FEV(?:EREIRO)?|MAR(?:ÇO|CO)?|ABR(?:IL)?|MAI(?:O)?|JUN(?:HO)?|JUL(?:HO)?|AGO(?:STO)?|SET(?:EMBRO)?|OUT(?:UBRO)?|NOV(?:EMBRO)?|DEZ(?:EMBRO)?';
+    const found=[];
+    String(text||'').split(/\n+/).forEach((line,lineIndex)=>{
+      const upper=line.toUpperCase();
+      const monthMatch=upper.match(new RegExp(`\\b(${monthPattern})\\b`,'i'));
+      if(!monthMatch)return;
+      const monthKey=monthMatch[1].toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace('MARCO','MAR');
+      const month=monthMap[monthKey]||monthMap[monthKey.slice(0,3)]||0;
+      const after=line.slice(monthMatch.index+monthMatch[0].length);
+      const kwh=after.match(/(?:^|[^0-9])([0-9]{1,6}(?:[.,][0-9]+)?)\s*kwh\b/i);
+      let value=kwh?normalizeBillNumber(kwh[1]):0;
+      if(!value){
+        const candidates=[...after.matchAll(/\b([0-9]{1,6}(?:[.,][0-9]+)?)\b/g)].map(m=>normalizeBillNumber(m[1])).filter(v=>v>=20&&v<=500000&&!(v>=2000&&v<=2100));
+        value=candidates[0]||0;
+      }
+      if(value)found.push({month,value,lineIndex});
+    });
+    if(found.length>=4){
+      const dedup=[];found.forEach(item=>{const key=`${item.month}-${item.lineIndex}`;if(!dedup.some(d=>d.key===key))dedup.push({...item,key});});
+      return dedup.slice(-12).map(item=>item.value);
+    }
+    const normalized=String(text||'').replace(/\s+/g,' ');
+    const kwhMatches=[...normalized.matchAll(/(?:^|\s)(\d{2,6})(?:[,.]\d+)?\s*kwh\b/gi)].map(m=>Number(m[1])).filter(v=>v>=20&&v<=500000);
+    const unique=[];kwhMatches.forEach(v=>{if(unique.at(-1)!==v)unique.push(v);});
+    return unique.slice(-12);
+  }
+
+  function applyBillAnalysisResult(data={},source='local'){
+    if(!activeProposal)return;
+    const client=data.client||{};
+    activeProposal.client={...activeProposal.client,
+      consumerUnit:String(data.consumerUnit??client.consumerUnit??activeProposal.client.consumerUnit??'').trim(),
+      className:String(data.className??client.className??activeProposal.client.className??'').trim(),
+      tariffGroup:String(data.tariffGroup??client.tariffGroup??activeProposal.client.tariffGroup??'').trim(),
+      distributor:String(data.distributor??client.distributor??activeProposal.client.distributor??'').trim()
+    };
+    const tariff=normalizeBillNumber(data.currentTariff);
+    if(tariff>0&&tariff<20)activeProposal.currentTariff=tariff;
+    const consumption=normalizeConsumption(data.consumption||[]);
+    if(consumption.length)activeProposal.consumption=consumption;
+    activeProposal.billAnalysis={source,confidence:Number(data.confidence||0),warnings:Array.isArray(data.warnings)?data.warnings.slice(0,8):[],analyzedAt:new Date().toISOString(),averageConsumption:Number(data.averageConsumption||average(consumption)||0),annualConsumption:Number(data.annualConsumption||sum(consumption)||0)};
+    scheduleProposalDraftSave();
+  }
+
   async function handleEnergyBillUpload(event){
     const file=event.target.files?.[0];if(!file)return;
-    activeProposal.billFileName=file.name;
-    const btn=document.getElementById('aiBillAnalyzeBtn');if(btn)btn.textContent='Lendo PDF...';
+    activeProposal.billFileName=file.name;activeBillAiImages=[];activeBillExtractionMeta={pages:0,textLength:0,source:'pdf'};
+    const btn=document.getElementById('aiBillAnalyzeBtn');if(btn){btn.disabled=true;btn.textContent='Lendo PDF...';}
     try{
       const arrayBuffer=await file.arrayBuffer();
       const pdf=await pdfjsLib.getDocument({data:arrayBuffer}).promise;
       let fullText='';
       for(let pageNo=1;pageNo<=pdf.numPages;pageNo++){
-        const page=await pdf.getPage(pageNo);const content=await page.getTextContent();fullText+=content.items.map(i=>i.str).join(' ')+'\n';
+        const page=await pdf.getPage(pageNo);
+        const content=await page.getTextContent({normalizeWhitespace:true});
+        fullText+=textItemsToLines(content.items)+'\n';
+        if(pageNo<=3){
+          try{activeBillAiImages.push(await renderPdfPageForAI(page));}catch(imageError){console.warn('Não foi possível preparar a página para IA:',imageError);}
+        }
       }
-      activeProposal.billText=fullText.slice(0,80000);
+      activeProposal.billText=fullText.slice(0,100000);
+      activeBillExtractionMeta={pages:pdf.numPages,textLength:fullText.trim().length,source:fullText.trim().length>=120?'text':'image'};
       const extracted=extractBillFields(fullText);
-      activeProposal.client={...activeProposal.client,...extracted.client};
-      if(extracted.currentTariff)activeProposal.currentTariff=extracted.currentTariff;
-      if(extracted.consumption.length>=6){
-        const vals=extracted.consumption.slice(-12);while(vals.length<12)vals.unshift(Math.round(average(vals)||0));activeProposal.consumption=vals;
+      applyBillAnalysisResult(extracted,'local');
+      renderProposalBuilder();
+      if(fullText.trim().length<120){
+        toast('Fatura digitalizada detectada','O PDF possui pouco texto. Clique em “Analisar dados com IA” para ler as imagens das páginas.','info');
+      }else{
+        toast('Fatura processada',`Foram lidas ${pdf.numPages} página(s) e aplicada a extração local. Clique em IA para validar os campos.`);
       }
-      toast('Fatura processada',`Foram lidas ${pdf.numPages} página(s). Revise os dados extraídos.`);renderProposalBuilder();
-    }catch(error){console.error(error);toast('Não foi possível ler o PDF','O arquivo pode ser digitalizado, protegido ou incompatível. Use a análise por IA/backend.','error');}
-    finally{if(btn)btn.textContent='✦ Analisar dados com IA';}
+    }catch(error){
+      console.error(error);activeProposal.billText='';activeBillAiImages=[];
+      toast('Não foi possível ler o PDF','O arquivo pode estar protegido ou corrompido. Tente salvar uma nova cópia em PDF.','error');
+    }finally{if(btn){btn.disabled=false;btn.textContent='✦ Analisar dados com IA';}}
   }
 
   function extractBillFields(text){
-    const normalized=text.replace(/\s+/g,' ');
-    const match=(patterns)=>{for(const p of patterns){const m=normalized.match(p);if(m?.[1])return m[1].trim();}return'';};
-    const uc=match([/(?:unidade consumidora|n[ºo°]?\s*da\s*uc|uc)\s*[:\-]?\s*([0-9.\-]{5,})/i,/(?:c[oó]digo do cliente)\s*[:\-]?\s*([0-9.\-]{5,})/i]);
-    const className=match([/(?:classe|classifica[cç][aã]o)\s*[:\-]?\s*([A-Za-zÀ-ÿ ]{3,35})/i]);
-    const group=match([/(?:grupo tarif[aá]rio|subgrupo)\s*[:\-]?\s*([AB][1-4]?(?:\s*[-–]\s*[A-Za-z0-9]+)?)/i]);
-    const distributor=['CELESC','COPEL','CPFL','ENEL','EQUATORIAL','ENERGISA','NEOENERGIA','CEMIG','LIGHT'].find(d=>normalized.toUpperCase().includes(d))||'';
-    let tariff=0;const tariffMatch=normalized.match(/(?:tarifa|pre[cç]o unit[aá]rio)[^0-9]{0,20}([0-9]+[,.][0-9]{3,6})/i);if(tariffMatch)tariff=Number(tariffMatch[1].replace('.','').replace(',','.'));
-    const kwhMatches=[...normalized.matchAll(/(?:^|\s)(\d{2,6})(?:[,.]\d+)?\s*kwh\b/gi)].map(m=>Number(m[1])).filter(v=>v>=20&&v<=500000);
-    const unique=[];kwhMatches.forEach(v=>{if(unique.at(-1)!==v)unique.push(v);});
-    return {client:{consumerUnit:uc,className,tariffGroup:group,distributor},currentTariff:tariff,consumption:unique.slice(-12)};
+    const original=String(text||'');
+    const normalized=original.replace(/\s+/g,' ');
+    const match=(patterns)=>{for(const p of patterns){const m=normalized.match(p);if(m?.[1])return m[1].trim().replace(/\s{2,}/g,' ');}return'';};
+    const uc=match([
+      /(?:unidade consumidora|n[ºo°]?\s*(?:da\s*)?(?:uc|instala[cç][aã]o)|c[oó]digo da instala[cç][aã]o|instala[cç][aã]o)\s*[:#\-]?\s*([0-9.\-]{5,})/i,
+      /(?:c[oó]digo do cliente|n[ºo°]?\s*cliente)\s*[:#\-]?\s*([0-9.\-]{5,})/i,
+      /\bUC\s*[:#\-]\s*([0-9.\-]{5,})/i
+    ]);
+    const className=match([
+      /(?:classe|classifica[cç][aã]o)\s*[:\-]?\s*([A-Za-zÀ-ÿ0-9 /.-]{3,55}?)(?=\s+(?:grupo|subgrupo|modalidade|tipo de fornecimento|tens[aã]o|unidade|uc|cpf|cnpj)\b|$)/i,
+      /(?:classe de consumo)\s*[:\-]?\s*([A-Za-zÀ-ÿ0-9 /.-]{3,55})/i
+    ]);
+    const group=match([/(?:grupo tarif[aá]rio|subgrupo|grupo\/subgrupo)\s*[:\-]?\s*([AB][1-4]?(?:\s*[-–/]\s*[A-Za-z0-9]+)?)/i,/\b(SUBGRUPO\s+[AB][1-4])\b/i]).replace(/^SUBGRUPO\s+/i,'');
+    const distributors=['CELESC','COPEL','CPFL','ENEL','EQUATORIAL','ENERGISA','NEOENERGIA','CEMIG','LIGHT','EDP','ELEKTRO','RGE','CEEE','AMAZONAS ENERGIA','ENERGISA'].filter((d,i,a)=>a.indexOf(d)===i);
+    const distributor=distributors.find(d=>normalized.toUpperCase().includes(d))||match([/(?:distribuidora|concession[aá]ria)\s*[:\-]?\s*([A-Za-zÀ-ÿ0-9 ]{3,35})/i]);
+    let tariff=0;
+    const tariffPatterns=[/(?:tarifa(?:\s+atual)?|pre[cç]o unit[aá]rio|valor unit[aá]rio)[^0-9]{0,30}([0-9]+[,.][0-9]{3,8})/i,/TE\s*\+\s*TUSD[^0-9]{0,20}([0-9]+[,.][0-9]{3,8})/i];
+    for(const pattern of tariffPatterns){const m=normalized.match(pattern);if(m){tariff=normalizeBillNumber(m[1]);if(tariff>0)break;}}
+    const consumption=extractConsumptionHistory(original);
+    const totalAmountMatch=normalized.match(/(?:total a pagar|valor total|total da fatura)\s*[:R$\s]*([0-9.]+,[0-9]{2})/i);
+    const totalAmount=totalAmountMatch?normalizeBillNumber(totalAmountMatch[1]):0;
+    if(!tariff&&totalAmount&&consumption.length){const estimated=totalAmount/(consumption.at(-1)||average(consumption)||1);if(estimated>.2&&estimated<5)tariff=estimated;}
+    const confidence=[uc,className,group,distributor,tariff>0,consumption.length>=6].filter(Boolean).length/6;
+    const warnings=[];
+    if(!uc)warnings.push('Unidade consumidora não identificada.');
+    if(consumption.length<6)warnings.push('Histórico de consumo incompleto; revise os 12 meses.');
+    if(!tariff)warnings.push('Tarifa não identificada; informe o valor manualmente.');
+    return {client:{consumerUnit:uc,className,tariffGroup:group,distributor},consumerUnit:uc,className,tariffGroup:group,distributor,currentTariff:tariff,consumption,averageConsumption:average(consumption)||0,annualConsumption:sum(consumption)||0,totalAmount,confidence,warnings};
   }
 
   async function analyzeBillWithAI(){
-    if(!activeProposal.billText){toast('Importe a conta primeiro','A análise por IA precisa do texto extraído do PDF.','error');return;}
-    if(!window.FirebaseCRM?.syncReady){toast('Backend não autorizado','Configure Firebase e a chave da OpenAI para usar a análise real. A extração local já foi aplicada.','info');return;}
-    const btn=document.getElementById('aiBillAnalyzeBtn');btn.disabled=true;btn.textContent='Analisando com IA...';
+    if(!activeProposal?.billText&&!activeBillAiImages.length){toast('Importe a conta primeiro','Selecione o PDF da fatura antes de iniciar a análise.','error');return;}
+    const localResult=extractBillFields(activeProposal.billText||'');applyBillAnalysisResult(localResult,'local');
+    if(!window.FirebaseCRM?.syncReady){
+      renderProposalBuilder();
+      toast('Análise local concluída','Os campos disponíveis foram preenchidos. Para a validação com OpenAI, publique a função analyzeEnergyBill e configure o segredo OPENAI_API_KEY.','info');
+      return;
+    }
+    const btn=document.getElementById('aiBillAnalyzeBtn');if(btn){btn.disabled=true;btn.textContent='Analisando com IA...';}
     try{
-      const result=await window.FirebaseCRM.callFunction('analyzeEnergyBill',{text:activeProposal.billText.slice(0,50000)});
-      if(result?.data){
-        const d=result.data;activeProposal.client={...activeProposal.client,consumerUnit:d.consumerUnit||activeProposal.client.consumerUnit,className:d.className||activeProposal.client.className,tariffGroup:d.tariffGroup||activeProposal.client.tariffGroup,distributor:d.distributor||activeProposal.client.distributor};
-        if(Array.isArray(d.consumption)&&d.consumption.length)activeProposal.consumption=d.consumption.slice(-12).map(Number);
-        if(d.currentTariff)activeProposal.currentTariff=Number(d.currentTariff);renderProposalBuilder();toast('Análise concluída','Os campos foram atualizados com a resposta da IA.');
-      }
-    }catch(error){toast('Falha na análise por IA',error.message||'Verifique a configuração do backend.','error');}
-    finally{btn.disabled=false;btn.textContent='✦ Analisar dados com IA';}
+      const result=await window.FirebaseCRM.callFunction('analyzeEnergyBill',{
+        companyId:state.currentCompanyId,
+        fileName:activeProposal.billFileName||'',
+        text:String(activeProposal.billText||'').slice(0,60000),
+        images:activeBillAiImages.slice(0,3),
+        localHints:localResult
+      });
+      const data=result?.data?.result||result?.data;
+      if(!data||typeof data!=='object')throw new Error('O backend respondeu sem os dados estruturados da fatura.');
+      applyBillAnalysisResult(data,'openai');
+      renderProposalBuilder();
+      const confidence=Math.round(Number(data.confidence||0)*100);
+      const warningCount=Array.isArray(data.warnings)?data.warnings.length:0;
+      toast('Análise por IA concluída',`${confidence?`Confiança estimada: ${confidence}%. `:''}${warningCount?`${warningCount} ponto(s) precisam de revisão.`:'Os campos foram atualizados.'}`);
+    }catch(error){
+      console.error('Falha analyzeEnergyBill:',error);
+      renderProposalBuilder();
+      const code=String(error?.code||'');
+      let message=error?.message||'Verifique a configuração do backend.';
+      if(code.includes('not-found'))message='A função analyzeEnergyBill ainda não foi publicada. Execute o deploy da pasta functions incluída no pacote.';
+      else if(code.includes('failed-precondition'))message='A função foi publicada, mas falta configurar o segredo OPENAI_API_KEY no Firebase.';
+      else if(code.includes('resource-exhausted'))message='O limite da API foi atingido. Verifique créditos, faturamento ou limites do projeto OpenAI.';
+      else if(code.includes('deadline-exceeded'))message='A análise demorou além do limite. Tente novamente com uma fatura menor.';
+      toast('IA indisponível — extração local mantida',message,'error');
+    }finally{const current=document.getElementById('aiBillAnalyzeBtn');if(current){current.disabled=false;current.textContent='✦ Analisar dados com IA';}}
   }
 
   function upsertClientFromProposal(proposal,status='Em negociação'){
@@ -3828,7 +3965,7 @@ body.auth-ready #loginScreen { display:none !important; }
     if(activeProposal.client.phone){queueAutomation({type:'proposal',channel:'whatsapp',recipient:normalizePhone(activeProposal.client.phone),message,recordId:activeProposal.id,dedupeKey:`proposal-whatsapp-${activeProposal.id}-${activeProposal.updatedAt}`});queued++;}
     if(activeProposal.client.email&&state.automations.emailProposal){queueAutomation({type:'proposal',channel:'email',recipient:activeProposal.client.email,subject:`Proposta de energia solar ${activeProposal.number}`,message:`${message}
 
-A proposta completa pode ser visualizada e baixada no SunOps.`,recordId:activeProposal.id,dedupeKey:`proposal-email-${activeProposal.id}-${activeProposal.updatedAt}`});queued++;}
+A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:activeProposal.id,dedupeKey:`proposal-email-${activeProposal.id}-${activeProposal.updatedAt}`});queued++;}
     upsertLeadFromProposal(activeProposal,'Proposta Enviada');upsertClientFromProposal(activeProposal,'Em negociação');
     const idx=state.proposals.findIndex(item=>item.id===activeProposal.id);if(idx>=0)state.proposals[idx]=deepClone(activeProposal);
     addActivity('PV','Proposta enviada',`${activeProposal.client.name} · ${currency(activeProposal.commercial.price)}`);addNotification('Proposta preparada para envio',`${activeProposal.number} · ${queued} canal(is) na fila.`,'info');
@@ -4063,10 +4200,7 @@ A proposta completa pode ser visualizada e baixada no SunOps.`,recordId:activePr
 
   function renderSettings(){
     const root=document.getElementById('settingsBody');if(!root)return;
-    const tabs=[['profile','Meu usuário']];
-    if(hasPermission('settings','view'))tabs.push(['company','Empresa'],['branding','Identidade e fotos'],['firebase','Firebase'],['backup','Backup e dados']);
-    if(state.role==='admin')tabs.push(['users','Usuários e permissões']);
-    if(!tabs.some(([id])=>id===settingsTab))settingsTab='profile';
+    const tabs=[['profile','Meu usuário'],['company','Empresa'],['branding','Identidade e fotos'],['firebase','Firebase'],['users','Usuários e permissões'],['backup','Backup e dados']];
     root.innerHTML=`<div class="settings-tabs">${tabs.map(([id,label])=>`<button class="settings-tab ${settingsTab===id?'active':''}" data-settings-tab="${id}">${label}</button>`).join('')}</div><div id="settingsPanel">${renderSettingsPanel(settingsTab)}</div>`;
     root.querySelectorAll('[data-settings-tab]').forEach(btn=>btn.addEventListener('click',()=>{settingsTab=btn.dataset.settingsTab;renderSettings();}));
     bindSettingsEvents();
@@ -4246,13 +4380,13 @@ A proposta completa pode ser visualizada e baixada no SunOps.`,recordId:activePr
   function bindSettingsEvents(){
     document.getElementById('userProfileForm')?.addEventListener('submit',saveUserProfile);
     document.getElementById('userAvatarInput')?.addEventListener('change',async event=>{const file=event.target.files?.[0];if(!file)return;state.currentUser.avatar=await resizeImage(file,500,500,.9);state.currentUser.initials=initials(state.currentUser.name);persist();updateTopbar();renderSettings();toast('Foto do usuário atualizada');});
-    document.getElementById('companySettingsForm')?.addEventListener('submit',e=>{e.preventDefault();if(!hasPermission('settings','edit')){denyPermission('settings','edit');return;}const fd=new FormData(e.currentTarget);for(const [k,v] of fd.entries())state.company[k]=['proposalValidityDays','clientsCount','installedPowerMW','defaultCommissionPercent'].includes(k)?Number(v):v;syncCurrentCompanyRecord();persist();renderSidebar();updateTopbar();toast('Empresa atualizada');});
-    document.getElementById('companyLogoInput')?.addEventListener('change',async e=>{if(!hasPermission('settings','edit')){denyPermission('settings','edit');e.target.value='';return;}const f=e.target.files?.[0];if(!f)return;state.company.logo=await resizeImage(f,1000,400,.92);syncCurrentCompanyRecord();persist();renderSettings();toast('Logo atualizada');});
-    document.getElementById('sellerSignatureInput')?.addEventListener('change',async e=>{if(!hasPermission('settings','edit')){denyPermission('settings','edit');e.target.value='';return;}const f=e.target.files?.[0];if(!f)return;state.company.sellerSignature=await resizeImage(f,900,350,.92);syncCurrentCompanyRecord();persist();renderSettings();toast('Assinatura atualizada');});
-    document.getElementById('workPhotosInput')?.addEventListener('change',async e=>{if(!hasPermission('settings','edit')){denyPermission('settings','edit');e.target.value='';return;}const files=[...(e.target.files||[])].slice(0,4-(state.company.workPhotos?.length||0));for(const f of files)state.company.workPhotos.push(await resizeImage(f,1200,800,.82));syncCurrentCompanyRecord();persist();renderSettings();toast('Fotos adicionadas');});
-    document.querySelectorAll('[data-remove-work-photo]').forEach(btn=>btn.addEventListener('click',()=>{if(!hasPermission('settings','edit')){denyPermission('settings','edit');return;}state.company.workPhotos.splice(Number(btn.dataset.removeWorkPhoto),1);syncCurrentCompanyRecord();persist();renderSettings();}));
-    document.getElementById('firebaseSettingsForm')?.addEventListener('submit',async e=>{e.preventDefault();if(!hasPermission('settings','edit')){denyPermission('settings','edit');return;}const config=normalizeFirebaseConfig(Object.fromEntries(new FormData(e.currentTarget).entries()));if(!firebaseApiKeyLooksValid(config.apiKey)){toast('API Key inválida','A chave precisa começar com AIza e possuir 39 caracteres. Remova a configuração antiga ou copie novamente do Firebase Console.','error');return;}safeStorageSet(FIREBASE_CONFIG_KEY,JSON.stringify(config));await connectFirebase(config);renderSettings();});
-    document.getElementById('firebaseRestoreConfigBtn')?.addEventListener('click',async()=>{if(!hasPermission('settings','edit')){denyPermission('settings','edit');return;}const config=clearFirebaseConfig();toast('Configuração oficial restaurada','Os dados do aplicativo Web energiasolar-67b14 foram recarregados.','success');renderSettings();});
+    document.getElementById('companySettingsForm')?.addEventListener('submit',e=>{e.preventDefault();const fd=new FormData(e.currentTarget);for(const [k,v] of fd.entries())state.company[k]=['proposalValidityDays','clientsCount','installedPowerMW','defaultCommissionPercent'].includes(k)?Number(v):v;syncCurrentCompanyRecord();persist();renderSidebar();updateTopbar();toast('Empresa atualizada');});
+    document.getElementById('companyLogoInput')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;state.company.logo=await resizeImage(f,1000,400,.92);syncCurrentCompanyRecord();persist();renderSettings();toast('Logo atualizada');});
+    document.getElementById('sellerSignatureInput')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;state.company.sellerSignature=await resizeImage(f,900,350,.92);syncCurrentCompanyRecord();persist();renderSettings();toast('Assinatura atualizada');});
+    document.getElementById('workPhotosInput')?.addEventListener('change',async e=>{const files=[...(e.target.files||[])].slice(0,4-(state.company.workPhotos?.length||0));for(const f of files)state.company.workPhotos.push(await resizeImage(f,1200,800,.82));syncCurrentCompanyRecord();persist();renderSettings();toast('Fotos adicionadas');});
+    document.querySelectorAll('[data-remove-work-photo]').forEach(btn=>btn.addEventListener('click',()=>{state.company.workPhotos.splice(Number(btn.dataset.removeWorkPhoto),1);syncCurrentCompanyRecord();persist();renderSettings();}));
+    document.getElementById('firebaseSettingsForm')?.addEventListener('submit',async e=>{e.preventDefault();const config=normalizeFirebaseConfig(Object.fromEntries(new FormData(e.currentTarget).entries()));if(!firebaseApiKeyLooksValid(config.apiKey)){toast('API Key inválida','A chave precisa começar com AIza e possuir 39 caracteres. Remova a configuração antiga ou copie novamente do Firebase Console.','error');return;}safeStorageSet(FIREBASE_CONFIG_KEY,JSON.stringify(config));await connectFirebase(config);renderSettings();});
+    document.getElementById('firebaseRestoreConfigBtn')?.addEventListener('click',async()=>{const config=clearFirebaseConfig();toast('Configuração oficial restaurada','Os dados do aplicativo Web energiasolar-67b14 foram recarregados.','success');renderSettings();});
     document.getElementById('firebaseTestBtn')?.addEventListener('click',async()=>connectFirebase(loadFirebaseConfig()));
     document.getElementById('firebaseLoginBtn')?.addEventListener('click',firebaseLogin);
     document.getElementById('firebaseRegisterBtn')?.addEventListener('click',firebaseRegisterAndBootstrap);
@@ -4269,7 +4403,7 @@ A proposta completa pode ser visualizada e baixada no SunOps.`,recordId:activePr
     document.querySelectorAll('[data-configure-user-access]').forEach(button=>button.addEventListener('click',()=>openPermissionMatrix('user',button.dataset.configureUserAccess)));
     document.getElementById('settingsExportBackup')?.addEventListener('click',exportBackup);
     document.getElementById('settingsImportBackup')?.addEventListener('click',()=>document.getElementById('backupImportInput').click());
-    document.getElementById('resetCleanData')?.addEventListener('click',()=>{if(!hasPermission('settings','edit')){denyPermission('settings','edit');return;}if(confirm('Apagar definitivamente todos os dados locais deste navegador?')){safeStorageRemove(STORAGE_KEY);safeStorageRemove(ACTIVE_DRAFT_KEY);state=normalizeState(seedState());activeProposal=null;persist();closeModal('settingsModal');renderSidebar();renderView('dashboard');updateTopbar();toast('Base local limpa','Nenhum cadastro foi recriado.','success');}});
+    document.getElementById('resetCleanData')?.addEventListener('click',()=>{if(confirm('Apagar definitivamente todos os dados locais deste navegador?')){safeStorageRemove(STORAGE_KEY);safeStorageRemove(ACTIVE_DRAFT_KEY);state=normalizeState(seedState());activeProposal=null;persist();closeModal('settingsModal');renderSidebar();renderView('dashboard');updateTopbar();toast('Base local limpa','Nenhum cadastro foi recriado.','success');}});
   }
 
   async function saveUserProfile(event){
@@ -4342,7 +4476,7 @@ A proposta completa pode ser visualizada e baixada no SunOps.`,recordId:activePr
     const authUser=window.FirebaseCRM?.auth?.currentUser;
     if(window.FirebaseCRM?.isPreapprovedAdmin(authUser)){
       if(title)title.textContent='Administrador já aprovado';
-      if(text)text.textContent='A conta foi reconhecida. Publique as regras da versão 2.9.5 e clique em verificar para concluir a ativação automática.';
+      if(text)text.textContent='A conta foi reconhecida. Publique as regras da versão 2.9.6 e clique em verificar para concluir a ativação automática.';
       if(action){action.style.display='inline-flex';action.textContent='Concluir ativação';}
     }else if(code==='profile-missing-bootstrap-available'){
       if(title)title.textContent='Primeiro administrador';if(text)text.textContent='Esta é a primeira conta. Ative-a como administradora para iniciar o sistema.';if(action){action.style.display='inline-flex';action.textContent='Ativar administrador';}
@@ -4375,11 +4509,11 @@ A proposta completa pode ser visualizada e baixada no SunOps.`,recordId:activePr
         try{
           firebaseLastDiagnostic=await window.FirebaseCRM.diagnose(profile.companyId||state.currentCompanyId);
           if(profile.profileWritePending){
-            toast('Acesso administrativo liberado','O CRM está aberto. Publique as regras 2.9.5 para concluir a sincronização na nuvem.','info');
+            toast('Acesso administrativo liberado','O CRM está aberto. Publique as regras 2.9.6 para concluir a sincronização na nuvem.','info');
           }
         }catch(error){
           firebaseLastDiagnostic={code:'cloud-rules-pending',message:error.message||'Acesso local liberado; sincronização da nuvem pendente.'};
-          toast('Acesso liberado em modo local','O Firestore ainda negou o diagnóstico. Publique as regras 2.9.5 para sincronizar.','info');
+          toast('Acesso liberado em modo local','O Firestore ainda negou o diagnóstico. Publique as regras 2.9.6 para sincronizar.','info');
         }
         return true;
       }
@@ -4466,7 +4600,7 @@ A proposta completa pode ser visualizada e baixada no SunOps.`,recordId:activePr
         setLoginStatus('Ativando administrador aprovado','Aguarde enquanto o perfil é gravado no Firestore.','info');
         const profile=await window.FirebaseCRM.ensurePreapprovedAdminProfile();
         applyFirebaseProfile(profile,user);unlockSystemAfterAuthentication();return;
-      }catch(error){setLoginStatus('Perfil não ativado',error.message||'Publique as regras da versão 2.9.5 e tente novamente.','error');return;}
+      }catch(error){setLoginStatus('Perfil não ativado',error.message||'Publique as regras da versão 2.9.6 e tente novamente.','error');return;}
     }
     if(!['profile-missing-bootstrap-available','bootstrap-owner-profile-missing'].includes(code)){
       await finishAuthenticatedSession(user,{automatic:false});return;
@@ -4476,7 +4610,7 @@ A proposta completa pode ser visualizada e baixada no SunOps.`,recordId:activePr
       const profile=await window.FirebaseCRM.bootstrapAdmin({name:user.displayName||user.email?.split('@')[0]||'Administrador',email:user.email,companyId:state.currentCompanyId,companyName:state.company.tradeName||state.company.name||''});
       await window.FirebaseCRM.saveRecord('companies',{...state.company,id:state.currentCompanyId,companyId:state.currentCompanyId});
       applyFirebaseProfile(profile,user);unlockSystemAfterAuthentication();
-    }catch(error){setLoginStatus('Perfil não ativado',error.message||'Publique as regras da versão 2.9.5 e tente novamente.','error');}
+    }catch(error){setLoginStatus('Perfil não ativado',error.message||'Publique as regras da versão 2.9.6 e tente novamente.','error');}
   }
 
   function firebaseCredentials(){
@@ -4550,7 +4684,7 @@ A proposta completa pode ser visualizada e baixada no SunOps.`,recordId:activePr
       toast('Perfil ativado','A sincronização foi liberada para esta conta.','success');renderSettings();
     }catch(error){
       firebaseLastDiagnostic=await window.FirebaseCRM.diagnose(state.currentCompanyId).catch(()=>firebaseLastDiagnostic);
-      toast('Perfil não ativado',error.message||'Publique as regras da versão 2.9.5 e tente novamente.','error');renderSettings();
+      toast('Perfil não ativado',error.message||'Publique as regras da versão 2.9.6 e tente novamente.','error');renderSettings();
     }
   }
 
@@ -4599,7 +4733,7 @@ A proposta completa pode ser visualizada e baixada no SunOps.`,recordId:activePr
     const prompt=document.getElementById('customAiPrompt')?.value.trim();const output=document.getElementById('aiOutput');if(!prompt){toast('Digite uma solicitação','','error');return;}
     output.textContent='Gerando resposta...';
     if(window.FirebaseCRM?.syncReady){
-      try{const result=await window.FirebaseCRM.callFunction('generateSalesText',{prompt,company:{name:state.company.tradeName,city:state.company.city}});output.textContent=result?.data?.text||result?.data||'Resposta recebida sem texto.';return;}catch(error){output.textContent=`Erro no backend: ${error.message}`;return;}
+      try{const result=await window.FirebaseCRM.callFunction('generateSalesText',{companyId:state.currentCompanyId,prompt,company:{id:state.currentCompanyId,name:state.company.tradeName,city:state.company.city}});output.textContent=result?.data?.text||result?.data||'Resposta recebida sem texto.';return;}catch(error){output.textContent=`Erro no backend: ${error.message}`;return;}
     }
     const leadName=companyRows('leads').find(l=>!['Fechado','Perdido'].includes(l.stage))?.name||'cliente';
     output.textContent=`Olá, ${leadName}! Tudo bem?\n\nPreparei uma análise personalizada para mostrar como a energia solar pode reduzir seus gastos e proteger você dos reajustes da tarifa. Podemos revisar juntos o consumo, o sistema ideal e as melhores condições de pagamento.\n\nEste texto foi gerado pelo modo local. Conecte o Firebase e configure a chave da OpenAI no Secret Manager para respostas reais baseadas no prompt:\n\n“${prompt}”`;
