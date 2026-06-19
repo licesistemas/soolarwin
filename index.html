@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#08111f" />
-  <title>SolarCRM Pro v2.9.6 — CRM para Energia Solar</title>
+  <title>SolarCRM Pro v2.9.7 — CRM para Energia Solar</title>
   <meta name="description" content="CRM completo para empresas de energia solar com propostas profissionais, Kanban, Firebase, financeiro, obras e pós-venda." />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <style>
@@ -823,12 +823,12 @@ body.auth-ready #loginScreen { display:none !important; }
       <div class="login-hero-copy">
         <span class="login-kicker">⚡ Plataforma comercial e operacional</span>
         <h1>Energia solar organizada do primeiro contato à operação.</h1>
-        <p>Gerencie leads, propostas, contratos, obras, documentos, homologação, financeiro, pós-venda e automações em um único sistema.</p>
+        <p>Gerencie leads, propostas, contratos, obras, documentos, homologação, financeiro, pós-venda e portal do cliente em um único sistema.</p>
       </div>
       <div class="login-benefits">
         <div class="login-benefit"><b>Propostas profissionais</b><span>Dimensionamento, economia, financiamento e PDF completo.</span></div>
         <div class="login-benefit"><b>Projetos por etapas</b><span>Kanban, tarefas, responsáveis, prazos e documentos.</span></div>
-        <div class="login-benefit"><b>Dados protegidos</b><span>Firebase Authentication, permissões e acesso por empresa.</span></div>
+        <div class="login-benefit"><b>Dados protegidos</b><span>Firebase Authentication, permissões, acesso por empresa e portal individual por CPF.</span></div>
       </div>
     </div>
     <div class="login-panel">
@@ -1053,7 +1053,7 @@ body.auth-ready #loginScreen { display:none !important; }
   <input id="backupImportInput" type="file" accept="application/json" hidden />
 
   <script>
-/* Adaptador Firebase modular — SolarCRM Pro v2.9.6. */
+/* Adaptador Firebase modular — SolarCRM Pro v2.9.7. */
 (() => {
   'use strict';
   const SDK_VERSION = '11.10.0';
@@ -1068,7 +1068,7 @@ body.auth-ready #loginScreen { display:none !important; }
     companies: 'companies', users: 'users', teams: 'team_members', accessRequests: 'access_requests', clients: 'clients', leads: 'leads', proposals: 'proposals', contracts: 'contracts',
     projects: 'projects', works: 'projects', installations: 'installations', aftersales: 'installations', homologations: 'homologations',
     tickets: 'tickets', financial: 'financial', commissions: 'commissions', products: 'products', inventory: 'products',
-    suppliers: 'suppliers', notifications: 'notifications', projectDocuments: 'project_documents', automationRules: 'automation_rules', automationQueue: 'automation_queue', automationLogs: 'automation_logs', stockMovements: 'stock_movements', tasks: 'tasks'
+    suppliers: 'suppliers', notifications: 'notifications', projectDocuments: 'project_documents', automationRules: 'automation_rules', automationQueue: 'automation_queue', automationLogs: 'automation_logs', stockMovements: 'stock_movements', tasks: 'tasks', clientProjectStatus: 'client_project_status', client_project_status: 'client_project_status'
   };
 
   const firebaseErrorMessages = {
@@ -1806,7 +1806,7 @@ body.auth-ready #loginScreen { display:none !important; }
   const LEGACY_FIREBASE_CONFIG_KEYS = ['solarcrm-firebase-config-v2-8','solarcrm-firebase-config-v2-7','solarcrm-firebase-config-v2-6','solarcrm-firebase-config'];
   const DEFAULT_FIREBASE_CONFIG = Object.freeze({"apiKey":"AIzaSyCYSQfnPLyV9B6osiZhsLYYrF64YLhGkMA","authDomain":"energiasolar-67b14.firebaseapp.com","databaseURL":"https://energiasolar-67b14-default-rtdb.firebaseio.com","projectId":"energiasolar-67b14","storageBucket":"energiasolar-67b14.firebasestorage.app","messagingSenderId":"394822890491","appId":"1:394822890491:web:5afc55e01902bbf142915e","functionsRegion":"southamerica-east1"});
   const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-2';
-  const SYSTEM_VERSION = '2.9.6';
+  const SYSTEM_VERSION = '2.9.7';
   let storageWarningShown = false;
   let draftSaveTimer = null;
   let firebaseLastDiagnostic = null;
@@ -1886,9 +1886,9 @@ body.auth-ready #loginScreen { display:none !important; }
   ];
 
   const rolePermissions = {
-    admin: ['dashboard','leads','kanban','clients','proposals','contracts','works','homologations','financial','aftersales','tickets','commissions','inventory','teams','reports','automations','projectDocuments','settings'],
-    manager: ['dashboard','leads','kanban','clients','proposals','contracts','works','homologations','financial','aftersales','tickets','commissions','inventory','teams','reports','automations','projectDocuments'],
-    seller: ['dashboard','leads','kanban','clients','proposals','contracts','commissions','automations'],
+    admin: ['dashboard','leads','kanban','clients','proposals','contracts','works','homologations','financial','aftersales','tickets','commissions','inventory','teams','reports','projectDocuments','settings'],
+    manager: ['dashboard','leads','kanban','clients','proposals','contracts','works','homologations','financial','aftersales','tickets','commissions','inventory','teams','reports','projectDocuments'],
+    seller: ['dashboard','leads','kanban','clients','proposals','contracts','commissions'],
     technical: ['dashboard','clients','works','homologations','aftersales','tickets','inventory','teams','projectDocuments'],
     finance: ['dashboard','clients','contracts','financial','commissions','reports']
   };
@@ -1919,7 +1919,6 @@ body.auth-ready #loginScreen { display:none !important; }
     { id:'inventory', label:'Estoque', description:'Produtos, fornecedores e movimentações', actions:['view','create','edit','delete','export','approve'] },
     { id:'teams', label:'Equipes', description:'Equipe operacional e vendedores', actions:['view','create','edit','delete','export'] },
     { id:'reports', label:'Relatórios', description:'Indicadores executivos e impressão', actions:['view','export'] },
-    { id:'automations', label:'Automações e IA', description:'Regras, filas, mensagens e IA', actions:['view','create','edit','delete','export','approve'] },
     { id:'settings', label:'Configurações', description:'Empresa, identidade, Firebase e backup', actions:['view','edit','export'] }
   ];
 
@@ -1927,8 +1926,8 @@ body.auth-ready #loginScreen { display:none !important; }
     leads:'leads', clients:'clients', proposals:'proposals', contracts:'contracts', works:'works', projects:'works',
     homologations:'homologations', financial:'financial', aftersales:'aftersales', installations:'aftersales', tickets:'tickets',
     commissions:'commissions', inventory:'inventory', products:'inventory', suppliers:'inventory', teams:'teams', team_members:'teams',
-    projectDocuments:'projectDocuments', project_documents:'projectDocuments', tasks:'works', automationRules:'automations', automation_rules:'automations',
-    automationQueue:'automations', automation_queue:'automations', automationLogs:'automations', automation_logs:'automations', stockMovements:'inventory', notifications:'dashboard'
+    projectDocuments:'projectDocuments', project_documents:'projectDocuments', tasks:'works', automationRules:'settings', automation_rules:'settings',
+    automationQueue:'settings', automation_queue:'settings', automationLogs:'settings', automation_logs:'settings', stockMovements:'inventory', notifications:'dashboard'
   };
 
   function emptyPermissionMatrix(){
@@ -1950,8 +1949,8 @@ body.auth-ready #loginScreen { display:none !important; }
       return matrix;
     }
     const writable={
-      manager:['leads','clients','proposals','contracts','works','projectDocuments','homologations','financial','aftersales','tickets','commissions','inventory','teams','automations'],
-      seller:['leads','clients','proposals','automations'],
+      manager:['leads','clients','proposals','contracts','works','projectDocuments','homologations','financial','aftersales','tickets','commissions','inventory','teams'],
+      seller:['leads','clients','proposals'],
       technical:['clients','works','projectDocuments','homologations','aftersales','tickets','inventory','teams'],
       finance:['contracts','financial','commissions']
     }[role]||[];
@@ -2041,7 +2040,6 @@ body.auth-ready #loginScreen { display:none !important; }
     { section: 'Recursos', id: 'inventory', label: 'Estoque', icon: '▦' },
     { section: 'Recursos', id: 'teams', label: 'Equipes', icon: '♟' },
     { section: 'Inteligência', id: 'reports', label: 'Relatórios', icon: '↗' },
-    { section: 'Inteligência', id: 'automations', label: 'Automações & IA', icon: '✦' },
     { section: 'Sistema', id: 'settings', label: 'Configurações', icon: '⚙' }
   ];
 
@@ -2066,7 +2064,7 @@ body.auth-ready #loginScreen { display:none !important; }
     },
     works: {
       title: 'Obra', fields: [
-        ['clientName','Cliente','text',true], ['city','Cidade','text'], ['systemPower','Potência (kWp)','number'], ['team','Equipe','text'], ['startDate','Início','date'], ['deadline','Prazo','date'], ['projectStage','Etapa atual','select',true,projectStages.map(stage=>stage.id)], ['progress','Progresso (%)','number'], ['status','Status operacional','select',true,['Planejamento','Compras','Em instalação','Vistoria','Concluída','Pausada']], ['notes','Observações','textarea']
+        ['clientName','Cliente','text',true], ['clientDocument','CPF/CNPJ do cliente','text'], ['city','Cidade','text'], ['systemPower','Potência (kWp)','number'], ['team','Equipe','text'], ['startDate','Início','date'], ['deadline','Prazo','date'], ['projectStage','Etapa atual','select',true,projectStages.map(stage=>stage.id)], ['progress','Progresso (%)','number'], ['status','Status operacional','select',true,['Planejamento','Compras','Em instalação','Vistoria','Concluída','Pausada']], ['notes','Observações internas','textarea'], ['clientPortalMessage','Mensagem para o portal do cliente','textarea']
       ]
     },
     homologations: {
@@ -2562,7 +2560,7 @@ body.auth-ready #loginScreen { display:none !important; }
     job.status='Processando';job.updatedAt=new Date().toISOString();persist();
     try{
       if(job.useAI&&!job.aiProcessed&&window.FirebaseCRM?.syncReady){
-        const result=await window.FirebaseCRM.callFunction('generateSalesText',{companyId:state.currentCompanyId,prompt:job.aiPrompt||job.message,company:{id:state.currentCompanyId,name:state.company.tradeName||state.company.name,city:state.company.city}});
+        const result=await window.FirebaseCRM.callFunction('generateSalesText',{prompt:job.aiPrompt||job.message,company:{name:state.company.tradeName||state.company.name,city:state.company.city}});
         const generated=result?.data?.text||result?.data;if(generated){job.message=generated;job.aiProcessed=true;}
       }
       if(job.channel==='internal'){
@@ -3004,7 +3002,7 @@ body.auth-ready #loginScreen { display:none !important; }
     const stage=projectStageDefinition(stageId);work.progress=stage.progress;work.status=stage.workStatus;work.updatedAt=new Date().toISOString();
     const hom=companyRows('homologations').find(item=>item.proposalId===work.proposalId||item.clientName===work.clientName);if(hom){if(stageId==='Homologação'&&hom.status==='Documentação')hom.status='Em análise';if(targetIndex>1&&!['Aprovada','Reprovada'].includes(hom.status))hom.status='Aprovada';hom.updatedAt=new Date().toISOString();syncRecordToFirebase('homologations',hom);}
     if(stageId==='Operação'){projectTasksFor(projectId).forEach(task=>{task.status='Concluída';task.updatedAt=new Date().toISOString();syncRecordToFirebase('tasks',task);});work.progress=100;work.status='Concluída';ensureAfterSalesFromWork(work);}
-    if(previous!==stageId)executeAutomationRules('project_stage_enter',work,{stage:stageId,previous,eventAt:work.updatedAt,eventKey:`stage-${work.id}-${stageId}-${work.updatedAt}`});
+    if(previous!==stageId&&work.portalPublishedAt)publishClientPortalStatus(work,{silent:true});
     addActivity('⌁','Projeto avançou',`${work.clientName}: ${previous} → ${stageId}`);persist();syncRecordToFirebase('works',work);if(notify)toast('Etapa do projeto atualizada',`${work.clientName} → ${stageId}`);if(render){renderSidebar();if(activeView==='kanban')renderView('kanban');if(activeProjectId===projectId)renderProjectWorkspace();}
   }
 
@@ -3033,12 +3031,68 @@ body.auth-ready #loginScreen { display:none !important; }
     bindProjectWorkspaceEvents(work);
   }
 
+
+  function normalizeCpfCnpj(value=''){ return String(value||'').replace(/\D/g,''); }
+  function maskCpfCnpj(value=''){
+    const digits=normalizeCpfCnpj(value);
+    if(digits.length===11)return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/,'$1.$2.$3-$4');
+    if(digits.length===14)return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/,'$1.$2.$3/$4-$5');
+    return value||'';
+  }
+  function findClientForWork(work={}){
+    return companyRows('clients').find(client =>
+      (work.clientId && client.id===work.clientId)
+      || (work.clientDocument && normalizeCpfCnpj(client.document)===normalizeCpfCnpj(work.clientDocument))
+      || (client.name && work.clientName && client.name.toLowerCase()===String(work.clientName).toLowerCase())
+    ) || null;
+  }
+  function clientDocumentForWork(work={}){
+    const client=findClientForWork(work);
+    return normalizeCpfCnpj(work.clientDocument||work.document||client?.document||'');
+  }
+  function clientPortalUrl(cpf=''){
+    const base=(location.origin&&location.origin!=='null')?`${location.origin}${location.pathname.replace(/[^/]*$/,'')}`:location.href.replace(/[^/]*$/,'');
+    return `${base}cliente.html${cpf?`?cpf=${encodeURIComponent(normalizeCpfCnpj(cpf))}`:''}`;
+  }
+  function buildClientPortalRecord(work){
+    const cpf=clientDocumentForWork(work);if(!cpf)return null;
+    const stage=projectStageDefinition(work.projectStage);const tasks=projectTasksFor(work.id);const docs=projectDocumentsFor(work.id);
+    const stageIndex=projectStages.findIndex(item=>item.id===stage.id);const nextStage=projectStages[stageIndex+1]?.id||'Projeto concluído';
+    return {
+      id:cpf, cpf, cpfMasked:maskCpfCnpj(cpf), companyId:state.currentCompanyId, companyName:state.company.tradeName||state.company.name||'Empresa', portalEnabled:true,
+      projectId:work.id, proposalId:work.proposalId||'', clientName:work.clientName||'', city:work.city||'', systemPower:Number(work.systemPower||0),
+      projectStage:stage.id, progress:Number(work.progress||stage.progress||0), status:work.status||stage.workStatus||'', startDate:work.startDate||'', deadline:work.deadline||'',
+      team:work.team||'', publicMessage:work.clientPortalMessage||'', nextStage,
+      stageHistory:(work.stageHistory||[]).slice(0,12).map(item=>({stage:item.stage||'',previous:item.previous||'',at:item.at||'',user:item.user||'Equipe'})),
+      tasks:tasks.map(task=>({title:task.title||'',stage:task.stage||'',status:task.status||'',assignee:task.assignee||'',dueDate:task.dueDate||'',isMilestone:Boolean(task.isMilestone)})),
+      documents:{total:docs.length, categories:[...new Set(docs.map(doc=>doc.category).filter(Boolean))]},
+      updatedAt:new Date().toISOString(), updatedBy:state.currentUser.name||state.currentUser.email||'Sistema'
+    };
+  }
+  async function publishClientPortalStatus(work,{silent=false}={}){
+    const record=buildClientPortalRecord(work);
+    if(!record){ if(!silent)toast('CPF/CNPJ não informado','Cadastre o CPF/CNPJ do cliente na obra ou no cadastro de cliente para liberar o portal.','error'); return false; }
+    if(!window.FirebaseCRM?.syncReady){ if(!silent)toast('Firebase necessário','O portal do cliente usa Firestore. Faça login e publique as regras antes de liberar o acompanhamento por CPF.','error'); return false; }
+    try{
+      await window.FirebaseCRM.saveRecord('client_project_status',record);
+      Object.assign(work,{clientDocument:record.cpf,portalPublishedAt:record.updatedAt,portalEnabled:true,portalUrl:clientPortalUrl(record.cpf),updatedAt:record.updatedAt});
+      await window.FirebaseCRM.saveRecord('works',work);
+      persist();
+      if(!silent){ renderProjectWorkspace(); toast('Portal do cliente atualizado',`O cliente pode acompanhar pelo CPF em cliente.html.`,'success'); }
+      return true;
+    }catch(error){console.error(error);if(!silent)toast('Não foi possível publicar o portal',error.message||'Verifique as regras do Firestore.','error');return false;}
+  }
+  function copyClientPortalLink(work){
+    const cpf=clientDocumentForWork(work);const link=clientPortalUrl(cpf);
+    navigator.clipboard?.writeText(link).then(()=>toast('Link copiado',link,'success')).catch(()=>toast('Link do portal',link,'info'));
+  }
+
   function renderProjectOverview(work){
     const stage=projectStageDefinition(work.projectStage);const docs=projectDocumentsFor(work.id);const tasks=projectTasksFor(work.id);const completed=tasks.filter(task=>task.status==='Concluída').length;const currentIndex=projectStages.findIndex(item=>item.id===stage.id);
     return `<div class="pipeline-summary"><div class="pipeline-pill"><span>Etapa atual</span><strong>${escapeHtml(stage.id)}</strong></div><div class="pipeline-pill"><span>Progresso</span><strong>${number(work.progress)}%</strong></div><div class="pipeline-pill"><span>Tarefas concluídas</span><strong>${completed}/${tasks.length}</strong></div><div class="pipeline-pill"><span>Documentos</span><strong>${docs.length}</strong></div></div>
       <div class="project-stage-track">${projectStages.map((item,index)=>`<div class="project-stage-step ${index<currentIndex?'done':index===currentIndex?'current':''}"><strong>${index<currentIndex?'✓ ':index===currentIndex?'● ':''}${escapeHtml(item.id)}</strong><span>${escapeHtml(item.defaultTask)}</span></div>`).join('')}</div>
-      <div class="project-overview-grid" style="margin-top:16px"><section class="card"><div class="card-head"><div><h3>Dados do projeto</h3><p>Informações operacionais da venda.</p></div><button class="btn btn-ghost btn-sm" data-project-edit type="button">Editar cadastro</button></div><div class="card-body"><div class="detail-grid"><div class="detail-item"><span>Cliente</span><strong>${escapeHtml(work.clientName)}</strong></div><div class="detail-item"><span>Cidade</span><strong>${escapeHtml(work.city||'—')}</strong></div><div class="detail-item"><span>Potência</span><strong>${number(work.systemPower,2)} kWp</strong></div><div class="detail-item"><span>Equipe</span><strong>${escapeHtml(work.team||'A definir')}</strong></div><div class="detail-item"><span>Início</span><strong>${dateBR(work.startDate)}</strong></div><div class="detail-item"><span>Prazo</span><strong>${dateBR(work.deadline)}</strong></div></div><div class="notice" style="margin-top:12px">${escapeHtml(work.notes||'Sem observações.')}</div></div></section>
-      <section class="card"><div class="card-head"><div><h3>Ações rápidas</h3><p>Continue o fluxo pós-venda.</p></div></div><div class="card-body" style="display:grid;gap:9px"><button class="btn btn-primary" data-project-go="kanban" type="button">Abrir Kanban do projeto</button><button class="btn btn-secondary" data-project-notify-stage type="button">Avisar cliente sobre esta etapa</button><button class="btn btn-secondary" data-project-go="documents" type="button">Adicionar documentação</button><label class="field"><span>Avançar etapa</span><select id="workspaceStageSelect">${projectStages.map(item=>`<option value="${attr(item.id)}" ${item.id===stage.id?'selected':''}>${escapeHtml(item.id)}</option>`).join('')}</select></label></div></section></div>`;
+      <div class="project-overview-grid" style="margin-top:16px"><section class="card"><div class="card-head"><div><h3>Dados do projeto</h3><p>Informações operacionais da venda.</p></div><button class="btn btn-ghost btn-sm" data-project-edit type="button">Editar cadastro</button></div><div class="card-body"><div class="detail-grid"><div class="detail-item"><span>Cliente</span><strong>${escapeHtml(work.clientName)}</strong></div><div class="detail-item"><span>CPF/CNPJ</span><strong>${escapeHtml(maskCpfCnpj(clientDocumentForWork(work))||'—')}</strong></div><div class="detail-item"><span>Cidade</span><strong>${escapeHtml(work.city||'—')}</strong></div><div class="detail-item"><span>Potência</span><strong>${number(work.systemPower,2)} kWp</strong></div><div class="detail-item"><span>Equipe</span><strong>${escapeHtml(work.team||'A definir')}</strong></div><div class="detail-item"><span>Início</span><strong>${dateBR(work.startDate)}</strong></div><div class="detail-item"><span>Prazo</span><strong>${dateBR(work.deadline)}</strong></div></div><div class="notice" style="margin-top:12px">${escapeHtml(work.notes||'Sem observações.')}</div></div></section>
+      <section class="card"><div class="card-head"><div><h3>Ações rápidas</h3><p>Continue o fluxo pós-venda.</p></div></div><div class="card-body" style="display:grid;gap:9px"><button class="btn btn-primary" data-project-go="kanban" type="button">Abrir Kanban do projeto</button><button class="btn btn-secondary" data-client-portal-publish type="button">Publicar status no portal</button><button class="btn btn-ghost" data-client-portal-copy type="button">Copiar link do cliente</button><button class="btn btn-secondary" data-project-go="documents" type="button">Adicionar documentação</button><label class="field"><span>Avançar etapa</span><select id="workspaceStageSelect">${projectStages.map(item=>`<option value="${attr(item.id)}" ${item.id===stage.id?'selected':''}>${escapeHtml(item.id)}</option>`).join('')}</select></label></div></section></div>`;
   }
 
   function renderSingleProjectKanban(work){
@@ -3073,7 +3127,8 @@ body.auth-ready #loginScreen { display:none !important; }
     document.querySelectorAll('[data-project-tab]').forEach(button=>button.addEventListener('click',()=>{projectWorkspaceTab=button.dataset.projectTab;projectTaskEditor=null;renderProjectWorkspace();}));
     document.querySelectorAll('[data-project-go]').forEach(button=>button.addEventListener('click',()=>{projectWorkspaceTab=button.dataset.projectGo;renderProjectWorkspace();}));
     document.querySelector('[data-project-edit]')?.addEventListener('click',()=>{closeModal('projectWorkspaceModal');openEntityModal('works',work.id);});
-    document.querySelector('[data-project-notify-stage]')?.addEventListener('click',()=>notifyProjectStageNow(work));
+    document.querySelector('[data-client-portal-publish]')?.addEventListener('click',()=>publishClientPortalStatus(work));
+    document.querySelector('[data-client-portal-copy]')?.addEventListener('click',()=>copyClientPortalLink(work));
     document.getElementById('workspaceStageSelect')?.addEventListener('change',event=>updateProjectStage(work.id,event.target.value,{render:true}));
     document.querySelectorAll('[data-add-project-task]').forEach(button=>button.addEventListener('click',()=>{projectTaskEditor={id:null,stage:button.dataset.addProjectTask};renderProjectWorkspace();}));
     document.querySelectorAll('[data-edit-project-task]').forEach(button=>button.addEventListener('click',()=>{projectTaskEditor={id:button.dataset.editProjectTask};renderProjectWorkspace();}));
@@ -3092,13 +3147,13 @@ body.auth-ready #loginScreen { display:none !important; }
 
   function bindProjectTaskDragDrop(work){
     let dragged=null;document.querySelectorAll('[data-project-task-id]').forEach(card=>{card.addEventListener('dragstart',event=>{if(event.target.closest('select,button')){event.preventDefault();return;}dragged=card.dataset.projectTaskId;card.classList.add('dragging');});card.addEventListener('dragend',()=>card.classList.remove('dragging'));});
-    document.querySelectorAll('.project-task-column').forEach(column=>{column.addEventListener('dragover',event=>{event.preventDefault();column.classList.add('drag-over');});column.addEventListener('dragleave',()=>column.classList.remove('drag-over'));column.addEventListener('drop',event=>{event.preventDefault();column.classList.remove('drag-over');const task=projectTasksFor(work.id).find(item=>item.id===dragged);if(task){task.stage=column.dataset.taskStage;task.updatedAt=new Date().toISOString();recalculateProject(work);persist();syncRecordToFirebase('tasks',task);syncRecordToFirebase('works',work);renderProjectWorkspace();toast('Tarefa movida',task.stage);}});});
+    document.querySelectorAll('.project-task-column').forEach(column=>{column.addEventListener('dragover',event=>{event.preventDefault();column.classList.add('drag-over');});column.addEventListener('dragleave',()=>column.classList.remove('drag-over'));column.addEventListener('drop',event=>{event.preventDefault();column.classList.remove('drag-over');const task=projectTasksFor(work.id).find(item=>item.id===dragged);if(task){task.stage=column.dataset.taskStage;task.updatedAt=new Date().toISOString();recalculateProject(work);persist();syncRecordToFirebase('tasks',task);syncRecordToFirebase('works',work);if(work.portalPublishedAt)publishClientPortalStatus(work,{silent:true});renderProjectWorkspace();toast('Tarefa movida',task.stage);}});});
   }
 
   function saveProjectTask(event){
     event.preventDefault();if(!hasPermission('works',projectTaskEditor?.id?'edit':'create')){denyPermission('works',projectTaskEditor?.id?'edit':'create');return;}const work=getCompanyRecord('works',activeProjectId);if(!work)return;const values=Object.fromEntries(new FormData(event.currentTarget).entries());let task=projectTaskEditor?.id?projectTasksFor(work.id).find(item=>item.id===projectTaskEditor.id):null;
     if(task)Object.assign(task,values,{updatedAt:new Date().toISOString()});else{task={id:newId('task'),companyId:state.currentCompanyId,projectId:work.id,clientName:work.clientName,...values,isMilestone:false,createdAt:todayISO(),updatedAt:new Date().toISOString()};state.tasks.unshift(task);}
-    recalculateProject(work);projectTaskEditor=null;persist();syncRecordToFirebase('tasks',task);syncRecordToFirebase('works',work);renderProjectWorkspace();toast('Tarefa salva',task.title);
+    recalculateProject(work);projectTaskEditor=null;persist();syncRecordToFirebase('tasks',task);syncRecordToFirebase('works',work);if(work.portalPublishedAt)publishClientPortalStatus(work,{silent:true});renderProjectWorkspace();toast('Tarefa salva',task.title);
   }
 
   function updateProjectTaskStatus(taskId,status){
@@ -3110,21 +3165,21 @@ body.auth-ready #loginScreen { display:none !important; }
     if(status==='Concluída'&&currentTasks.length&&currentTasks.every(item=>item.status==='Concluída')&&currentIndex<projectStages.length-1){
       updateProjectStage(work.id,projectStages[currentIndex+1].id,{render:false,notify:false});
     }else recalculateProject(work);
-    if(previousStatus!=='Concluída'&&status==='Concluída')executeAutomationRules('project_task_completed',work,{stage:task.stage,taskTitle:task.title,eventKey:`task-${task.id}-${task.updatedAt}`});
-    persist();syncRecordToFirebase('tasks',task);syncRecordToFirebase('works',work);renderProjectWorkspace();
+    if(work.portalPublishedAt)publishClientPortalStatus(work,{silent:true});
+    persist();syncRecordToFirebase('tasks',task);syncRecordToFirebase('works',work);if(work.portalPublishedAt)publishClientPortalStatus(work,{silent:true});renderProjectWorkspace();
   }
 
   function deleteProjectTask(taskId){
     if(!hasPermission('works','delete')){denyPermission('works','delete');return;}
-    const task=projectTasksFor(activeProjectId).find(item=>item.id===taskId);if(!task||task.isMilestone)return;if(!confirm(`Excluir a tarefa “${task.title}”?`))return;state.tasks=state.tasks.filter(item=>item.id!==taskId);const work=getCompanyRecord('works',activeProjectId);recalculateProject(work);persist();window.FirebaseCRM?.syncReady&&window.FirebaseCRM.deleteRecord('tasks',taskId).catch(console.warn);renderProjectWorkspace();toast('Tarefa excluída','','info');
+    const task=projectTasksFor(activeProjectId).find(item=>item.id===taskId);if(!task||task.isMilestone)return;if(!confirm(`Excluir a tarefa “${task.title}”?`))return;state.tasks=state.tasks.filter(item=>item.id!==taskId);const work=getCompanyRecord('works',activeProjectId);recalculateProject(work);persist();window.FirebaseCRM?.syncReady&&window.FirebaseCRM.deleteRecord('tasks',taskId).catch(console.warn);if(work.portalPublishedAt)publishClientPortalStatus(work,{silent:true});renderProjectWorkspace();toast('Tarefa excluída','','info');
   }
 
   async function uploadProjectDocuments(event,work){
     event.preventDefault();if(!hasPermission('projectDocuments','create')){denyPermission('projectDocuments','create');return;}const form=event.currentTarget;const fd=new FormData(form);const files=[...(form.elements.files.files||[])];if(!files.length){toast('Selecione pelo menos um arquivo','','error');return;}const button=form.querySelector('button[type=submit]');button.disabled=true;const old=button.textContent;let added=0;
     try{for(const file of files){if(file.size>20*1024*1024){toast('Arquivo ignorado',`${file.name} excede 20 MB.`,'error');continue;}const doc={id:newId('doc'),companyId:state.currentCompanyId,projectId:work.id,proposalId:work.proposalId||'',clientName:work.clientName,name:file.name,fileName:file.name,mimeType:file.type||'application/octet-stream',size:file.size,category:fd.get('category'),stage:fd.get('stage'),notes:fd.get('notes')||'',uploadedBy:state.currentUser.name,uploadedAt:new Date().toISOString(),storage:'indexeddb',url:''};button.textContent=`Enviando ${added+1}/${files.length}...`;
       if(window.FirebaseCRM?.syncReady){try{doc.url=await window.FirebaseCRM.uploadFile(state.currentCompanyId,`projects/${work.id}/documents`,file,file.name);doc.storage='firebase';}catch(error){console.warn('Upload Firebase falhou, usando armazenamento local:',error);await ProjectFileDB.put(doc.id,file);}}else await ProjectFileDB.put(doc.id,file);
-      state.projectDocuments.unshift(doc);syncRecordToFirebase('projectDocuments',doc);executeAutomationRules('project_document_added',work,{stage:doc.stage,documentName:doc.name,eventKey:`document-${doc.id}`});added++;}
-      persist();addActivity('▤','Documentação adicionada',`${work.clientName} · ${added} arquivo(s)`);renderProjectWorkspace();toast('Documentação incluída',`${added} arquivo(s) adicionado(s) ao projeto.`);
+      state.projectDocuments.unshift(doc);syncRecordToFirebase('projectDocuments',doc);added++;}
+      persist();if(work.portalPublishedAt)publishClientPortalStatus(work,{silent:true});addActivity('▤','Documentação adicionada',`${work.clientName} · ${added} arquivo(s)`);renderProjectWorkspace();toast('Documentação incluída',`${added} arquivo(s) adicionado(s) ao projeto.`);
     }catch(error){console.error(error);toast('Falha ao armazenar arquivo',error.message||'Não foi possível incluir a documentação.','error');}finally{button.disabled=false;button.textContent=old;}
   }
 
@@ -3223,7 +3278,7 @@ body.auth-ready #loginScreen { display:none !important; }
       <label class="field"><span>Forma de execução</span><select name="execution"><option value="approval" ${rule.execution==='approval'?'selected':''}>Colocar na fila para aprovação</option><option value="automatic" ${rule.execution==='automatic'?'selected':''}>Enviar automaticamente pelo backend</option></select></label>
       <label class="field"><span>Atraso após o evento (minutos)</span><input name="delayMinutes" type="number" min="0" value="${attr(rule.delayMinutes||0)}"></label>
       <label class="field"><span>Antecedência / inatividade (dias)</span><input name="thresholdDays" type="number" min="1" value="${attr(rule.thresholdDays||3)}"></label>
-      <label class="checkbox-row"><input name="enabled" type="checkbox" ${rule.enabled?'checked':''}><span>Regra ativa</span></label><label class="checkbox-row"><input name="useAI" type="checkbox" ${rule.useAI?'checked':''}><span>Usar IA para adaptar o texto antes do envio</span></label>
+      <label class="checkbox-row"><input name="enabled" type="checkbox" ${rule.enabled?'checked':''}><span>Regra ativa</span></label><label class="checkbox-row"><input name="useAI" type="checkbox" ${rule.useAI?'checked':''}><span>Recurso removido nesta versão</span></label>
       <label class="field full"><span>Assunto do e-mail / título</span><input name="subject" value="${attr(rule.subject||'')}"></label>
       <label class="field full"><span>Mensagem *</span><textarea id="automationRuleMessage" name="message" required>${escapeHtml(rule.message||'')}</textarea></label></div>
       <div class="rule-variable-row"><span>Inserir variável:</span>${automationRuleVariables.map(([token,label])=>`<button class="rule-variable-chip" data-insert-rule-variable="${attr(token)}" type="button" title="${attr(label)}">${escapeHtml(token)}</button>`).join('')}</div>
@@ -3233,25 +3288,11 @@ body.auth-ready #loginScreen { display:none !important; }
 
   function renderAutomationRuleCard(rule){
     const stage=rule.stage||'Qualquer etapa';const mode=rule.execution==='automatic'?'Automática':'Com aprovação';
-    return `<article class="automation-rule-card"><div class="automation-rule-head"><div><span class="status ${rule.enabled?'green':'gray'}">${rule.enabled?'Ativa':'Pausada'}</span><h3>${escapeHtml(rule.name)}</h3></div><label class="switch"><input type="checkbox" data-rule-toggle="${rule.id}" ${rule.enabled?'checked':''}><span></span></label></div><p>${escapeHtml(automationTriggerLabel(rule.trigger))}</p><div class="automation-rule-meta"><span>${escapeHtml(stage)}</span><span>${rule.channel==='whatsapp'?'WhatsApp':rule.channel==='email'?'E-mail':'Interno'}</span><span>${mode}</span>${rule.useAI?'<span>✦ Com IA</span>':''}</div><div class="automation-rule-preview">${escapeHtml(rule.message||'').slice(0,180)}${String(rule.message||'').length>180?'…':''}</div><div class="automation-rule-actions"><button class="btn btn-secondary btn-sm" data-test-rule="${rule.id}" type="button">Testar</button><button class="btn btn-ghost btn-sm" data-edit-rule="${rule.id}" type="button">Editar</button><button class="btn btn-ghost btn-sm" data-duplicate-rule="${rule.id}" type="button">Duplicar</button><button class="btn btn-danger btn-sm" data-delete-rule="${rule.id}" type="button">Excluir</button></div></article>`;
+    return `<article class="automation-rule-card"><div class="automation-rule-head"><div><span class="status ${rule.enabled?'green':'gray'}">${rule.enabled?'Ativa':'Pausada'}</span><h3>${escapeHtml(rule.name)}</h3></div><label class="switch"><input type="checkbox" data-rule-toggle="${rule.id}" ${rule.enabled?'checked':''}><span></span></label></div><p>${escapeHtml(automationTriggerLabel(rule.trigger))}</p><div class="automation-rule-meta"><span>${escapeHtml(stage)}</span><span>${rule.channel==='whatsapp'?'WhatsApp':rule.channel==='email'?'E-mail':'Interno'}</span><span>${mode}</span></div><div class="automation-rule-preview">${escapeHtml(rule.message||'').slice(0,180)}${String(rule.message||'').length>180?'…':''}</div><div class="automation-rule-actions"><button class="btn btn-secondary btn-sm" data-test-rule="${rule.id}" type="button">Testar</button><button class="btn btn-ghost btn-sm" data-edit-rule="${rule.id}" type="button">Editar</button><button class="btn btn-ghost btn-sm" data-duplicate-rule="${rule.id}" type="button">Duplicar</button><button class="btn btn-danger btn-sm" data-delete-rule="${rule.id}" type="button">Excluir</button></div></article>`;
   }
-
   function renderAutomations(){
-    const a=state.automations;const jobs=companyRows('automationQueue');const rules=companyRows('automationRules');
-    const cards=[
-      ['whatsappLead','WhatsApp automático','Envie mensagem de boas-vindas e solicitação de fatura assim que o lead entrar.'],
-      ['emailProposal','E-mail de proposta','Prepare a comunicação da proposta e registre o envio.'],
-      ['followup','Follow-up automático','Crie retornos para propostas sem resposta após 3 dias.'],
-      ['reminders','Lembretes internos','Notifique responsáveis sobre obras, homologações e prazos.'],
-      ['collections','Cobranças automáticas','Envie lembretes para receitas vencidas.'],
-      ['nps','Pesquisa NPS','Solicite uma avaliação periódica aos clientes ativos.']
-    ];
-    return `${pageHead('Automações & Inteligência Artificial','Crie regras próprias para avisar clientes e equipes em cada acontecimento do projeto.',`<button class="btn btn-ghost" data-action="automation-log">Histórico</button><button class="btn btn-ghost" data-action="automation-outbox">Fila (${jobs.filter(j=>j.status==='Pendente').length})</button><button class="btn btn-secondary" data-action="process-automations">Processar regras</button><button class="btn btn-primary" data-new-automation-rule type="button">＋ Nova regra</button>`)}
-      <div class="pipeline-summary"><div class="pipeline-pill"><span>Regras personalizadas</span><strong>${rules.length}</strong></div><div class="pipeline-pill"><span>Regras ativas</span><strong>${rules.filter(r=>r.enabled).length}</strong></div><div class="pipeline-pill"><span>Pendentes na fila</span><strong>${jobs.filter(j=>j.status==='Pendente').length}</strong></div><div class="pipeline-pill"><span>Último processamento</span><strong>${a.lastRunAt?dateTimeBR(a.lastRunAt):'Nunca'}</strong></div></div>
-      ${renderAutomationRuleEditor()}
-      <section class="card automation-rules-section"><div class="card-head"><div><h3>Regras inteligentes personalizadas</h3><p>Exemplo: ao entrar em Homologação, avisar o cliente pelo WhatsApp.</p></div><div class="header-actions"><button class="btn btn-ghost btn-sm" data-rule-preset="stage" type="button">Modelo: mudança de etapa</button><button class="btn btn-ghost btn-sm" data-rule-preset="installation" type="button">Modelo: instalação</button></div></div><div class="card-body"><div class="automation-rule-grid">${rules.length?rules.map(renderAutomationRuleCard).join(''):'<div class="empty-state"><strong>Nenhuma regra personalizada</strong>Crie uma regra para avisar automaticamente o cliente quando o projeto mudar de etapa.</div>'}</div></div></section>
-      <section class="card" style="margin-top:16px"><div class="card-head"><div><h3>Automações padrão</h3><p>Recursos gerais do CRM que podem ser ativados ou pausados.</p></div></div><div class="card-body"><div class="automation-grid">${cards.map(([key,title,desc])=>`<article class="automation-card"><div class="automation-card-top"><h3>${title}</h3><label class="switch"><input type="checkbox" data-automation="${key}" ${a[key]?'checked':''}><span></span></label></div><p>${desc}</p><span class="status ${a[key]?'green':'gray'}">${a[key]?'Ativa':'Inativa'}</span></article>`).join('')}</div></div></section>
-      <section class="card" style="margin-top:16px"><div class="card-head"><div><h3>Assistente OpenAI</h3><p>Gere textos, analise faturas e sugira o sistema ideal com segurança no backend.</p></div><span class="status ${window.FirebaseCRM?.syncReady?'green':'yellow'}">${window.FirebaseCRM?.syncReady?'Backend disponível':'Modo local'}</span></div><div class="card-body"><div class="ai-console"><div><div class="ai-prompts"><button class="ai-prompt" data-ai-prompt="Crie uma mensagem comercial curta para um lead que pediu orçamento de energia solar.">Mensagem de primeiro contato</button><button class="ai-prompt" data-ai-prompt="Crie um follow-up persuasivo para uma proposta solar enviada há 3 dias.">Follow-up de proposta</button><button class="ai-prompt" data-ai-prompt="Explique de forma simples as vantagens do sistema fotovoltaico para um cliente residencial.">Explicação ao cliente</button><button class="ai-prompt" data-ai-prompt="Crie uma resposta profissional para um cliente preocupado com o prazo de homologação.">Resposta sobre homologação</button></div><label class="field" style="margin-top:12px"><span>Prompt personalizado</span><textarea id="customAiPrompt" placeholder="Descreva o texto ou análise desejada..."></textarea></label><button class="btn btn-primary" data-action="run-ai" style="margin-top:10px;width:100%">✦ Gerar com IA</button></div><div id="aiOutput" class="ai-output">Selecione um modelo de prompt ou escreva uma solicitação.\n\nSem Firebase, o restante do CRM funciona localmente. A IA real exige uma Cloud Function com chave protegida.</div></div></div></section>`;
+    return `${pageHead('Automações removidas','Esta versão não possui envio de mensagens automáticas por status de projeto. Use o Portal do Cliente para consulta por CPF.')}
+      <div class="empty-state card"><strong>Recurso removido</strong>As atualizações do projeto agora são consultadas pelo cliente em <code>cliente.html</code>, usando CPF/CNPJ.</div>`;
   }
 
   function bindViewEvents(view){
@@ -3317,8 +3358,8 @@ body.auth-ready #loginScreen { display:none !important; }
       'mark-paid':['financial','approve'],'open-project':['works','view'],'project-documents':['projectDocuments','view'],
       'edit-proposal':['proposals','edit'],'preview-proposal':['proposals','view'],'send-proposal':['proposals','approve'],'duplicate-proposal':['proposals','create'],'delete-proposal':['proposals','delete'],
       'equipment-bank':['proposals','view'],'export-backup':['settings','export'],'export-csv':[collectionModule,'export'],'send-collections':['financial','approve'],
-      'run-nps':['aftersales','approve'],'automation-log':['automations','view'],'automation-outbox':['automations','view'],'process-automations':['automations','approve'],
-      'test-automation':['automations','approve'],'run-ai':['automations','approve'],'print-report':['reports','export']
+      'run-nps':['aftersales','approve'],'automation-log':['view'],'automation-outbox':['view'],'process-automations':['approve'],
+      'test-automation':['approve'],'run-ai':['approve'],'print-report':['reports','export']
     };
     return map[action]||null;
   }
@@ -3352,7 +3393,6 @@ body.auth-ready #loginScreen { display:none !important; }
       'automation-outbox':()=>showAutomationOutbox(),
       'process-automations':()=>processLocalAutomations(true),
       'test-automation':testAutomation,
-      'run-ai':runAI,
       'print-report':()=>window.print()
     };
     actions[action]?.();
@@ -3392,6 +3432,7 @@ body.auth-ready #loginScreen { display:none !important; }
     }
     if(collection==='works'){
       record.projectStage=normalizeProjectStage(record.projectStage||previous?.projectStage||record.status);
+      record.clientDocument=record.clientDocument||previous?.clientDocument||clientDocumentForWork(record);
       const definition=projectStageDefinition(record.projectStage);record.progress=clamp(record.progress||definition.progress,0,100);record.status=record.status||definition.workStatus;
     }
     if(collection==='financial'&&record.status==='Pago')record.paidAt=record.paidAt||todayISO();
@@ -3406,6 +3447,7 @@ body.auth-ready #loginScreen { display:none !important; }
       const saved=state.works.find(item=>item.id===record.id);
       if(previous&&normalizeProjectStage(previous.projectStage)!==normalizeProjectStage(saved.projectStage))updateProjectStage(saved.id,saved.projectStage,{render:false,notify:false});
       else ensureProjectStructure(saved);
+      if(saved.portalPublishedAt)publishClientPortalStatus(saved,{silent:true});
       if(saved.status==='Concluída'||saved.projectStage==='Operação')ensureAfterSalesFromWork(saved);
     }
     addActivity('✓',`${schema.title} ${id?'atualizado':'criado'}`,record.name||record.clientName||record.subject||record.description||record.id);
@@ -3640,7 +3682,7 @@ body.auth-ready #loginScreen { display:none !important; }
       </div>${nav}`;
     if(step===1)return `
       <div class="form-section">${heading('Importar conta de energia','O sistema lê o texto do PDF e tenta identificar os principais campos.')}
-        <div class="grid grid-2"><label class="upload-drop"><div><strong>Importar PDF da fatura</strong><span>${p.billFileName?`Arquivo: ${escapeHtml(p.billFileName)}`:'Arraste ou selecione a conta de energia.'}</span><input id="energyBillInput" type="file" accept="application/pdf" style="margin-top:10px"></div></label><div><div class="notice ${window.FirebaseCRM?.syncReady?'success':'warning'}">${window.FirebaseCRM?.syncReady?'Backend conectado: a IA validará texto e imagens das primeiras páginas.':'A extração local funciona sem backend. Para faturas digitalizadas, publique a função Firebase e configure a OpenAI.'}</div><button id="aiBillAnalyzeBtn" class="btn btn-secondary" type="button" style="margin-top:10px;width:100%">✦ Analisar dados com IA</button>${p.billAnalysis?`<div class="notice" style="margin-top:10px">Última análise: <strong>${p.billAnalysis.source==='openai'?'OpenAI':'local'}</strong>${p.billAnalysis.confidence?` · ${Math.round(p.billAnalysis.confidence*100)}% de confiança`:''}</div>`:''}</div></div>
+        <div class="grid grid-2"><label class="upload-drop"><div><strong>Importar PDF da fatura</strong><span>${p.billFileName?`Arquivo: ${escapeHtml(p.billFileName)}`:'Arraste ou selecione a conta de energia.'}</span><input id="energyBillInput" type="file" accept="application/pdf" style="margin-top:10px"></div></label><div><div class="notice success">A versão atual usa extração local da fatura, sem backend externo.</div><button id="billLocalAnalyzeBtn" class="btn btn-secondary" type="button" style="margin-top:10px;width:100%">↻ Reaplicar extração local</button>${p.billAnalysis?`<div class="notice" style="margin-top:10px">Última análise: <strong>local</strong>${p.billAnalysis.confidence?` · ${Math.round(p.billAnalysis.confidence*100)}% de confiança`:''}</div>`:''}</div></div>
       </div>
       <div class="form-section">${heading('Dados identificados','Revise os campos antes de continuar.')}
         <div class="form-grid">${proposalField('client.consumerUnit','Unidade consumidora','text')}${proposalField('client.className','Classe','text')}${proposalField('client.tariffGroup','Grupo tarifário','text')}${proposalField('client.distributor','Distribuidora','text')}${proposalField('currentTariff','Tarifa atual (R$/kWh)','number')}${proposalField('technical.targetCoverage','Cobertura desejada (%)','number')}</div>
@@ -3720,7 +3762,7 @@ body.auth-ready #loginScreen { display:none !important; }
     document.querySelector('[data-proposal-next]')?.addEventListener('click',()=>{if(!validateProposalStep(proposalStep))return;if(proposalStep>=proposalStepDefs.length-1)previewProposal(activeProposal);else{proposalStep++;renderProposalBuilder();}});
     document.getElementById('coverPhotoInput')?.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;activeProposal.coverPhoto=await resizeImage(file,1600,1100,.84);scheduleProposalDraftSave();renderProposalBuilder();});
     document.getElementById('energyBillInput')?.addEventListener('change',handleEnergyBillUpload);
-    document.getElementById('aiBillAnalyzeBtn')?.addEventListener('click',analyzeBillWithAI);
+    document.getElementById('billLocalAnalyzeBtn')?.addEventListener('click',analyzeBillLocally);
     document.getElementById('openCompanySettingsBtn')?.addEventListener('click',()=>openSettings('company'));
   }
 
@@ -3834,7 +3876,7 @@ body.auth-ready #loginScreen { display:none !important; }
         const content=await page.getTextContent({normalizeWhitespace:true});
         fullText+=textItemsToLines(content.items)+'\n';
         if(pageNo<=3){
-          try{activeBillAiImages.push(await renderPdfPageForAI(page));}catch(imageError){console.warn('Não foi possível preparar a página para IA:',imageError);}
+          try{activeBillAiImages.push(await renderPdfPageForAI(page));}catch(imageError){console.warn('Não foi possível preparar a página da fatura:',imageError);}
         }
       }
       activeProposal.billText=fullText.slice(0,100000);
@@ -3843,14 +3885,14 @@ body.auth-ready #loginScreen { display:none !important; }
       applyBillAnalysisResult(extracted,'local');
       renderProposalBuilder();
       if(fullText.trim().length<120){
-        toast('Fatura digitalizada detectada','O PDF possui pouco texto. Clique em “Analisar dados com IA” para ler as imagens das páginas.','info');
+        toast('Fatura digitalizada detectada','O PDF possui pouco texto selecionável. Preencha manualmente os campos que não forem identificados.','info');
       }else{
-        toast('Fatura processada',`Foram lidas ${pdf.numPages} página(s) e aplicada a extração local. Clique em IA para validar os campos.`);
+        toast('Fatura processada',`Foram lidas ${pdf.numPages} página(s) e aplicada a extração local.`);
       }
     }catch(error){
       console.error(error);activeProposal.billText='';activeBillAiImages=[];
       toast('Não foi possível ler o PDF','O arquivo pode estar protegido ou corrompido. Tente salvar uma nova cópia em PDF.','error');
-    }finally{if(btn){btn.disabled=false;btn.textContent='✦ Analisar dados com IA';}}
+    }finally{if(btn){btn.disabled=false;btn.textContent='↻ Reaplicar extração local';}}
   }
 
   function extractBillFields(text){
@@ -3883,42 +3925,17 @@ body.auth-ready #loginScreen { display:none !important; }
     if(!tariff)warnings.push('Tarifa não identificada; informe o valor manualmente.');
     return {client:{consumerUnit:uc,className,tariffGroup:group,distributor},consumerUnit:uc,className,tariffGroup:group,distributor,currentTariff:tariff,consumption,averageConsumption:average(consumption)||0,annualConsumption:sum(consumption)||0,totalAmount,confidence,warnings};
   }
-
-  async function analyzeBillWithAI(){
-    if(!activeProposal?.billText&&!activeBillAiImages.length){toast('Importe a conta primeiro','Selecione o PDF da fatura antes de iniciar a análise.','error');return;}
-    const localResult=extractBillFields(activeProposal.billText||'');applyBillAnalysisResult(localResult,'local');
-    if(!window.FirebaseCRM?.syncReady){
-      renderProposalBuilder();
-      toast('Análise local concluída','Os campos disponíveis foram preenchidos. Para a validação com OpenAI, publique a função analyzeEnergyBill e configure o segredo OPENAI_API_KEY.','info');
-      return;
-    }
-    const btn=document.getElementById('aiBillAnalyzeBtn');if(btn){btn.disabled=true;btn.textContent='Analisando com IA...';}
+  async function analyzeBillLocally(){
+    if(!activeProposal?.billText){toast('Importe a conta primeiro','Selecione o PDF da fatura antes de reaplicar a extração local.','error');return;}
+    const btn=document.getElementById('billLocalAnalyzeBtn');if(btn){btn.disabled=true;btn.textContent='Processando...';}
     try{
-      const result=await window.FirebaseCRM.callFunction('analyzeEnergyBill',{
-        companyId:state.currentCompanyId,
-        fileName:activeProposal.billFileName||'',
-        text:String(activeProposal.billText||'').slice(0,60000),
-        images:activeBillAiImages.slice(0,3),
-        localHints:localResult
-      });
-      const data=result?.data?.result||result?.data;
-      if(!data||typeof data!=='object')throw new Error('O backend respondeu sem os dados estruturados da fatura.');
-      applyBillAnalysisResult(data,'openai');
+      const localResult=extractBillFields(activeProposal.billText||'');
+      applyBillAnalysisResult(localResult,'local');
       renderProposalBuilder();
-      const confidence=Math.round(Number(data.confidence||0)*100);
-      const warningCount=Array.isArray(data.warnings)?data.warnings.length:0;
-      toast('Análise por IA concluída',`${confidence?`Confiança estimada: ${confidence}%. `:''}${warningCount?`${warningCount} ponto(s) precisam de revisão.`:'Os campos foram atualizados.'}`);
-    }catch(error){
-      console.error('Falha analyzeEnergyBill:',error);
-      renderProposalBuilder();
-      const code=String(error?.code||'');
-      let message=error?.message||'Verifique a configuração do backend.';
-      if(code.includes('not-found'))message='A função analyzeEnergyBill ainda não foi publicada. Execute o deploy da pasta functions incluída no pacote.';
-      else if(code.includes('failed-precondition'))message='A função foi publicada, mas falta configurar o segredo OPENAI_API_KEY no Firebase.';
-      else if(code.includes('resource-exhausted'))message='O limite da API foi atingido. Verifique créditos, faturamento ou limites do projeto OpenAI.';
-      else if(code.includes('deadline-exceeded'))message='A análise demorou além do limite. Tente novamente com uma fatura menor.';
-      toast('IA indisponível — extração local mantida',message,'error');
-    }finally{const current=document.getElementById('aiBillAnalyzeBtn');if(current){current.disabled=false;current.textContent='✦ Analisar dados com IA';}}
+      const warningCount=Array.isArray(localResult.warnings)?localResult.warnings.length:0;
+      toast('Extração local concluída',warningCount?`${warningCount} campo(s) precisam de revisão manual.`:'Os campos disponíveis foram preenchidos.','info');
+    }catch(error){console.error(error);toast('Falha na extração local',error.message||'Não foi possível processar a fatura.','error');}
+    finally{const current=document.getElementById('billLocalAnalyzeBtn');if(current){current.disabled=false;current.textContent='↻ Reaplicar extração local';}}
   }
 
   function upsertClientFromProposal(proposal,status='Em negociação'){
@@ -3980,7 +3997,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     let contract=companyRows('contracts').find(row=>row.proposalId===proposal.id);
     if(!contract){contract={id:newId('contract'),companyId:state.currentCompanyId,proposalId:proposal.id,clientName:proposal.client.name,value:Number(proposal.commercial.price||0),signedAt:todayISO(),status:'Assinado',paymentMethod:proposal.commercial.paymentMethod||'',notes:`Criado automaticamente após o aceite da proposta ${proposal.number}.`,createdAt:todayISO(),updatedAt:now};state.contracts.unshift(contract);}else Object.assign(contract,{status:'Assinado',signedAt:contract.signedAt||todayISO(),updatedAt:now});
     let work=companyRows('works').find(row=>row.proposalId===proposal.id);
-    if(!work){work={id:newId('work'),companyId:state.currentCompanyId,proposalId:proposal.id,clientId:client.id,clientName:proposal.client.name,city:proposal.client.city,systemPower:Number(calc.actualPower.toFixed(2)),team:'A definir',startDate:'',deadline:addDaysISO(45),projectStage:'Projeto',progress:10,status:'Planejamento',stageHistory:[{stage:'Projeto',previous:'Venda',at:now,user:state.currentUser.name}],notes:`Obra criada automaticamente a partir da proposta ${proposal.number}.`,createdAt:todayISO(),updatedAt:now};state.works.unshift(work);}
+    if(!work){work={id:newId('work'),companyId:state.currentCompanyId,proposalId:proposal.id,clientId:client.id,clientName:proposal.client.name,clientDocument:proposal.client.document||client.document||'',city:proposal.client.city,systemPower:Number(calc.actualPower.toFixed(2)),team:'A definir',startDate:'',deadline:addDaysISO(45),projectStage:'Projeto',progress:10,status:'Planejamento',stageHistory:[{stage:'Projeto',previous:'Venda',at:now,user:state.currentUser.name}],notes:`Obra criada automaticamente a partir da proposta ${proposal.number}.`,createdAt:todayISO(),updatedAt:now};state.works.unshift(work);}
     ensureProjectStructure(work);
     let homologation=companyRows('homologations').find(row=>row.proposalId===proposal.id);
     if(!homologation){homologation={id:newId('hom'),companyId:state.currentCompanyId,proposalId:proposal.id,clientName:proposal.client.name,distributor:proposal.client.distributor||'',protocol:'',engineer:'A definir',submittedAt:'',deadline:addDaysISO(30),status:'Documentação',notes:`Processo criado automaticamente após aceite da proposta ${proposal.number}.`,createdAt:todayISO(),updatedAt:now};state.homologations.unshift(homologation);}
@@ -4193,7 +4210,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     }catch(error){toast('Falha no aceite',error.message||'Não foi possível registrar.','error');}
     finally{btn.disabled=false;btn.textContent='Confirmar aceite';}
   }
-  // ---------- CONFIGURAÇÕES, FIREBASE E IA ----------
+  // ---------- CONFIGURAÇÕES E FIREBASE ----------
   function openSettings(tab='company'){
     settingsTab=tab;renderSettings();openModal('settingsModal');
   }
@@ -4733,10 +4750,10 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     const prompt=document.getElementById('customAiPrompt')?.value.trim();const output=document.getElementById('aiOutput');if(!prompt){toast('Digite uma solicitação','','error');return;}
     output.textContent='Gerando resposta...';
     if(window.FirebaseCRM?.syncReady){
-      try{const result=await window.FirebaseCRM.callFunction('generateSalesText',{companyId:state.currentCompanyId,prompt,company:{id:state.currentCompanyId,name:state.company.tradeName,city:state.company.city}});output.textContent=result?.data?.text||result?.data||'Resposta recebida sem texto.';return;}catch(error){output.textContent=`Erro no backend: ${error.message}`;return;}
+      try{const result=await window.FirebaseCRM.callFunction('generateSalesText',{prompt,company:{name:state.company.tradeName,city:state.company.city}});output.textContent=result?.data?.text||result?.data||'Resposta recebida sem texto.';return;}catch(error){output.textContent=`Erro no backend: ${error.message}`;return;}
     }
     const leadName=companyRows('leads').find(l=>!['Fechado','Perdido'].includes(l.stage))?.name||'cliente';
-    output.textContent=`Olá, ${leadName}! Tudo bem?\n\nPreparei uma análise personalizada para mostrar como a energia solar pode reduzir seus gastos e proteger você dos reajustes da tarifa. Podemos revisar juntos o consumo, o sistema ideal e as melhores condições de pagamento.\n\nEste texto foi gerado pelo modo local. Conecte o Firebase e configure a chave da OpenAI no Secret Manager para respostas reais baseadas no prompt:\n\n“${prompt}”`;
+    output.textContent=`Olá, ${leadName}! Tudo bem?\n\nPreparei uma análise personalizada para mostrar como a energia solar pode reduzir seus gastos e proteger você dos reajustes da tarifa. Podemos revisar juntos o consumo, o sistema ideal e as melhores condições de pagamento.\n\nEste texto foi gerado pelo modo local. Conecte o Firebase e use os modelos comerciais cadastrados no sistema para textos de atendimento:\n\n“${prompt}”`;
   }
 
   // Conecta o Firebase e mantém o CRM bloqueado até autenticação e perfil autorizado.
@@ -4798,7 +4815,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     return {passed:tests.every(test=>test.passed),total:tests.length,success:tests.filter(test=>test.passed).length,tests};
   }
 
-  window.SolarCRMDebug={SYSTEM_VERSION,calculateProposal,extractBillFields,normalizeState,renderProposalDocument,projectStages,projectDocumentCategories,defaultAutomationRule,executeAutomationRules,queueAutomationRule,ensureProjectStructure,ensureAllProjectStructures,updateProjectStage,runSystemSelfTests,runWorkflowSelfTests,loadFirebaseConfig,clearFirebaseConfig,firebaseApiKeyLooksValid,finishAuthenticatedSession,loadUserPermissionData,openPermissionMatrix,defaultPermissionMatrix,normalizePermissionMatrix,permissionArraysFromMatrix,hasPermission,lockSystemForAuthentication,unlockSystemAfterAuthentication,getState:()=>deepClone(state)};
+  window.SolarCRMDebug={SYSTEM_VERSION,calculateProposal,extractBillFields,normalizeState,renderProposalDocument,projectStages,projectDocumentCategories,defaultAutomationRule,executeAutomationRules,queueAutomationRule,ensureProjectStructure,ensureAllProjectStructures,updateProjectStage,runSystemSelfTests,runWorkflowSelfTests,loadFirebaseConfig,clearFirebaseConfig,firebaseApiKeyLooksValid,finishAuthenticatedSession,loadUserPermissionData,openPermissionMatrix,defaultPermissionMatrix,normalizePermissionMatrix,permissionArraysFromMatrix,hasPermission,lockSystemForAuthentication,unlockSystemAfterAuthentication,buildClientPortalRecord,publishClientPortalStatus,clientPortalUrl,getState:()=>deepClone(state)};
   document.addEventListener('DOMContentLoaded',()=>{init();autoConnectFirebase();});
 })();
 
