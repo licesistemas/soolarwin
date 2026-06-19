@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#08111f" />
-  <title>SolarCRM Pro v2.9.7 — CRM para Energia Solar</title>
+  <title>SolarCRM Pro v2.9.8 — CRM para Energia Solar</title>
   <meta name="description" content="CRM completo para empresas de energia solar com propostas profissionais, Kanban, Firebase, financeiro, obras e pós-venda." />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <style>
@@ -1053,7 +1053,7 @@ body.auth-ready #loginScreen { display:none !important; }
   <input id="backupImportInput" type="file" accept="application/json" hidden />
 
   <script>
-/* Adaptador Firebase modular — SolarCRM Pro v2.9.7. */
+/* Adaptador Firebase modular — SolarCRM Pro v2.9.8. */
 (() => {
   'use strict';
   const SDK_VERSION = '11.10.0';
@@ -1806,7 +1806,7 @@ body.auth-ready #loginScreen { display:none !important; }
   const LEGACY_FIREBASE_CONFIG_KEYS = ['solarcrm-firebase-config-v2-8','solarcrm-firebase-config-v2-7','solarcrm-firebase-config-v2-6','solarcrm-firebase-config'];
   const DEFAULT_FIREBASE_CONFIG = Object.freeze({"apiKey":"AIzaSyCYSQfnPLyV9B6osiZhsLYYrF64YLhGkMA","authDomain":"energiasolar-67b14.firebaseapp.com","databaseURL":"https://energiasolar-67b14-default-rtdb.firebaseio.com","projectId":"energiasolar-67b14","storageBucket":"energiasolar-67b14.firebasestorage.app","messagingSenderId":"394822890491","appId":"1:394822890491:web:5afc55e01902bbf142915e","functionsRegion":"southamerica-east1"});
   const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-2';
-  const SYSTEM_VERSION = '2.9.7';
+  const SYSTEM_VERSION = '2.9.8';
   let storageWarningShown = false;
   let draftSaveTimer = null;
   let firebaseLastDiagnostic = null;
@@ -1926,8 +1926,9 @@ body.auth-ready #loginScreen { display:none !important; }
     leads:'leads', clients:'clients', proposals:'proposals', contracts:'contracts', works:'works', projects:'works',
     homologations:'homologations', financial:'financial', aftersales:'aftersales', installations:'aftersales', tickets:'tickets',
     commissions:'commissions', inventory:'inventory', products:'inventory', suppliers:'inventory', teams:'teams', team_members:'teams',
-    projectDocuments:'projectDocuments', project_documents:'projectDocuments', tasks:'works', automationRules:'settings', automation_rules:'settings',
-    automationQueue:'settings', automation_queue:'settings', automationLogs:'settings', automation_logs:'settings', stockMovements:'inventory', notifications:'dashboard'
+    projectDocuments:'projectDocuments', project_documents:'projectDocuments', tasks:'works',
+    automationRules:'settings', automation_rules:'settings', automationQueue:'settings', automation_queue:'settings', automationLogs:'settings', automation_logs:'settings',
+    stockMovements:'inventory', notifications:'dashboard'
   };
 
   function emptyPermissionMatrix(){
@@ -2009,6 +2010,14 @@ body.auth-ready #loginScreen { display:none !important; }
   }
 
   function permissionModuleForCollection(collection){return permissionCollectionModules[collection]||collection;}
+
+  function currentUserIsAdmin(){
+    return state?.role==='admin' || state?.currentUser?.role==='admin' || state?.currentUser?.permission==='admin';
+  }
+
+  function canDeleteProject(){
+    return currentUserIsAdmin();
+  }
 
   function hasPermission(module,action='view'){
     const role=state?.role||state?.currentUser?.role||'seller';
@@ -2914,7 +2923,9 @@ body.auth-ready #loginScreen { display:none !important; }
     const project=collection==='works'&&hasPermission('works','view')?`<button class="btn btn-primary btn-sm" data-action="open-project" data-id="${row.id}" title="Abrir Kanban e documentos">Projeto</button>${hasPermission('projectDocuments','view')?`<button class="btn btn-secondary btn-sm btn-icon" data-action="project-documents" data-id="${row.id}" title="Documentos do projeto">▤</button>`:''}`:'';
     const view=hasPermission(module,'view')?`<button class="btn btn-ghost btn-sm btn-icon" data-action="view-entity" data-collection="${collection}" data-id="${row.id}" title="Detalhes">⌕</button>`:'';
     const edit=hasPermission(module,'edit')?`<button class="btn btn-ghost btn-sm btn-icon" data-action="edit-entity" data-collection="${collection}" data-id="${row.id}" title="Editar">✎</button>`:'';
-    const remove=hasPermission(module,'delete')?`<button class="btn btn-danger btn-sm btn-icon" data-action="delete-entity" data-collection="${collection}" data-id="${row.id}" title="Excluir">×</button>`:'';
+    const remove=collection==='works'
+      ? (canDeleteProject()?`<button class="btn btn-danger btn-sm btn-icon" data-action="delete-entity" data-collection="${collection}" data-id="${row.id}" title="Excluir projeto">×</button>`:'')
+      : (hasPermission(module,'delete')?`<button class="btn btn-danger btn-sm btn-icon" data-action="delete-entity" data-collection="${collection}" data-id="${row.id}" title="Excluir">×</button>`:'');
     return `${paid}${project}${view}${edit}${remove}`;
   }
 
@@ -3092,7 +3103,7 @@ body.auth-ready #loginScreen { display:none !important; }
     return `<div class="pipeline-summary"><div class="pipeline-pill"><span>Etapa atual</span><strong>${escapeHtml(stage.id)}</strong></div><div class="pipeline-pill"><span>Progresso</span><strong>${number(work.progress)}%</strong></div><div class="pipeline-pill"><span>Tarefas concluídas</span><strong>${completed}/${tasks.length}</strong></div><div class="pipeline-pill"><span>Documentos</span><strong>${docs.length}</strong></div></div>
       <div class="project-stage-track">${projectStages.map((item,index)=>`<div class="project-stage-step ${index<currentIndex?'done':index===currentIndex?'current':''}"><strong>${index<currentIndex?'✓ ':index===currentIndex?'● ':''}${escapeHtml(item.id)}</strong><span>${escapeHtml(item.defaultTask)}</span></div>`).join('')}</div>
       <div class="project-overview-grid" style="margin-top:16px"><section class="card"><div class="card-head"><div><h3>Dados do projeto</h3><p>Informações operacionais da venda.</p></div><button class="btn btn-ghost btn-sm" data-project-edit type="button">Editar cadastro</button></div><div class="card-body"><div class="detail-grid"><div class="detail-item"><span>Cliente</span><strong>${escapeHtml(work.clientName)}</strong></div><div class="detail-item"><span>CPF/CNPJ</span><strong>${escapeHtml(maskCpfCnpj(clientDocumentForWork(work))||'—')}</strong></div><div class="detail-item"><span>Cidade</span><strong>${escapeHtml(work.city||'—')}</strong></div><div class="detail-item"><span>Potência</span><strong>${number(work.systemPower,2)} kWp</strong></div><div class="detail-item"><span>Equipe</span><strong>${escapeHtml(work.team||'A definir')}</strong></div><div class="detail-item"><span>Início</span><strong>${dateBR(work.startDate)}</strong></div><div class="detail-item"><span>Prazo</span><strong>${dateBR(work.deadline)}</strong></div></div><div class="notice" style="margin-top:12px">${escapeHtml(work.notes||'Sem observações.')}</div></div></section>
-      <section class="card"><div class="card-head"><div><h3>Ações rápidas</h3><p>Continue o fluxo pós-venda.</p></div></div><div class="card-body" style="display:grid;gap:9px"><button class="btn btn-primary" data-project-go="kanban" type="button">Abrir Kanban do projeto</button><button class="btn btn-secondary" data-client-portal-publish type="button">Publicar status no portal</button><button class="btn btn-ghost" data-client-portal-copy type="button">Copiar link do cliente</button><button class="btn btn-secondary" data-project-go="documents" type="button">Adicionar documentação</button><label class="field"><span>Avançar etapa</span><select id="workspaceStageSelect">${projectStages.map(item=>`<option value="${attr(item.id)}" ${item.id===stage.id?'selected':''}>${escapeHtml(item.id)}</option>`).join('')}</select></label></div></section></div>`;
+      <section class="card"><div class="card-head"><div><h3>Ações rápidas</h3><p>Continue o fluxo pós-venda.</p></div></div><div class="card-body" style="display:grid;gap:9px"><button class="btn btn-primary" data-project-go="kanban" type="button">Abrir Kanban do projeto</button><button class="btn btn-secondary" data-client-portal-publish type="button">Publicar status no portal</button><button class="btn btn-ghost" data-client-portal-copy type="button">Copiar link do cliente</button><button class="btn btn-secondary" data-project-go="documents" type="button">Adicionar documentação</button>${canDeleteProject()?`<button class="btn btn-danger" data-project-delete type="button">Excluir projeto</button>`:''}<label class="field"><span>Avançar etapa</span><select id="workspaceStageSelect">${projectStages.map(item=>`<option value="${attr(item.id)}" ${item.id===stage.id?'selected':''}>${escapeHtml(item.id)}</option>`).join('')}</select></label></div></section></div>`;
   }
 
   function renderSingleProjectKanban(work){
@@ -3129,6 +3140,7 @@ body.auth-ready #loginScreen { display:none !important; }
     document.querySelector('[data-project-edit]')?.addEventListener('click',()=>{closeModal('projectWorkspaceModal');openEntityModal('works',work.id);});
     document.querySelector('[data-client-portal-publish]')?.addEventListener('click',()=>publishClientPortalStatus(work));
     document.querySelector('[data-client-portal-copy]')?.addEventListener('click',()=>copyClientPortalLink(work));
+    document.querySelector('[data-project-delete]')?.addEventListener('click',()=>deleteProject(work.id));
     document.getElementById('workspaceStageSelect')?.addEventListener('change',event=>updateProjectStage(work.id,event.target.value,{render:true}));
     document.querySelectorAll('[data-add-project-task]').forEach(button=>button.addEventListener('click',()=>{projectTaskEditor={id:null,stage:button.dataset.addProjectTask};renderProjectWorkspace();}));
     document.querySelectorAll('[data-edit-project-task]').forEach(button=>button.addEventListener('click',()=>{projectTaskEditor={id:button.dataset.editProjectTask};renderProjectWorkspace();}));
@@ -3278,7 +3290,7 @@ body.auth-ready #loginScreen { display:none !important; }
       <label class="field"><span>Forma de execução</span><select name="execution"><option value="approval" ${rule.execution==='approval'?'selected':''}>Colocar na fila para aprovação</option><option value="automatic" ${rule.execution==='automatic'?'selected':''}>Enviar automaticamente pelo backend</option></select></label>
       <label class="field"><span>Atraso após o evento (minutos)</span><input name="delayMinutes" type="number" min="0" value="${attr(rule.delayMinutes||0)}"></label>
       <label class="field"><span>Antecedência / inatividade (dias)</span><input name="thresholdDays" type="number" min="1" value="${attr(rule.thresholdDays||3)}"></label>
-      <label class="checkbox-row"><input name="enabled" type="checkbox" ${rule.enabled?'checked':''}><span>Regra ativa</span></label><label class="checkbox-row"><input name="useAI" type="checkbox" ${rule.useAI?'checked':''}><span>Recurso removido nesta versão</span></label>
+      <label class="checkbox-row"><input name="enabled" type="checkbox" ${rule.enabled?'checked':''}><span>Regra ativa</span></label><label class="checkbox-row"><input name="useAI" type="checkbox" ${rule.useAI?'checked':''}><span>Usar IA para adaptar o texto antes do envio</span></label>
       <label class="field full"><span>Assunto do e-mail / título</span><input name="subject" value="${attr(rule.subject||'')}"></label>
       <label class="field full"><span>Mensagem *</span><textarea id="automationRuleMessage" name="message" required>${escapeHtml(rule.message||'')}</textarea></label></div>
       <div class="rule-variable-row"><span>Inserir variável:</span>${automationRuleVariables.map(([token,label])=>`<button class="rule-variable-chip" data-insert-rule-variable="${attr(token)}" type="button" title="${attr(label)}">${escapeHtml(token)}</button>`).join('')}</div>
@@ -3288,10 +3300,10 @@ body.auth-ready #loginScreen { display:none !important; }
 
   function renderAutomationRuleCard(rule){
     const stage=rule.stage||'Qualquer etapa';const mode=rule.execution==='automatic'?'Automática':'Com aprovação';
-    return `<article class="automation-rule-card"><div class="automation-rule-head"><div><span class="status ${rule.enabled?'green':'gray'}">${rule.enabled?'Ativa':'Pausada'}</span><h3>${escapeHtml(rule.name)}</h3></div><label class="switch"><input type="checkbox" data-rule-toggle="${rule.id}" ${rule.enabled?'checked':''}><span></span></label></div><p>${escapeHtml(automationTriggerLabel(rule.trigger))}</p><div class="automation-rule-meta"><span>${escapeHtml(stage)}</span><span>${rule.channel==='whatsapp'?'WhatsApp':rule.channel==='email'?'E-mail':'Interno'}</span><span>${mode}</span></div><div class="automation-rule-preview">${escapeHtml(rule.message||'').slice(0,180)}${String(rule.message||'').length>180?'…':''}</div><div class="automation-rule-actions"><button class="btn btn-secondary btn-sm" data-test-rule="${rule.id}" type="button">Testar</button><button class="btn btn-ghost btn-sm" data-edit-rule="${rule.id}" type="button">Editar</button><button class="btn btn-ghost btn-sm" data-duplicate-rule="${rule.id}" type="button">Duplicar</button><button class="btn btn-danger btn-sm" data-delete-rule="${rule.id}" type="button">Excluir</button></div></article>`;
+    return `<article class="automation-rule-card"><div class="automation-rule-head"><div><span class="status ${rule.enabled?'green':'gray'}">${rule.enabled?'Ativa':'Pausada'}</span><h3>${escapeHtml(rule.name)}</h3></div><label class="switch"><input type="checkbox" data-rule-toggle="${rule.id}" ${rule.enabled?'checked':''}><span></span></label></div><p>${escapeHtml(automationTriggerLabel(rule.trigger))}</p><div class="automation-rule-meta"><span>${escapeHtml(stage)}</span><span>${rule.channel==='whatsapp'?'WhatsApp':rule.channel==='email'?'E-mail':'Interno'}</span><span>${mode}</span>${rule.useAI?'<span>✦ Com IA</span>':''}</div><div class="automation-rule-preview">${escapeHtml(rule.message||'').slice(0,180)}${String(rule.message||'').length>180?'…':''}</div><div class="automation-rule-actions"><button class="btn btn-secondary btn-sm" data-test-rule="${rule.id}" type="button">Testar</button><button class="btn btn-ghost btn-sm" data-edit-rule="${rule.id}" type="button">Editar</button><button class="btn btn-ghost btn-sm" data-duplicate-rule="${rule.id}" type="button">Duplicar</button><button class="btn btn-danger btn-sm" data-delete-rule="${rule.id}" type="button">Excluir</button></div></article>`;
   }
   function renderAutomations(){
-    return `${pageHead('Automações removidas','Esta versão não possui envio de mensagens automáticas por status de projeto. Use o Portal do Cliente para consulta por CPF.')}
+    return `${pageHead('Automações removidas','Esta versão não possui IA nem envio de mensagens automáticas por status de projeto. Use o Portal do Cliente para consulta por CPF.')}
       <div class="empty-state card"><strong>Recurso removido</strong>As atualizações do projeto agora são consultadas pelo cliente em <code>cliente.html</code>, usando CPF/CNPJ.</div>`;
   }
 
@@ -3470,7 +3482,50 @@ body.auth-ready #loginScreen { display:none !important; }
     const row=getCompanyRecord('financial',id);if(!row)return;row.status='Pago';row.paidAt=todayISO();row.updatedAt=new Date().toISOString();addActivity('R$','Pagamento confirmado',`${row.description} · ${currency(row.value)}`);persist();syncRecordToFirebase('financial',row);renderView(activeView);toast('Pagamento confirmado',currency(row.value));
   }
 
+  async function deleteProject(projectId){
+    if(!canDeleteProject()){
+      toast('Somente administrador','A exclusão de projetos é restrita ao administrador do sistema.','error');
+      return;
+    }
+    const work=getCompanyRecord('works',projectId);
+    if(!work)return;
+    const clientLabel=work.clientName||work.id;
+    const docRows=projectDocumentsFor(projectId);
+    const taskRows=projectTasksFor(projectId);
+    const afterRows=companyRows('aftersales').filter(row=>row.workId===projectId);
+    const cpf=clientDocumentForWork(work);
+    const portalWasPublished=Boolean(cpf&&work.portalPublishedAt);
+    const message=`Excluir definitivamente o projeto de ${clientLabel}?\n\nTambém serão removidos:\n- ${taskRows.length} tarefa(s) do Kanban do projeto;\n- ${docRows.length} documento(s) do dossiê;\n- ${afterRows.length} registro(s) de pós-venda vinculado(s);\n${portalWasPublished?'- status publicado no portal do cliente;\n':''}\nEsta ação só pode ser feita por administrador e não pode ser desfeita.`;
+    if(!confirm(message))return;
+    try{
+      for(const doc of docRows){
+        try{
+          if(doc.url&&window.FirebaseCRM?.syncReady)await window.FirebaseCRM.deleteFileByUrl(doc.url);
+          else await ProjectFileDB.delete(doc.id);
+        }catch(error){console.warn('Falha ao remover arquivo do projeto:',error);}
+      }
+      state.works=state.works.filter(row=>row.id!==projectId);
+      state.tasks=state.tasks.filter(row=>row.projectId!==projectId);
+      state.projectDocuments=state.projectDocuments.filter(row=>row.projectId!==projectId);
+      state.aftersales=state.aftersales.filter(row=>row.workId!==projectId);
+      if(activeProjectId===projectId){activeProjectId=null;closeModal('projectWorkspaceModal');}
+      addActivity('×','Projeto excluído',`${clientLabel} · removido por ${state.currentUser.name||state.currentUser.email||'Administrador'}`);
+      persist();renderSidebar();renderView(activeView);toast('Projeto excluído',`${clientLabel} foi removido do sistema.`,'info');
+      if(window.FirebaseCRM?.syncReady){
+        const deletions=[window.FirebaseCRM.deleteRecord('works',projectId)];
+        taskRows.forEach(row=>deletions.push(window.FirebaseCRM.deleteRecord('tasks',row.id)));
+        docRows.forEach(row=>deletions.push(window.FirebaseCRM.deleteRecord('projectDocuments',row.id)));
+        afterRows.forEach(row=>deletions.push(window.FirebaseCRM.deleteRecord('aftersales',row.id)));
+        if(portalWasPublished)deletions.push(window.FirebaseCRM.deleteRecord('client_project_status',cpf));
+        const results=await Promise.allSettled(deletions);
+        const failed=results.filter(result=>result.status==='rejected');
+        if(failed.length)toast('Exclusão local concluída',`${failed.length} item(ns) não foram removidos da nuvem. Verifique as regras do Firebase.`,'error');
+      }
+    }catch(error){console.error(error);toast('Falha ao excluir projeto',error.message||'Tente novamente.','error');}
+  }
+
   function deleteEntity(collection,id){
+    if(collection==='works'){ deleteProject(id); return; }
     if(!hasPermission(permissionModuleForCollection(collection),'delete')){denyPermission(permissionModuleForCollection(collection),'delete');return;}
     const row=(state[collection]||[]).find(r=>r.id===id); if(!row)return;
     if(!confirm(`Excluir este registro?\n\n${row.name||row.clientName||row.subject||row.description||id}`))return;
@@ -3682,7 +3737,7 @@ body.auth-ready #loginScreen { display:none !important; }
       </div>${nav}`;
     if(step===1)return `
       <div class="form-section">${heading('Importar conta de energia','O sistema lê o texto do PDF e tenta identificar os principais campos.')}
-        <div class="grid grid-2"><label class="upload-drop"><div><strong>Importar PDF da fatura</strong><span>${p.billFileName?`Arquivo: ${escapeHtml(p.billFileName)}`:'Arraste ou selecione a conta de energia.'}</span><input id="energyBillInput" type="file" accept="application/pdf" style="margin-top:10px"></div></label><div><div class="notice success">A versão atual usa extração local da fatura, sem backend externo.</div><button id="billLocalAnalyzeBtn" class="btn btn-secondary" type="button" style="margin-top:10px;width:100%">↻ Reaplicar extração local</button>${p.billAnalysis?`<div class="notice" style="margin-top:10px">Última análise: <strong>local</strong>${p.billAnalysis.confidence?` · ${Math.round(p.billAnalysis.confidence*100)}% de confiança`:''}</div>`:''}</div></div>
+        <div class="grid grid-2"><label class="upload-drop"><div><strong>Importar PDF da fatura</strong><span>${p.billFileName?`Arquivo: ${escapeHtml(p.billFileName)}`:'Arraste ou selecione a conta de energia.'}</span><input id="energyBillInput" type="file" accept="application/pdf" style="margin-top:10px"></div></label><div><div class="notice success">A versão atual usa extração local da fatura, sem IA e sem backend OpenAI.</div><button id="billLocalAnalyzeBtn" class="btn btn-secondary" type="button" style="margin-top:10px;width:100%">↻ Reaplicar extração local</button>${p.billAnalysis?`<div class="notice" style="margin-top:10px">Última análise: <strong>local</strong>${p.billAnalysis.confidence?` · ${Math.round(p.billAnalysis.confidence*100)}% de confiança`:''}</div>`:''}</div></div>
       </div>
       <div class="form-section">${heading('Dados identificados','Revise os campos antes de continuar.')}
         <div class="form-grid">${proposalField('client.consumerUnit','Unidade consumidora','text')}${proposalField('client.className','Classe','text')}${proposalField('client.tariffGroup','Grupo tarifário','text')}${proposalField('client.distributor','Distribuidora','text')}${proposalField('currentTariff','Tarifa atual (R$/kWh)','number')}${proposalField('technical.targetCoverage','Cobertura desejada (%)','number')}</div>
@@ -3876,7 +3931,7 @@ body.auth-ready #loginScreen { display:none !important; }
         const content=await page.getTextContent({normalizeWhitespace:true});
         fullText+=textItemsToLines(content.items)+'\n';
         if(pageNo<=3){
-          try{activeBillAiImages.push(await renderPdfPageForAI(page));}catch(imageError){console.warn('Não foi possível preparar a página da fatura:',imageError);}
+          try{activeBillAiImages.push(await renderPdfPageForAI(page));}catch(imageError){console.warn('Não foi possível preparar a página para IA:',imageError);}
         }
       }
       activeProposal.billText=fullText.slice(0,100000);
@@ -4210,7 +4265,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     }catch(error){toast('Falha no aceite',error.message||'Não foi possível registrar.','error');}
     finally{btn.disabled=false;btn.textContent='Confirmar aceite';}
   }
-  // ---------- CONFIGURAÇÕES E FIREBASE ----------
+  // ---------- CONFIGURAÇÕES, FIREBASE E IA ----------
   function openSettings(tab='company'){
     settingsTab=tab;renderSettings();openModal('settingsModal');
   }
@@ -4753,7 +4808,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
       try{const result=await window.FirebaseCRM.callFunction('generateSalesText',{prompt,company:{name:state.company.tradeName,city:state.company.city}});output.textContent=result?.data?.text||result?.data||'Resposta recebida sem texto.';return;}catch(error){output.textContent=`Erro no backend: ${error.message}`;return;}
     }
     const leadName=companyRows('leads').find(l=>!['Fechado','Perdido'].includes(l.stage))?.name||'cliente';
-    output.textContent=`Olá, ${leadName}! Tudo bem?\n\nPreparei uma análise personalizada para mostrar como a energia solar pode reduzir seus gastos e proteger você dos reajustes da tarifa. Podemos revisar juntos o consumo, o sistema ideal e as melhores condições de pagamento.\n\nEste texto foi gerado pelo modo local. Conecte o Firebase e use os modelos comerciais cadastrados no sistema para textos de atendimento:\n\n“${prompt}”`;
+    output.textContent=`Olá, ${leadName}! Tudo bem?\n\nPreparei uma análise personalizada para mostrar como a energia solar pode reduzir seus gastos e proteger você dos reajustes da tarifa. Podemos revisar juntos o consumo, o sistema ideal e as melhores condições de pagamento.\n\nEste texto foi gerado pelo modo local. Conecte o Firebase e configure a chave da OpenAI no Secret Manager para respostas reais baseadas no prompt:\n\n“${prompt}”`;
   }
 
   // Conecta o Firebase e mantém o CRM bloqueado até autenticação e perfil autorizado.
