@@ -1,0 +1,376 @@
+// SolarCRM Pro v2.9.7 — permissões granulares por módulo e ação
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function userPath(uid) { return /databases/$(database)/documents/users/$(uid); }
+    function myPath() { return userPath(request.auth.uid); }
+    function bootstrapPath() { return /databases/$(database)/documents/system/bootstrap; }
+
+    // Administrador de resgate: reconhecido diretamente pelo Firebase Auth.
+    // Assim, a primeira entrada não depende da existência prévia de users/{uid}.
+    function isPreapprovedAdminAuth() {
+      // O e-mail é estável mesmo se a conta for excluída e recriada com outro UID.
+      return signedIn()
+        && request.auth.token.email == 'lucas@igenergia.com.br';
+    }
+
+    function hasProfile() { return signedIn() && exists(myPath()); }
+    function profile() { return get(myPath()).data; }
+    function isActiveProfile() { return hasProfile() && profile().status == 'Ativo'; }
+    function isAdminProfile() { return isActiveProfile() && profile().role == 'admin'; }
+    function isAdmin() { return isPreapprovedAdminAuth() || isAdminProfile(); }
+    function isManager() { return isActiveProfile() && profile().role == 'manager'; }
+    function isSeller() { return isActiveProfile() && profile().role == 'seller'; }
+    function isTechnical() { return isActiveProfile() && profile().role == 'technical'; }
+    function isFinance() { return isActiveProfile() && profile().role == 'finance'; }
+    function hasCustomPermissions() {
+      return isActiveProfile() && profile().keys().hasAny([
+        'permissionsView','permissionsCreate','permissionsEdit','permissionsDelete','permissionsExport','permissionsApprove'
+      ]);
+    }
+    function legacyView(module) {
+      return isAdminProfile()
+        || (isManager() && module in ['dashboard','leads','kanban','clients','proposals','contracts','works','projectDocuments','homologations','financial','aftersales','tickets','commissions','inventory','teams','reports','automations'])
+        || (isSeller() && module in ['dashboard','leads','kanban','clients','proposals','contracts','commissions','automations'])
+        || (isTechnical() && module in ['dashboard','clients','works','projectDocuments','homologations','aftersales','tickets','inventory','teams'])
+        || (isFinance() && module in ['dashboard','clients','contracts','financial','commissions','reports']);
+    }
+    function legacyCreate(module) {
+      return isAdminProfile() || isManager()
+        || (isSeller() && module in ['leads','clients','proposals','automations'])
+        || (isTechnical() && module in ['clients','works','projectDocuments','homologations','aftersales','tickets','inventory','teams'])
+        || (isFinance() && module in ['contracts','financial','commissions']);
+    }
+    function legacyEdit(module) { return legacyCreate(module); }
+    function legacyDelete(module) {
+      return isAdminProfile() || isManager()
+        || (isTechnical() && module in ['projectDocuments','tickets']);
+    }
+    function legacyExport(module) { return legacyView(module); }
+    function legacyApprove(module) {
+      return isAdminProfile() || isManager()
+        || (isSeller() && module == 'proposals')
+        || (isTechnical() && module in ['works','homologations','tickets'])
+        || (isFinance() && module in ['financial','contracts']);
+    }
+    function hasPermission(module, action) {
+      return isAdmin() || (
+        isActiveProfile() && (
+          (hasCustomPermissions() && (
+            (action == 'view' && profile().keys().hasAny(['permissionsView']) && module in profile().permissionsView)
+            || (action == 'create' && profile().keys().hasAny(['permissionsCreate']) && module in profile().permissionsCreate)
+            || (action == 'edit' && profile().keys().hasAny(['permissionsEdit']) && module in profile().permissionsEdit)
+            || (action == 'delete' && profile().keys().hasAny(['permissionsDelete']) && module in profile().permissionsDelete)
+            || (action == 'export' && profile().keys().hasAny(['permissionsExport']) && module in profile().permissionsExport)
+            || (action == 'approve' && profile().keys().hasAny(['permissionsApprove']) && module in profile().permissionsApprove)
+          ))
+          || (!hasCustomPermissions() && (
+            (action == 'view' && legacyView(module))
+            || (action == 'create' && legacyCreate(module))
+            || (action == 'edit' && legacyEdit(module))
+            || (action == 'delete' && legacyDelete(module))
+            || (action == 'export' && legacyExport(module))
+            || (action == 'approve' && legacyApprove(module))
+          ))
+        )
+      );
+    }
+    function belongsTo(companyId) {
+      return (isPreapprovedAdminAuth() && companyId == 'company-demo')
+        || (isActiveProfile() && companyId in profile().companyIds);
+    }
+    function sameCompanyOnUpdate() { return request.resource.data.companyId == resource.data.companyId; }
+    function canReadRecord() { return belongsTo(resource.data.companyId); }
+    function canCreateRecord() { return belongsTo(request.resource.data.companyId); }
+    function canUpdateRecord() { return belongsTo(resource.data.companyId) && sameCompanyOnUpdate(); }
+
+    match /users/{userId} {
+      allow get: if signedIn() && (
+        request.auth.uid == userId
+        || (isPreapprovedAdminAuth() && resource.data.companyId == 'company-demo')
+        || (isAdminProfile() && resource.data.companyId in profile().companyIds)
+      );
+      allow list: if request.query.limit <= 200 && (
+        (isPreapprovedAdminAuth() && resource.data.companyId == 'company-demo')
+        || (isAdminProfile() && resource.data.companyId in profile().companyIds)
+      );
+      allow create: if (
+        isPreapprovedAdminAuth()
+        && userId == request.auth.uid
+        && request.resource.data.email == 'lucas@igenergia.com.br'
+        && request.resource.data.role == 'admin'
+        && request.resource.data.permission == 'admin'
+        && request.resource.data.status == 'Ativo'
+        && request.resource.data.companyId == 'company-demo'
+        && request.resource.data.companyIds.hasAny(['company-demo'])
+      ) || (
+        isAdminProfile()
+        && request.resource.data.companyIds.hasAny(profile().companyIds)
+      );
+      allow update: if (
+        // Autorreparo do próprio administrador, mesmo quando o documento antigo está incompleto.
+        isPreapprovedAdminAuth()
+        && userId == request.auth.uid
+        && request.resource.data.email == 'lucas@igenergia.com.br'
+        && request.resource.data.role == 'admin'
+        && request.resource.data.permission == 'admin'
+        && request.resource.data.status == 'Ativo'
+        && request.resource.data.companyId == 'company-demo'
+        && request.resource.data.companyIds.hasAny(['company-demo'])
+      ) || (
+        // Administração dos demais usuários da empresa.
+        isPreapprovedAdminAuth()
+        && userId != request.auth.uid
+        && resource.data.companyId == 'company-demo'
+        && request.resource.data.companyId == 'company-demo'
+        && request.resource.data.companyIds.hasAny(['company-demo'])
+      ) || (
+        isAdminProfile()
+        && resource.data.companyIds.hasAny(profile().companyIds)
+        && request.resource.data.companyIds.hasAny(profile().companyIds)
+      ) || (
+        signedIn() && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'name','avatar','photoURL','phone','jobTitle','team','region','bio','updatedAt','updatedBy'
+        ])
+      );
+      allow delete: if request.auth.uid != userId && (
+        (isPreapprovedAdminAuth() && resource.data.companyId == 'company-demo')
+        || (isAdminProfile() && resource.data.companyIds.hasAny(profile().companyIds))
+      );
+    }
+
+    match /access_requests/{userId} {
+      allow create: if (
+        signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.uid == userId
+        && request.resource.data.companyId is string
+        && request.resource.data.status == 'Pendente'
+      ) || (
+        isPreapprovedAdminAuth()
+        && userId == request.auth.uid
+        && request.resource.data.companyId == 'company-demo'
+        && request.resource.data.status == 'Aprovado'
+      );
+      allow get: if signedIn() && (
+        request.auth.uid == userId
+        || (isPreapprovedAdminAuth() && resource.data.companyId == 'company-demo')
+        || (isAdminProfile() && resource.data.companyId in profile().companyIds)
+      );
+      allow list: if request.query.limit <= 200 && (
+        (isPreapprovedAdminAuth() && resource.data.companyId == 'company-demo')
+        || (isAdminProfile() && resource.data.companyId in profile().companyIds)
+      );
+      allow update: if signedIn() && (
+        (request.auth.uid == userId
+          && resource.data.uid == userId
+          && request.resource.data.uid == userId
+          && request.resource.data.companyId == resource.data.companyId
+          && request.resource.data.status == 'Pendente')
+        || (isPreapprovedAdminAuth()
+          && userId == request.auth.uid
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.email == 'lucas@igenergia.com.br'
+          && request.resource.data.companyId == 'company-demo'
+          && request.resource.data.status == 'Aprovado'
+          && request.resource.data.approvedRole == 'admin')
+        || (isPreapprovedAdminAuth()
+          && userId != request.auth.uid
+          && resource.data.companyId == 'company-demo'
+          && request.resource.data.companyId == 'company-demo'
+          && request.resource.data.uid == resource.data.uid)
+        || (isAdminProfile()
+          && resource.data.companyId in profile().companyIds
+          && request.resource.data.companyId == resource.data.companyId
+          && request.resource.data.uid == resource.data.uid)
+      );
+      allow delete: if (
+        (isPreapprovedAdminAuth() && resource.data.companyId == 'company-demo')
+        || (isAdminProfile() && resource.data.companyId in profile().companyIds)
+      );
+    }
+
+    match /system/bootstrap {
+      allow read: if signedIn();
+      allow create: if isPreapprovedAdminAuth()
+        && !exists(bootstrapPath())
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == 'lucas@igenergia.com.br'
+        && request.resource.data.companyId == 'company-demo';
+      allow update: if isPreapprovedAdminAuth()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == 'lucas@igenergia.com.br'
+        && request.resource.data.companyId == 'company-demo';
+      allow delete: if false;
+    }
+
+    match /companies/{id} {
+      allow read: if belongsTo(id) && resource.data.companyId == id && hasPermission('settings','view');
+      allow create: if belongsTo(id) && request.resource.data.companyId == id && hasPermission('settings','edit');
+      allow update: if belongsTo(id) && resource.data.companyId == id && request.resource.data.companyId == id && hasPermission('settings','edit');
+      allow delete: if belongsTo(id) && hasPermission('settings','delete');
+    }
+
+    match /team_members/{id} {
+      allow read: if canReadRecord() && hasPermission('teams','view');
+      allow create: if canCreateRecord() && hasPermission('teams','create');
+      allow update: if canUpdateRecord() && hasPermission('teams','edit');
+      allow delete: if canReadRecord() && hasPermission('teams','delete');
+    }
+
+    match /clients/{id} {
+      allow read: if canReadRecord() && hasPermission('clients','view');
+      allow create: if canCreateRecord() && hasPermission('clients','create');
+      allow update: if canUpdateRecord() && hasPermission('clients','edit');
+      allow delete: if canReadRecord() && hasPermission('clients','delete');
+    }
+
+    match /leads/{id} {
+      allow read: if canReadRecord() && hasPermission('leads','view');
+      allow create: if canCreateRecord() && hasPermission('leads','create');
+      allow update: if canUpdateRecord() && hasPermission('leads','edit');
+      allow delete: if canReadRecord() && hasPermission('leads','delete');
+    }
+
+    match /proposals/{id} {
+      allow read: if canReadRecord() && hasPermission('proposals','view');
+      allow create: if canCreateRecord() && hasPermission('proposals','create');
+      allow update: if canUpdateRecord() && (hasPermission('proposals','edit') || hasPermission('proposals','approve'));
+      allow delete: if canReadRecord() && hasPermission('proposals','delete');
+    }
+
+    match /contracts/{id} {
+      allow read: if canReadRecord() && hasPermission('contracts','view');
+      allow create: if canCreateRecord() && hasPermission('contracts','create');
+      allow update: if canUpdateRecord() && (hasPermission('contracts','edit') || hasPermission('contracts','approve'));
+      allow delete: if canReadRecord() && hasPermission('contracts','delete');
+    }
+
+    match /projects/{id} {
+      allow read: if canReadRecord() && hasPermission('works','view');
+      allow create: if canCreateRecord() && hasPermission('works','create');
+      allow update: if canUpdateRecord() && (hasPermission('works','edit') || hasPermission('works','approve'));
+      allow delete: if canReadRecord() && hasPermission('works','delete');
+    }
+
+    match /installations/{id} {
+      allow read: if canReadRecord() && hasPermission('aftersales','view');
+      allow create: if canCreateRecord() && hasPermission('aftersales','create');
+      allow update: if canUpdateRecord() && (hasPermission('aftersales','edit') || hasPermission('aftersales','approve'));
+      allow delete: if canReadRecord() && hasPermission('aftersales','delete');
+    }
+
+    match /homologations/{id} {
+      allow read: if canReadRecord() && hasPermission('homologations','view');
+      allow create: if canCreateRecord() && hasPermission('homologations','create');
+      allow update: if canUpdateRecord() && (hasPermission('homologations','edit') || hasPermission('homologations','approve'));
+      allow delete: if canReadRecord() && hasPermission('homologations','delete');
+    }
+
+    match /tickets/{id} {
+      allow read: if canReadRecord() && hasPermission('tickets','view');
+      allow create: if canCreateRecord() && hasPermission('tickets','create');
+      allow update: if canUpdateRecord() && (hasPermission('tickets','edit') || hasPermission('tickets','approve'));
+      allow delete: if canReadRecord() && hasPermission('tickets','delete');
+    }
+
+    match /financial/{id} {
+      allow read: if canReadRecord() && hasPermission('financial','view');
+      allow create: if canCreateRecord() && hasPermission('financial','create');
+      allow update: if canUpdateRecord() && (hasPermission('financial','edit') || hasPermission('financial','approve'));
+      allow delete: if canReadRecord() && hasPermission('financial','delete');
+    }
+
+    match /commissions/{id} {
+      allow read: if canReadRecord() && hasPermission('commissions','view');
+      allow create: if canCreateRecord() && hasPermission('commissions','create');
+      allow update: if canUpdateRecord() && (hasPermission('commissions','edit') || hasPermission('commissions','approve'));
+      allow delete: if canReadRecord() && hasPermission('commissions','delete');
+    }
+
+    match /products/{id} {
+      allow read: if canReadRecord() && hasPermission('inventory','view');
+      allow create: if canCreateRecord() && hasPermission('inventory','create');
+      allow update: if canUpdateRecord() && (hasPermission('inventory','edit') || hasPermission('inventory','approve'));
+      allow delete: if canReadRecord() && hasPermission('inventory','delete');
+    }
+
+    match /suppliers/{id} {
+      allow read: if canReadRecord() && hasPermission('inventory','view');
+      allow create: if canCreateRecord() && hasPermission('inventory','create');
+      allow update: if canUpdateRecord() && hasPermission('inventory','edit');
+      allow delete: if canReadRecord() && hasPermission('inventory','delete');
+    }
+
+    match /notifications/{id} {
+      allow read: if canReadRecord() && hasPermission('dashboard','view');
+      allow create: if canCreateRecord() && hasPermission('dashboard','view');
+      allow update: if canUpdateRecord() && hasPermission('dashboard','view');
+      allow delete: if canReadRecord() && hasPermission('dashboard','view');
+    }
+
+    match /proposal_acceptances/{id} {
+      allow read: if canReadRecord() && hasPermission('proposals','view');
+      allow write: if false;
+    }
+
+    match /automation_rules/{id} {
+      allow read: if canReadRecord() && hasPermission('automations','view');
+      allow create: if canCreateRecord() && hasPermission('automations','create');
+      allow update: if canUpdateRecord() && hasPermission('automations','edit');
+      allow delete: if canReadRecord() && hasPermission('automations','delete');
+    }
+
+    match /automation_queue/{id} {
+      allow read: if canReadRecord() && hasPermission('automations','view');
+      allow create: if canCreateRecord() && (hasPermission('automations','create') || hasPermission('automations','approve'));
+      allow update: if canUpdateRecord() && (hasPermission('automations','edit') || hasPermission('automations','approve'));
+      allow delete: if canReadRecord() && hasPermission('automations','delete');
+    }
+
+    match /automation_logs/{id} {
+      allow read: if canReadRecord() && hasPermission('automations','view');
+      allow create: if canCreateRecord() && hasPermission('automations','approve');
+      allow update, delete: if false;
+    }
+
+    match /stock_movements/{id} {
+      allow read: if canReadRecord() && hasPermission('inventory','view');
+      allow create: if canCreateRecord() && (hasPermission('inventory','edit') || hasPermission('inventory','approve'));
+      allow update, delete: if false;
+    }
+
+    match /tasks/{id} {
+      allow read: if canReadRecord() && hasPermission('works','view');
+      allow create: if canCreateRecord() && hasPermission('works','create');
+      allow update: if canUpdateRecord() && (hasPermission('works','edit') || hasPermission('works','approve'));
+      allow delete: if canReadRecord() && hasPermission('works','delete');
+    }
+
+    match /project_documents/{id} {
+      allow read: if canReadRecord() && hasPermission('projectDocuments','view');
+      allow create: if canCreateRecord() && hasPermission('projectDocuments','create');
+      allow update: if canUpdateRecord() && hasPermission('projectDocuments','create');
+      allow delete: if canReadRecord() && hasPermission('projectDocuments','delete');
+    }
+
+
+    match /client_project_status/{cpf} {
+      // Página pública do cliente: permite consultar somente o documento exato do CPF/CNPJ informado.
+      allow get: if resource.data.portalEnabled == true && resource.data.cpf == cpf;
+      allow list: if false;
+      allow create: if canCreateRecord()
+        && (hasPermission('works','edit') || hasPermission('works','approve'))
+        && request.resource.data.cpf == cpf
+        && request.resource.data.portalEnabled == true;
+      allow update: if canUpdateRecord()
+        && (hasPermission('works','edit') || hasPermission('works','approve'))
+        && request.resource.data.cpf == cpf;
+      allow delete: if canReadRecord() && hasPermission('works','delete');
+    }
+
+    match /{document=**} { allow read, write: if false; }
+  }
+}

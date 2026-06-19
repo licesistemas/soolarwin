@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Acompanhar projeto — SolarCRM Pro</title>
+  <meta name="description" content="Portal do cliente para acompanhar o status do projeto pelo CPF ou CNPJ." />
+  <style>
+    :root{--bg:#07111f;--panel:#0f1c2f;--panel2:#13243c;--text:#f4f8ff;--muted:#8fa0b8;--line:rgba(151,170,199,.18);--primary:#ffb703;--blue:#23a6f0;--green:#10b981;--red:#ef4444;--purple:#7c3aed}
+    *{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif;background:radial-gradient(circle at top left,rgba(35,166,240,.20),transparent 38%),linear-gradient(135deg,#06101d,#081628 52%,#040b14);color:var(--text);min-height:100vh} 
+    .wrap{width:min(1080px,92vw);margin:0 auto;padding:44px 0}.hero{display:grid;grid-template-columns:1.1fr .9fr;gap:22px;align-items:stretch}.card{background:rgba(15,28,47,.82);border:1px solid var(--line);border-radius:24px;box-shadow:0 20px 70px rgba(0,0,0,.32);backdrop-filter:blur(18px)}
+    .intro{padding:34px}.brand{display:flex;align-items:center;gap:12px;margin-bottom:44px}.mark{width:48px;height:48px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(135deg,var(--primary),#ff7b00);color:#121a28;font-weight:950}.brand strong{display:block;font-size:18px}.brand span{display:block;color:var(--muted);font-size:12px;margin-top:3px}.intro h1{font-size:clamp(30px,5vw,58px);line-height:.96;margin:0 0 16px;letter-spacing:-.06em}.intro p{color:var(--muted);line-height:1.65;margin:0;font-size:15px}.search{padding:28px;display:flex;flex-direction:column;justify-content:center}.field span{display:block;font-size:11px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin:0 0 8px}.field input{width:100%;height:56px;border-radius:16px;border:1px solid var(--line);background:#081525;color:var(--text);padding:0 16px;font-size:18px;outline:none}.field input:focus{border-color:var(--primary);box-shadow:0 0 0 4px rgba(255,183,3,.12)}button{height:54px;border:0;border-radius:16px;background:var(--primary);color:#111827;font-weight:950;cursor:pointer;margin-top:14px;width:100%;box-shadow:0 16px 38px rgba(255,183,3,.22)}button:disabled{opacity:.55;cursor:not-allowed}.notice{margin-top:14px;border-radius:16px;border:1px solid var(--line);padding:13px 14px;color:var(--muted);font-size:13px;line-height:1.5}.notice.error{border-color:rgba(239,68,68,.4);color:#fecaca;background:rgba(239,68,68,.12)}.notice.success{border-color:rgba(16,185,129,.35);color:#bbf7d0;background:rgba(16,185,129,.10)}
+    .result{margin-top:22px;display:none}.result.open{display:block}.project{padding:24px}.top{display:flex;justify-content:space-between;gap:16px;align-items:flex-start;margin-bottom:18px}.status{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:8px 12px;font-size:11px;font-weight:900;background:rgba(35,166,240,.12);color:#93c5fd}.project h2{margin:0;font-size:28px;letter-spacing:-.04em}.project small{color:var(--muted)}.progress{height:14px;border-radius:999px;background:#081525;overflow:hidden;border:1px solid var(--line);margin:17px 0 20px}.bar{height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--purple),var(--primary));border-radius:999px;transition:.5s}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.item{background:rgba(255,255,255,.035);border:1px solid var(--line);border-radius:16px;padding:14px}.item span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px}.item strong{font-size:14px}.timeline{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-top:22px}.step{border:1px solid var(--line);border-radius:15px;padding:12px;background:rgba(255,255,255,.03);min-height:82px}.step.done{border-color:rgba(16,185,129,.45);background:rgba(16,185,129,.08)}.step.current{border-color:rgba(255,183,3,.6);background:rgba(255,183,3,.10)}.step b{font-size:12px}.step span{display:block;margin-top:6px;color:var(--muted);font-size:10px;line-height:1.35}.tasks{margin-top:18px;display:grid;grid-template-columns:1fr 1fr;gap:10px}.task{border:1px solid var(--line);border-radius:14px;padding:12px;background:rgba(255,255,255,.03)}.task b{font-size:12px}.task span{display:block;color:var(--muted);font-size:10px;margin-top:5px}.footer{color:var(--muted);font-size:12px;text-align:center;margin-top:24px}
+    @media(max-width:850px){.hero{grid-template-columns:1fr}.grid{grid-template-columns:1fr 1fr}.timeline{grid-template-columns:1fr}.tasks{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <section class="intro card">
+        <div class="brand"><div class="mark">☀</div><div><strong>SolarCRM Pro</strong><span>Portal do cliente</span></div></div>
+        <h1>Acompanhe o status do seu projeto.</h1>
+        <p>Digite seu CPF ou CNPJ para consultar a etapa atual, previsão, progresso e tarefas do seu projeto de energia solar.</p>
+      </section>
+      <section class="search card">
+        <label class="field"><span>CPF ou CNPJ</span><input id="cpfInput" inputmode="numeric" autocomplete="off" placeholder="000.000.000-00" /></label>
+        <button id="searchBtn" type="button">Consultar projeto</button>
+        <div id="message" class="notice">A consulta usa apenas o CPF/CNPJ informado. Não é necessário login.</div>
+      </section>
+    </div>
+    <section id="result" class="result card project"></section>
+    <div class="footer">Atualizações publicadas pela empresa responsável pelo projeto.</div>
+  </div>
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js';
+    import { getFirestore, doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js';
+    const firebaseConfig = { apiKey:'AIzaSyCYSQfnPLyV9B6osiZhsLYYrF64YLhGkMA', authDomain:'energiasolar-67b14.firebaseapp.com', databaseURL:'https://energiasolar-67b14-default-rtdb.firebaseio.com', projectId:'energiasolar-67b14', storageBucket:'energiasolar-67b14.firebasestorage.app', messagingSenderId:'394822890491', appId:'1:394822890491:web:5afc55e01902bbf142915e' };
+    const stages=['Projeto','Homologação','Compras','Instalação','Vistoria','Troca do medidor','Operação'];
+    const app=initializeApp(firebaseConfig); const db=getFirestore(app);
+    const $=sel=>document.querySelector(sel); const clean=v=>String(v||'').replace(/\D/g,'');
+    const esc=v=>String(v??'').replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));
+    const dateBR=v=>{ if(!v)return '—'; const d=new Date(String(v).includes('T')?v:v+'T12:00:00'); return isNaN(d)?'—':d.toLocaleDateString('pt-BR'); };
+    const msg=(text,type='')=>{$('#message').className='notice '+type;$('#message').textContent=text;};
+    function render(data){
+      const idx=Math.max(0,stages.indexOf(data.projectStage)); const progress=Math.max(0,Math.min(100,Number(data.progress||0)));
+      const tasks=Array.isArray(data.tasks)?data.tasks:[];
+      $('#result').innerHTML=`<div class="top"><div><small>${esc(data.companyName||'Empresa')}</small><h2>${esc(data.clientName||'Cliente')}</h2></div><span class="status">${esc(data.projectStage||'Projeto')}</span></div>
+        <div class="progress"><div class="bar" style="width:${progress}%"></div></div>
+        <div class="grid"><div class="item"><span>Progresso</span><strong>${progress}%</strong></div><div class="item"><span>Potência</span><strong>${Number(data.systemPower||0).toLocaleString('pt-BR',{maximumFractionDigits:2})} kWp</strong></div><div class="item"><span>Prazo</span><strong>${dateBR(data.deadline)}</strong></div><div class="item"><span>Próxima etapa</span><strong>${esc(data.nextStage||'—')}</strong></div></div>
+        ${data.publicMessage?`<div class="notice success">${esc(data.publicMessage)}</div>`:''}
+        <div class="timeline">${stages.map((s,i)=>`<div class="step ${i<idx?'done':i===idx?'current':''}"><b>${i<idx?'✓ ':i===idx?'● ':''}${esc(s)}</b><span>${i<idx?'Concluída':i===idx?'Etapa atual':'Próxima etapa'}</span></div>`).join('')}</div>
+        <h3 style="margin:22px 0 10px">Tarefas do projeto</h3><div class="tasks">${tasks.length?tasks.map(t=>`<div class="task"><b>${esc(t.title)}</b><span>${esc(t.stage)} · ${esc(t.status)}${t.dueDate?' · prazo '+dateBR(t.dueDate):''}</span></div>`).join(''):'<div class="task"><b>Nenhuma tarefa publicada ainda</b><span>A empresa atualizará esta área quando houver novidades.</span></div>'}</div>
+        <div class="notice">Documentos registrados no projeto: <strong>${Number(data.documents?.total||0)}</strong>${data.updatedAt?` · atualizado em ${new Date(data.updatedAt).toLocaleString('pt-BR')}`:''}</div>`;
+      $('#result').classList.add('open');
+    }
+    async function search(){
+      const cpf=clean($('#cpfInput').value); if(cpf.length<11){msg('Informe um CPF ou CNPJ válido.','error');return;}
+      $('#searchBtn').disabled=true; msg('Consultando projeto...'); $('#result').classList.remove('open');
+      try{const snap=await getDoc(doc(db,'client_project_status',cpf)); if(!snap.exists()){msg('Nenhum projeto liberado para este CPF/CNPJ. Confirme os dados com a empresa.','error');return;} const data=snap.data(); if(data.portalEnabled===false){msg('O acompanhamento deste projeto ainda não foi liberado.','error');return;} render(data); msg('Projeto localizado.','success');}
+      catch(e){console.error(e); msg('Não foi possível consultar. Verifique se as regras do Firestore foram publicadas e tente novamente.','error');}
+      finally{$('#searchBtn').disabled=false;}
+    }
+    $('#searchBtn').addEventListener('click',search); $('#cpfInput').addEventListener('keydown',e=>{if(e.key==='Enter')search();});
+    const urlCpf=new URLSearchParams(location.search).get('cpf'); if(urlCpf){$('#cpfInput').value=urlCpf; search();}
+  </script>
+</body>
+</html>

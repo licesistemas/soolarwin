@@ -1,0 +1,63 @@
+// SolarCRM Pro v2.9.5 — permissões granulares
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() { return request.auth != null; }
+    function isPreapprovedAdminAuth() {
+      return signedIn() && request.auth.token.email == 'lucas@igenergia.com.br';
+    }
+    function userPath() { return /databases/(default)/documents/users/$(request.auth.uid); }
+    function hasActiveProfile() { return signedIn() && firestore.exists(userPath()) && firestore.get(userPath()).data.status == 'Ativo'; }
+    function profile() { return firestore.get(userPath()).data; }
+    function isAdmin() { return isPreapprovedAdminAuth() || (hasActiveProfile() && profile().role == 'admin'); }
+    function belongs(companyId) {
+      return (isPreapprovedAdminAuth() && companyId == 'company-demo')
+        || (hasActiveProfile() && companyId in profile().companyIds);
+    }
+    function hasCustomPermissions() {
+      return hasActiveProfile() && profile().keys().hasAny(['permissionsView','permissionsCreate','permissionsEdit','permissionsDelete']);
+    }
+    function legacyPermission(module, action) {
+      return (profile().role == 'manager')
+        || (profile().role == 'seller' && module == 'projectDocuments' && action == 'view')
+        || (profile().role == 'technical' && module == 'projectDocuments')
+        || (profile().role == 'finance' && module == 'settings' && action == 'view');
+    }
+    function hasPermission(module, action) {
+      return isAdmin() || (hasActiveProfile() && (
+        (hasCustomPermissions() && (
+          (action == 'view' && profile().keys().hasAny(['permissionsView']) && module in profile().permissionsView)
+          || (action == 'create' && profile().keys().hasAny(['permissionsCreate']) && module in profile().permissionsCreate)
+          || (action == 'edit' && profile().keys().hasAny(['permissionsEdit']) && module in profile().permissionsEdit)
+          || (action == 'delete' && profile().keys().hasAny(['permissionsDelete']) && module in profile().permissionsDelete)
+        ))
+        || (!hasCustomPermissions() && legacyPermission(module, action))
+      ));
+    }
+    function validImage() { return request.resource.size < 10 * 1024 * 1024 && request.resource.contentType.matches('image/.*'); }
+    function validPdf() { return request.resource.size < 20 * 1024 * 1024 && request.resource.contentType == 'application/pdf'; }
+    function validProjectDocument() {
+      return request.resource.size < 20 * 1024 * 1024 && (
+        request.resource.contentType.matches('image/.*') ||
+        request.resource.contentType == 'application/pdf' ||
+        request.resource.contentType.matches('text/.*') ||
+        request.resource.contentType.matches('application/(msword|vnd\.openxmlformats-officedocument\.wordprocessingml\.document|vnd\.ms-excel|vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet|xml|zip|x-zip-compressed|octet-stream)')
+      );
+    }
+
+    match /companies/{companyId}/projects/{projectId}/documents/{fileName} {
+      allow read: if belongs(companyId) && hasPermission('projectDocuments','view');
+      allow create: if belongs(companyId) && hasPermission('projectDocuments','create') && validProjectDocument();
+      allow update: if belongs(companyId) && hasPermission('projectDocuments','create') && validProjectDocument();
+      allow delete: if belongs(companyId) && hasPermission('projectDocuments','delete');
+    }
+
+    match /companies/{companyId}/{folder}/{fileName} {
+      allow read: if belongs(companyId) && (hasPermission('settings','view') || hasPermission('proposals','view'));
+      allow create, update: if belongs(companyId) && (hasPermission('settings','edit') || hasPermission('proposals','edit')) && (validImage() || validPdf());
+      allow delete: if belongs(companyId) && (hasPermission('settings','edit') || hasPermission('proposals','delete'));
+    }
+
+    match /{allPaths=**} { allow read, write: if false; }
+  }
+}
