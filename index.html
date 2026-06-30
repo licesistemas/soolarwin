@@ -1807,7 +1807,7 @@ body.auth-ready #loginScreen { display:none !important; }
   const LEGACY_FIREBASE_CONFIG_KEYS = ['solarcrm-firebase-config-v2-8','solarcrm-firebase-config-v2-7','solarcrm-firebase-config-v2-6','solarcrm-firebase-config'];
   const DEFAULT_FIREBASE_CONFIG = Object.freeze({"apiKey":"AIzaSyCYSQfnPLyV9B6osiZhsLYYrF64YLhGkMA","authDomain":"energiasolar-67b14.firebaseapp.com","databaseURL":"https://energiasolar-67b14-default-rtdb.firebaseio.com","projectId":"energiasolar-67b14","storageBucket":"energiasolar-67b14.firebasestorage.app","messagingSenderId":"394822890491","appId":"1:394822890491:web:5afc55e01902bbf142915e","functionsRegion":"southamerica-east1"});
   const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-2';
-  const SYSTEM_VERSION = '3.0.1-ocr-historico-sem-ia';
+  const SYSTEM_VERSION = '3.0.3-uc-cabecalho-ocr';
   let storageWarningShown = false;
   let draftSaveTimer = null;
   let firebaseLastDiagnostic = null;
@@ -3738,7 +3738,7 @@ body.auth-ready #loginScreen { display:none !important; }
       </div>${nav}`;
     if(step===1)return `
       <div class="form-section">${heading('Importar conta de energia','O sistema lê automaticamente PDF, foto ou fatura escaneada e preenche o consumo.')}
-        <div class="grid grid-2"><label class="upload-drop"><div><strong>Importar fatura PDF</strong><span>${p.billFileName?`Arquivo: ${escapeHtml(p.billFileName)}`:'Selecione o PDF, JPG ou PNG da fatura.'}</span><input id="energyBillInput" type="file" accept="application/pdf,image/*" style="margin-top:10px"></div></label><div><div id="billStatusBox" class="notice success"><strong>Leitura local ativada</strong><br><span>Sem IA. O consumo é lido somente do quadro “HISTÓRICO DE CONSUMO”; Unidade Consumidora é lida exclusivamente do campo “Unidade Consumidora”; Classe, Grupo Tarifário, Distribuidora e Tarifa são lidos dos dados da fatura.</span></div><div style="display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px"><button id="billLocalAnalyzeBtn" class="btn btn-secondary" type="button">↻ Reaplicar OCR da fatura</button></div>${p.billAnalysis?`<div class="notice" style="margin-top:10px">Última análise: <strong>${escapeHtml(formatBillAnalysisSource(p.billAnalysis.source||'automática'))}</strong>${formatBillConfidence(p.billAnalysis.confidence)?` · ${formatBillConfidence(p.billAnalysis.confidence)} de confiança`:''}${p.billAnalysis.warnings?.length?`<br><span>${escapeHtml(p.billAnalysis.warnings.join(' '))}</span>`:''}</div>`:''}</div></div>
+        <div class="grid grid-2"><label class="upload-drop"><div><strong>Importar fatura PDF</strong><span>${p.billFileName?`Arquivo: ${escapeHtml(p.billFileName)}`:'Selecione o PDF, JPG ou PNG da fatura.'}</span><input id="energyBillInput" type="file" accept="application/pdf,image/*" style="margin-top:10px"></div></label><div><div id="billStatusBox" class="notice success"><strong>Leitura local ativada</strong><br><span>Sem IA. O consumo é lido somente do quadro “HISTÓRICO DE CONSUMO”; Unidade Consumidora é lida do campo azul/amarelo do cabeçalho; Classe, Grupo Tarifário, Distribuidora e Tarifa são lidos dos dados da fatura.</span></div><div style="display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px"><button id="billLocalAnalyzeBtn" class="btn btn-secondary" type="button">↻ Reaplicar OCR da fatura</button></div>${p.billAnalysis?`<div class="notice" style="margin-top:10px">Última análise: <strong>${escapeHtml(formatBillAnalysisSource(p.billAnalysis.source||'automática'))}</strong>${formatBillConfidence(p.billAnalysis.confidence)?` · ${formatBillConfidence(p.billAnalysis.confidence)} de confiança`:''}${p.billAnalysis.warnings?.length?`<br><span>${escapeHtml(p.billAnalysis.warnings.join(' '))}</span>`:''}</div>`:''}</div></div>
       </div>
       <div class="form-section">${heading('Dados identificados','Revise os campos antes de continuar.')}
         <div class="form-grid">${proposalField('client.consumerUnit','Unidade consumidora','text')}${proposalField('client.className','Classe','text')}${proposalField('client.tariffGroup','Grupo tarifário','text')}${proposalField('client.distributor','Distribuidora','text')}${proposalField('currentTariff','Tarifa atual (R$/kWh)','number')}${proposalField('technical.targetCoverage','Cobertura desejada (%)','number')}</div>
@@ -3846,6 +3846,18 @@ body.auth-ready #loginScreen { display:none !important; }
     return canvas.toDataURL('image/jpeg',quality);
   }
 
+  async function renderPdfHeaderCropForOCR(page,maxWidth=1900,quality=.96){
+    const baseViewport=page.getViewport({scale:1});
+    const scale=Math.min(2.6,Math.max(1.35,maxWidth/Math.max(baseViewport.width,1)));
+    const viewport=page.getViewport({scale});
+    const canvas=document.createElement('canvas');
+    canvas.width=Math.max(1,Math.round(viewport.width));canvas.height=Math.max(1,Math.round(viewport.height));
+    const ctx=canvas.getContext('2d',{alpha:false});
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);
+    await page.render({canvasContext:ctx,viewport}).promise;
+    return cropCelescHeaderRegionFromCanvas(canvas,quality);
+  }
+
   async function renderPdfHistoryCropForOCR(page,maxWidth=1600,quality=.94){
     const baseViewport=page.getViewport({scale:1});
     const scale=Math.min(2.4,Math.max(1,maxWidth/Math.max(baseViewport.width,1)));
@@ -3877,6 +3889,24 @@ body.auth-ready #loginScreen { display:none !important; }
       };
       reader.readAsDataURL(file);
     });
+  }
+
+  function cropCelescHeaderRegionFromCanvas(sourceCanvas,quality=.96){
+    const w=sourceCanvas.width,h=sourceCanvas.height;
+    const region={x:Math.round(w*.015),y:Math.round(h*.105),w:Math.round(w*.86),h:Math.round(h*.145)};
+    const crop=document.createElement('canvas');
+    crop.width=Math.max(1,region.w);crop.height=Math.max(1,region.h);
+    const ctx=crop.getContext('2d',{alpha:false});
+    ctx.fillStyle='#fff';ctx.fillRect(0,0,crop.width,crop.height);
+    ctx.filter='contrast(1.28) brightness(1.05) saturate(1.08)';
+    ctx.drawImage(sourceCanvas,region.x,region.y,region.w,region.h,0,0,crop.width,crop.height);
+    ctx.filter='none';
+    return crop.toDataURL('image/jpeg',quality);
+  }
+
+  async function prepareHeaderImageForOCR(file,maxW=2600,maxH=2600,quality=.96){
+    const canvas=await imageFileToCanvas(file,maxW,maxH);
+    return cropCelescHeaderRegionFromCanvas(canvas,quality);
   }
 
   async function prepareHistoryImageForOCR(file,maxW=2600,maxH=2600,quality=.94){
@@ -4025,6 +4055,21 @@ body.auth-ready #loginScreen { display:none !important; }
     return text;
   }
 
+
+  async function runBillHeaderOCR(imageSources=[]){
+    if(!imageSources.length)return'';
+    if(!window.Tesseract)throw new Error('Biblioteca OCR não carregada. Abra o arquivo com internet ativa ou publique no Firebase Hosting.');
+    let text='';
+    for(let index=0;index<imageSources.length;index++){
+      const logger=m=>{if(m?.status){const pct=Number.isFinite(m.progress)?` ${Math.round(m.progress*100)}%`:'';setBillStatus('Lendo cabeçalho da CELESC',`${m.status}${pct} · procurando o campo Unidade Consumidora.`,'info');}};
+      let result=null;
+      try{result=await Tesseract.recognize(imageSources[index],'por+eng',{logger,tessedit_pageseg_mode:'6',preserve_interword_spaces:'1'});}
+      catch(firstError){console.warn('OCR do cabeçalho por+eng falhou; tentando eng:',firstError);result=await Tesseract.recognize(imageSources[index],'eng',{logger,tessedit_pageseg_mode:'6',preserve_interword_spaces:'1'});}
+      text+=`
+${result?.data?.text||''}`;
+    }
+    return text;
+  }
 
   async function runBillDataOCR(imageSources=[]){
     if(!imageSources.length)return'';
@@ -4393,10 +4438,19 @@ ${result?.data?.text||''}`;
     if(btn){btn.disabled=true;btn.textContent='Lendo fatura...';}
     setBillStatus('Preparando leitura da fatura',file.name,'info');
     try{
-      let fullText='';let dataText='';let historyText='';let ocrText='';let source='ocr-historico';
+      let fullText='';let headerText='';let dataText='';let historyText='';let ocrText='';let source='ocr-historico';
       const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name);
       const isImage=file.type.startsWith('image/')||/\.(jpe?g|png|webp|bmp|tiff?)$/i.test(file.name);
       if(isImage){
+        try{
+          const headerImage=await prepareHeaderImageForOCR(file,2600,2600,.96);
+          headerText=await runBillHeaderOCR([headerImage]);
+          const headerUc=extractCelescHeaderConsumerUnitCandidate(headerText);
+          if(headerUc)headerText=`CELESC_HEADER_UC ${headerUc}
+${headerText}`;
+        }catch(headerError){
+          console.warn('OCR do cabeçalho indisponível:',headerError);
+        }
         try{
           const fullImage=await prepareImageForOCR(file,2400,2400,.92);
           dataText=await runBillDataOCR([fullImage]);
@@ -4413,14 +4467,21 @@ ${result?.data?.text||''}`;
         const arrayBuffer=await file.arrayBuffer();
         const pdf=await pdfjsLib.getDocument({data:arrayBuffer}).promise;
         const dataOcrImages=[];
+        const headerOcrImages=[];
         for(let pageNo=1;pageNo<=pdf.numPages;pageNo++){
           setBillStatus('Buscando dados e Histórico de Consumo',`Página ${pageNo} de ${pdf.numPages}.`,'info');
           const page=await pdf.getPage(pageNo);
           const content=await page.getTextContent({normalizeWhitespace:true});
           const pageText=textItemsToLines(content.items);
+          const headerUcFromText=extractCelescHeaderConsumerUnitCandidate(pageText);
+          if(pageNo===1&&headerUcFromText)headerText+=`CELESC_HEADER_UC ${headerUcFromText}\n`;
           fullText+=pageText+'\n';
           const pageHistory=extractConsumptionHistoryOnlyText(pageText);
           if(pageHistory)historyText+=pageHistory+'\n';
+          if(pageNo===1){
+            try{headerOcrImages.push(await renderPdfHeaderCropForOCR(page,1900,.96));}
+            catch(headerImageError){console.warn('Não foi possível recortar o cabeçalho para OCR:',headerImageError);}
+          }
           if(pageNo<=2){
             try{dataOcrImages.push(await renderPdfPageForFullOCR(page,1600,.86));}
             catch(dataImageError){console.warn('Não foi possível preparar a página para OCR dos dados:',dataImageError);}
@@ -4430,7 +4491,18 @@ ${result?.data?.text||''}`;
             catch(imageError){console.warn('Não foi possível recortar o histórico para OCR:',imageError);}
           }
         }
-        const preliminary=extractBillFields(`${fullText}\n${historyText}`.trim(),historyText);
+        if(headerOcrImages.length){
+          try{
+            const headerOcr=await runBillHeaderOCR(headerOcrImages);
+            const headerUc=extractCelescHeaderConsumerUnitCandidate(headerOcr);
+            headerText+=`
+${headerUc?`CELESC_HEADER_UC ${headerUc}
+`:''}${headerOcr}`;
+          }catch(headerOcrError){console.warn('OCR do cabeçalho indisponível:',headerOcrError);}
+        }
+        const preliminary=extractBillFields(`${headerText}
+${fullText}
+${historyText}`.trim(),historyText);
         if(needsBillDataOcr(preliminary)&&dataOcrImages.length){
           try{dataText=await runBillDataOCR(dataOcrImages);}
           catch(dataOcrError){console.warn('OCR dos dados identificados indisponível:',dataOcrError);}
@@ -4453,11 +4525,11 @@ ${result?.data?.text||''}`;
             setBillStatus('OCR indisponível, usando texto do PDF','Confira os meses preenchidos. Para fatura escaneada, o OCR precisa carregar corretamente.','warning');
           }
         }
-        activeBillExtractionMeta={pages:pdf.numPages,textLength:(fullText+'\n'+dataText+'\n'+historyText).trim().length,source:source};
+        activeBillExtractionMeta={pages:pdf.numPages,textLength:(headerText+'\n'+fullText+'\n'+dataText+'\n'+historyText).trim().length,source:source};
       }else{
         throw new Error('Formato não suportado. Use PDF, JPG ou PNG.');
       }
-      const combinedText=`${fullText}\n${dataText}\n${historyText}`.trim();
+      const combinedText=`${headerText}\n${fullText}\n${dataText}\n${historyText}`.trim();
       activeProposal.billText=combinedText.slice(0,120000);
       activeProposal.billHistoryText=String(historyText||ocrText||'').slice(0,50000);
       const extracted=extractBillFields(combinedText,activeProposal.billHistoryText);
@@ -4524,75 +4596,44 @@ ${result?.data?.text||''}`;
     return'';
   }
 
+  function extractCelescHeaderConsumerUnitCandidate(text){
+    const cleanUc=value=>{const digits=String(value||'').replace(/\D/g,'').replace(/^0+(?=\d)/,'');return digits.length>=5&&digits.length<=14?digits:'';};
+    const raw=String(text||'');
+    const lines=raw.split(/\n+/).map(line=>line.replace(/\s+/g,' ').trim()).filter(Boolean);
+    const headerStop=lines.findIndex(line=>/\b(Leitura\s+Anterior|Itens\s+de\s+Fatura|Comunicado\s+importante|NOTA\s+FISCAL|Hist[oó]rico\s+de\s+Consumo|Consumo\s+Faturado|PAG[AÁ]VEL|Nosso\s+N[uú]mero|C[oó]digo\s+para\s+Cadastro|Benefici[aá]rio)\b/i.test(line));
+    const headerLines=lines.slice(0,headerStop>=0?Math.min(headerStop,60):Math.min(lines.length,60));
+    const firstNumber=line=>{const values=[...String(line||'').matchAll(/\b0*\d{5,14}\b/g)].map(m=>cleanUc(m[0])).filter(Boolean);return values[0]||'';};
+    const marked=raw.match(/CELESC_HEADER_UC\s*[:=\-]?\s*(0*\d{5,14})/i);
+    if(marked?.[1])return cleanUc(marked[1]);
+    for(let i=0;i<headerLines.length;i++){
+      const line=headerLines[i];
+      if(!/\bUnidade\s+Consumidora\b/i.test(line))continue;
+      let uc=firstNumber(line.replace(/^.*?\bUnidade\s+Consumidora\b\s*[:#\-–]?\s*/i,''));
+      if(uc)return uc;
+      for(let j=i+1;j<Math.min(headerLines.length,i+6);j++){
+        const candidate=headerLines[j];
+        if(/\b(Cliente|Etapa|Grupo\/Subgrupo|Grupo|Subgrupo|CPF|CNPJ|Nome|Endere[cç]o|CEP|Cidade|Refer[eê]ncia|Vencimento|Total\s+a\s+Pagar)\b/i.test(candidate))break;
+        uc=firstNumber(candidate);if(uc)return uc;
+      }
+    }
+    for(let i=0;i<headerLines.length;i++){
+      const line=headerLines[i];
+      if(!/(Classifica[cç][aã]o\s*\/\s*Modalidade\s+Tarif[aá]ria|Tipo\s+de\s+Fornecimento|^(COMERCIAL|RESIDENCIAL|RURAL|INDUSTRIAL|PODER\s+P[UÚ]BLICO|SERVI[CÇ]O\s+P[UÚ]BLICO)\b)/i.test(line))continue;
+      for(let j=i+1;j<Math.min(headerLines.length,i+8);j++){
+        const candidate=headerLines[j];
+        if(/\b(Cliente|NOME|CPF\/CNPJ|CPF|CNPJ|Endere[cç]o|CEP|Cidade|Leitura|NOTA\s+FISCAL)\b/i.test(candidate))break;
+        const uc=firstNumber(candidate);if(uc)return uc;
+      }
+    }
+    return'';
+  }
+
   function extractConsumerUnitFromBill(text,normalized){
-    // REGRA CELESC: priorizar o campo azul/amarelo do CABEÇALHO escrito
-    // “UNIDADE CONSUMIDORA”. Alguns PDFs extraem o rótulo visual separado ou
-    // omitem o rótulo no texto; nesses casos, o número aparece entre a
-    // classificação/modalidade e a linha “Cliente”.
-    const cleanUc=value=>{
-      const digits=String(value||'').replace(/\D/g,'').replace(/^0+(?=\d)/,'');
-      return digits.length>=5&&digits.length<=14?digits:'';
-    };
-    const lines=String(text||'').split(/\n+/).map(line=>line.replace(/\s+/g,' ').trim()).filter(Boolean);
-    const headerEndIndex=lines.findIndex(line=>/\b(Leitura\s+Anterior|Itens\s+de\s+Fatura|Comunicado\s+importante|NOTA\s+FISCAL|Hist[oó]rico\s+de\s+Consumo|Consumo\s+Faturado|PAG[AÁ]VEL|Nosso\s+N[uú]mero)\b/i.test(line));
-    const headerLines=lines.slice(0,headerEndIndex>0?Math.min(headerEndIndex,45):Math.min(lines.length,45));
-
-    const firstNumber=line=>{
-      const numbers=[...String(line||'').matchAll(/\b0*\d{5,14}\b/g)].map(m=>cleanUc(m[0])).filter(Boolean);
-      return numbers[0]||'';
-    };
-
-    // 1) Cabeçalho com o rótulo explícito “UNIDADE CONSUMIDORA”.
-    for(let i=0;i<headerLines.length;i++){
-      const line=headerLines[i];
-      if(!/\bUnidade\s+Consumidora\b/i.test(line))continue;
-
-      const afterLabel=line.replace(/^.*?\bUnidade\s+Consumidora\b\s*[:#\-–]?\s*/i,'');
-      let uc=firstNumber(afterLabel);
-      if(uc)return uc;
-
-      for(let j=i+1;j<Math.min(headerLines.length,i+5);j++){
-        const candidate=headerLines[j];
-        if(/\b(Cliente|Etapa|Grupo\/Subgrupo|CPF|CNPJ|Nome|Endere[cç]o|CEP|Cidade|Refer[eê]ncia|Vencimento|Total\s+a\s+Pagar)\b/i.test(candidate))break;
-        uc=firstNumber(candidate);
-        if(uc)return uc;
-      }
-    }
-
-    // 2) Fallback específico para PDF CELESC cujo texto omite o rótulo visual:
-    // Classificação/Modalidade -> número da UC -> Cliente.
-    for(let i=0;i<headerLines.length;i++){
-      const line=headerLines[i];
-      if(!/(Classifica[cç][aã]o\s*\/\s*Modalidade\s+Tarif[aá]ria|^(COMERCIAL|RESIDENCIAL|RURAL|INDUSTRIAL|PODER\s+P[UÚ]BLICO|SERVI[CÇ]O\s+P[UÚ]BLICO)\b)/i.test(line))continue;
-      for(let j=i+1;j<Math.min(headerLines.length,i+7);j++){
-        const candidate=headerLines[j];
-        if(/\b(Cliente|NOME|CPF\/CNPJ|CPF|CNPJ|Endere[cç]o|CEP|Cidade)\b/i.test(candidate))break;
-        const uc=firstNumber(candidate);
-        if(uc)return uc;
-      }
-    }
-
-    // 3) Último fallback: rótulo “Unidade Consumidora” em qualquer ponto.
-    // Mantém restrição ao rótulo e evita Código de Débito/Cliente.
-    for(let i=0;i<lines.length;i++){
-      const line=lines[i];
-      if(!/\bUnidade\s+Consumidora\b/i.test(line))continue;
-      if(/\b(C[oó]digo\s+para\s+Cadastro|D[eé]bito\s+Autom[aá]tico|Cliente|Nosso\s+N[uú]mero)\b/i.test(line))continue;
-
-      const afterLabel=line.replace(/^.*?\bUnidade\s+Consumidora\b\s*[:#\-–]?\s*/i,'');
-      let uc=firstNumber(afterLabel);
-      if(uc)return uc;
-
-      for(let j=i+1;j<Math.min(lines.length,i+5);j++){
-        const candidate=lines[j];
-        if(/\b(Nosso\s+N[uú]mero|Refer[eê]ncia|Vencimento|Total\s+a\s+Pagar|C[oó]digo\s+para\s+Cadastro|Cliente|CPF|CNPJ)\b/i.test(candidate))break;
-        uc=firstNumber(candidate);
-        if(uc)return uc;
-      }
-    }
-
-    const labeled=String(normalized||'').match(/\bUnidade\s+Consumidora\b\s*[:#\-–]?\s*(?:N[uú]mero\s*)?(0*\d{5,14})\b/i);
-    return cleanUc(labeled?.[1]);
+    // REGRA CELESC: a UC deve vir do cabeçalho azul/amarelo “UNIDADE CONSUMIDORA”.
+    // Não usar Cliente, Código de débito automático ou boleto/rodapé como fonte principal.
+    const headerUc=extractCelescHeaderConsumerUnitCandidate(text);
+    if(headerUc)return headerUc;
+    return'';
   }
 
   function cleanBillClassName(value){
@@ -5557,8 +5598,8 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
       check('Financiamento calcula parcela',calc.installment>=0&&Number.isFinite(calc.installment),String(calc.installment));
       const documentHtml=renderProposalDocument(proposal);const pages=(documentHtml.match(/class="proposal-page(?:\s|")/g)||[]).length;
       check('Proposta contém 10 páginas',pages===10,`${pages} páginas`);
-      const bill=extractBillFields('CELESC Unidade Consumidora: 123456789 Classe: Residencial Grupo tarifário: B1 Tarifa 0,92345 600 kWh 620 kWh 640 kWh 660 kWh 680 kWh 700 kWh 720 kWh 740 kWh 760 kWh 780 kWh 800 kWh 820 kWh');
-      check('Leitura local identifica UC',bill.client.consumerUnit==='123456789',bill.client.consumerUnit);
+      const bill=extractBillFields('CELESC_HEADER_UC 123456789\nClasse: Residencial Grupo tarifário: B1 Tarifa 0,92345 600 kWh 620 kWh 640 kWh 660 kWh 680 kWh 700 kWh 720 kWh 740 kWh 760 kWh 780 kWh 800 kWh 820 kWh');
+      check('Leitura local identifica UC pelo cabeçalho',bill.client.consumerUnit==='123456789',bill.client.consumerUnit);
       check('Leitura local identifica distribuidora',bill.client.distributor==='CELESC',bill.client.distributor);
       check('Leitura local identifica consumo',bill.consumption.length>=6,`${bill.consumption.length} meses`);
       const normalized=normalizeState({company:{...defaultCompany},companies:[{...defaultCompany}],currentCompanyId:defaultCompany.id,currentUser:{id:'t',name:'Teste',role:'admin',companyIds:[]}});
