@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#08111f" />
-  <title>SolarCRM Pro v3.0 — CRM para Energia Solar</title>
+  <title>SolarCRM Pro v3.0.1 — OCR Histórico de Consumo</title>
   <meta name="description" content="CRM completo para empresas de energia solar com propostas profissionais, Kanban, Firebase, financeiro, obras e pós-venda." />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <style>
@@ -1811,7 +1811,7 @@ body.auth-ready #loginScreen { display:none !important; }
   const BILL_AI_CONFIG_KEY = 'solarcrm-bill-ai-config-v1';
   const BILL_AI_FUNCTION_NAME = 'analisarFatura';
   const DEFAULT_BILL_AI_CONFIG = Object.freeze({provider:'gemini',model:'gemini-3.5-flash',functionUrl:''});
-  const SYSTEM_VERSION = '3.0.0-leitura-fatura-pdf';
+  const SYSTEM_VERSION = '3.0.1-ocr-historico-sem-ia';
   let storageWarningShown = false;
   let draftSaveTimer = null;
   let firebaseLastDiagnostic = null;
@@ -3742,7 +3742,7 @@ body.auth-ready #loginScreen { display:none !important; }
       </div>${nav}`;
     if(step===1)return `
       <div class="form-section">${heading('Importar conta de energia','O sistema lê automaticamente PDF, foto ou fatura escaneada e preenche o consumo.')}
-        <div class="grid grid-2"><label class="upload-drop"><div><strong>Importar fatura automaticamente</strong><span>${p.billFileName?`Arquivo: ${escapeHtml(p.billFileName)}`:'Selecione PDF, JPG ou PNG da conta de energia.'}</span><input id="energyBillInput" type="file" accept="application/pdf,image/*" style="margin-top:10px"></div></label><div><div id="billStatusBox" class="notice success">Leitura focada no quadro HISTÓRICO DE CONSUMO: o OCR ignora o restante da fatura e lê somente os meses, consumo faturado e dias faturados.</div><div style="display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px"><button id="billLocalAnalyzeBtn" class="btn btn-secondary" type="button">↻ Reaplicar leitura automática</button><button id="billAiAnalyzeBtn" class="btn btn-primary" type="button">🤖 Ler fatura com IA</button><button id="billAiConfigBtn" class="btn btn-ghost" type="button">⚙️ Configurar URL da IA</button></div>${p.billAnalysis?`<div class="notice" style="margin-top:10px">Última análise: <strong>${escapeHtml(formatBillAnalysisSource(p.billAnalysis.source||'automática'))}</strong>${formatBillConfidence(p.billAnalysis.confidence)?` · ${formatBillConfidence(p.billAnalysis.confidence)} de confiança`:''}${p.billAnalysis.warnings?.length?`<br><span>${escapeHtml(p.billAnalysis.warnings.join(' '))}</span>`:''}</div>`:''}</div></div>
+        <div class="grid grid-2"><label class="upload-drop"><div><strong>Importar fatura PDF</strong><span>${p.billFileName?`Arquivo: ${escapeHtml(p.billFileName)}`:'Selecione o PDF, JPG ou PNG da fatura.'}</span><input id="energyBillInput" type="file" accept="application/pdf,image/*" style="margin-top:10px"></div></label><div><div id="billStatusBox" class="notice success"><strong>Leitura local ativada</strong><br><span>Sem IA. O sistema procura somente o quadro “HISTÓRICO DE CONSUMO” e extrai Mês, Consumo Faturado e Dias Faturados para preencher cada mês.</span></div><div style="display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px"><button id="billLocalAnalyzeBtn" class="btn btn-secondary" type="button">↻ Reaplicar leitura do histórico</button></div>${p.billAnalysis?`<div class="notice" style="margin-top:10px">Última análise: <strong>${escapeHtml(formatBillAnalysisSource(p.billAnalysis.source||'automática'))}</strong>${formatBillConfidence(p.billAnalysis.confidence)?` · ${formatBillConfidence(p.billAnalysis.confidence)} de confiança`:''}${p.billAnalysis.warnings?.length?`<br><span>${escapeHtml(p.billAnalysis.warnings.join(' '))}</span>`:''}</div>`:''}</div></div>
       </div>
       <div class="form-section">${heading('Dados identificados','Revise os campos antes de continuar.')}
         <div class="form-grid">${proposalField('client.consumerUnit','Unidade consumidora','text')}${proposalField('client.className','Classe','text')}${proposalField('client.tariffGroup','Grupo tarifário','text')}${proposalField('client.distributor','Distribuidora','text')}${proposalField('currentTariff','Tarifa atual (R$/kWh)','number')}${proposalField('technical.targetCoverage','Cobertura desejada (%)','number')}</div>
@@ -3823,8 +3823,6 @@ body.auth-ready #loginScreen { display:none !important; }
     document.getElementById('coverPhotoInput')?.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;activeProposal.coverPhoto=await resizeImage(file,1600,1100,.84);scheduleProposalDraftSave();renderProposalBuilder();});
     document.getElementById('energyBillInput')?.addEventListener('change',handleEnergyBillUpload);
     document.getElementById('billLocalAnalyzeBtn')?.addEventListener('click',analyzeBillLocally);
-    document.getElementById('billAiAnalyzeBtn')?.addEventListener('click',analyzeBillWithAI);
-    document.getElementById('billAiConfigBtn')?.addEventListener('click',configureBillAiFunctionUrl);
     document.getElementById('openCompanySettingsBtn')?.addEventListener('click',()=>openSettings('company'));
   }
 
@@ -3999,20 +3997,32 @@ body.auth-ready #loginScreen { display:none !important; }
 
   async function runBillOCR(imageSources=[]){
     if(!imageSources.length)return'';
-    if(!window.Tesseract)throw new Error('Biblioteca OCR não carregada. Verifique a conexão com a internet e tente novamente.');
+    if(!window.Tesseract)throw new Error('Biblioteca OCR não carregada. Abra o arquivo com internet ativa ou publique no Firebase Hosting.');
     let text='';
     for(let index=0;index<imageSources.length;index++){
-      setBillStatus('Lendo histórico por OCR',`Página/imagem ${index+1} de ${imageSources.length}. O recorte usado é somente o quadro HISTÓRICO DE CONSUMO.`,'info');
-      const result=await Tesseract.recognize(imageSources[index],'por+eng',{
-        logger:m=>{
-          if(m?.status){
-            const pct=Number.isFinite(m.progress)?` ${Math.round(m.progress*100)}%`:'';
-            setBillStatus('Lendo histórico por OCR',`${m.status}${pct} · imagem ${index+1}/${imageSources.length}`,'info');
-          }
+      const logger=m=>{
+        if(m?.status){
+          const pct=Number.isFinite(m.progress)?` ${Math.round(m.progress*100)}%`:'';
+          setBillStatus('Lendo Histórico de Consumo',`${m.status}${pct} · imagem ${index+1}/${imageSources.length}`,'info');
         }
-      });
-      text+=`
-${result?.data?.text||''}`;
+      };
+      setBillStatus('Lendo Histórico de Consumo',`OCR local no recorte do quadro. Página/imagem ${index+1} de ${imageSources.length}.`,'info');
+      let result=null;
+      try{
+        result=await Tesseract.recognize(imageSources[index],'por+eng',{
+          logger,
+          tessedit_pageseg_mode:'6',
+          preserve_interword_spaces:'1'
+        });
+      }catch(firstError){
+        console.warn('OCR por+eng falhou; tentando eng:',firstError);
+        result=await Tesseract.recognize(imageSources[index],'eng',{
+          logger,
+          tessedit_pageseg_mode:'6',
+          preserve_interword_spaces:'1'
+        });
+      }
+      text+=`\n${result?.data?.text||''}`;
     }
     return text;
   }
@@ -4034,6 +4044,16 @@ ${result?.data?.text||''}`;
     if(raw.includes(',')&&raw.includes('.'))return Number(raw.replace(/\./g,'').replace(',','.'))||0;
     if(raw.includes(','))return Number(raw.replace(',','.'))||0;
     return Number(raw)||0;
+  }
+
+  function splitConsumptionAndDays(rawValue){
+    const raw=String(rawValue??'').replace(/\D/g,'');
+    if(raw.length<5||raw.length>7)return 0;
+    const days=Number(raw.slice(-2));
+    const consumption=Number(raw.slice(0,-2));
+    // Quando o PDF/OCR cola as colunas, vem algo como 338629 = 3386 kWh + 29 dias.
+    if(days>=20&&days<=35&&consumption>=0&&consumption<=50000)return consumption;
+    return 0;
   }
 
   function billMedian(values=[]){
@@ -4065,7 +4085,7 @@ ${result?.data?.text||''}`;
     const warnings=[];
     const clean=values.map(normalizeBillNumber).filter(v=>Number.isFinite(v)&&v>=0&&v<=500000);
     if(!clean.length)return {values:[],warnings};
-    const base=clean.filter(v=>v>=10&&v<=10000&&!(v>=1900&&v<=2100));
+    const base=clean.filter(v=>v>=10&&v<=10000);
     const reference=billMedian(base.length>=3?base:clean.filter(v=>v>0&&v<500000));
     const reviewed=clean.map((value,index)=>{
       let next=Math.round(value);
@@ -4080,7 +4100,7 @@ ${result?.data?.text||''}`;
         }
       }
       return next;
-    }).filter(v=>Number.isFinite(v)&&v>=0&&v<=500000&&!(v>=1900&&v<=2100));
+    }).filter(v=>Number.isFinite(v)&&v>=0&&v<=500000);
     return {values:reviewed,warnings};
   }
 
@@ -4103,40 +4123,63 @@ ${result?.data?.text||''}`;
     const monthMap={JAN:1,JANEIRO:1,FEV:2,FEVEREIRO:2,MAR:3,MARCO:3,'MARÇO':3,ABR:4,ABRIL:4,MAI:5,MAIO:5,JUN:6,JUNHO:6,JUL:7,JULHO:7,AGO:8,AGOSTO:8,SET:9,SETEMBRO:9,OUT:10,OUTUBRO:10,NOV:11,NOVEMBRO:11,DEZ:12,DEZEMBRO:12};
     const monthPattern='JAN(?:EIRO)?|FEV(?:EREIRO)?|MAR(?:ÇO|CO)?|ABR(?:IL)?|MAI(?:O)?|JUN(?:HO)?|JUL(?:HO)?|AGO(?:STO)?|SET(?:EMBRO)?|OUT(?:UBRO)?|NOV(?:EMBRO)?|DEZ(?:EMBRO)?';
     const normalizeMonthKey=value=>String(value||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace('MARCO','MAR');
-    const validConsumption=v=>Number.isFinite(v)&&v>=0&&v<=500000&&!(v>=1900&&v<=2100);
-    const pickConsumptionFromText=snippet=>{
-      const candidates=[...String(snippet||'').matchAll(/\b([0-9]{1,7}(?:[.,][0-9]+)?)\b/g)]
-        .map(match=>({raw:match[1],value:normalizeBillNumber(match[1])}))
-        .filter(item=>validConsumption(item.value))
-        .filter(item=>!(item.value<=31&&/\bdias?\b/i.test(snippet)))
+    const monthNumber=value=>{const key=normalizeMonthKey(value);return monthMap[key]||monthMap[key.slice(0,3)]||0;};
+    const validConsumption=v=>Number.isFinite(v)&&v>=0&&v<=500000;
+    const numberMatches=txt=>[...String(txt||'').matchAll(/\b([0-9]{1,7}(?:[.,][0-9]+)?)\b/g)]
+      .map(m=>({raw:m[1],value:normalizeBillNumber(m[1])}))
+      .filter(item=>validConsumption(item.value));
+    const chooseConsumption=txt=>{
+      let nums=numberMatches(txt)
         .filter(item=>!(String(item.raw).includes(',')&&item.value<10));
-      return candidates[0]?.value||0;
+      if(!nums.length)return 0;
+      // Formato correto: MÊS/ANO CONSUMO DIAS. Quando vier colado, ex.: 338629, separa 3386 + 29.
+      for(const item of nums){
+        const split=splitConsumptionAndDays(item.raw);
+        if(split||/^0+$/.test(String(item.raw)))return split;
+      }
+      // A coluna Dias Faturados normalmente fica entre 20 e 35; consumo é a primeira coluna numérica fora desse intervalo.
+      const overDays=nums.find(item=>item.value>35)||nums.find(item=>item.value>31);
+      return (overDays||nums[0]).value||0;
     };
-    const found=[];
-    source.split(/\n+/).forEach((line,lineIndex)=>{
-      const upper=line.toUpperCase();
-      const monthMatch=upper.match(new RegExp(`\\b(${monthPattern})\\b`,'i'));
-      if(!monthMatch)return;
-      const monthKey=normalizeMonthKey(monthMatch[1]);
-      const month=monthMap[monthKey]||monthMap[monthKey.slice(0,3)]||0;
-      const after=line.slice(monthMatch.index+monthMatch[0].length);
-      const before=line.slice(0,monthMatch.index);
-      const explicit=after.match(/(?:^|[^0-9])([0-9]{1,7}(?:[.,][0-9]+)?)\s*kwh\b/i)||before.match(/(?:^|[^0-9])([0-9]{1,7}(?:[.,][0-9]+)?)\s*kwh\b/i);
-      let value=explicit?normalizeBillNumber(explicit[1]):pickConsumptionFromText(after);
-      if(!value)value=pickConsumptionFromText(before);
-      if(value>0)found.push({month,value,lineIndex,label:months[month-1]||`Mês ${month}`});
+    const entries=[];
+    const addEntry=(month,value,lineIndex,label)=>{
+      value=normalizeBillNumber(value);
+      if(month&&validConsumption(value))entries.push({month,value,lineIndex,label:label||months[month-1]||`Mês ${month}`});
+    };
+
+    // 1) Formato ideal da CELESC: ABR/26 3386 29 — pega somente o primeiro número após o mês, ignorando dias.
+    source.split(/\n+/).forEach((rawLine,lineIndex)=>{
+      const line=String(rawLine||'')
+        .replace(/[|;]+/g,' ')
+        .replace(/([A-Z]{3})([0-9]{2,4})/gi,'$1/$2')
+        .replace(/\s+/g,' ')
+        .trim();
+      if(!line)return;
+      const re=new RegExp(`\\b(${monthPattern})\\s*(?:[/.-]\\s*\\d{2,4})?\\b([\\s\\S]*)`,'ig');
+      let m;
+      while((m=re.exec(line))){
+        const month=monthNumber(m[1]);
+        let tail=m[2]||'';
+        const nextMonth=tail.search(new RegExp(`\\b(${monthPattern})\\s*(?:[/.-]\\s*\\d{2,4})?\\b`,'i'));
+        if(nextMonth>=0)tail=tail.slice(0,nextMonth);
+        const value=chooseConsumption(tail);
+        if(value>0||/\b0\b/.test(tail))addEntry(month,value,lineIndex,months[month-1]);
+      }
     });
-    if(found.length>=4){
+
+    const buildFromEntries=(rawEntries)=>{
       const dedup=[];
-      found.forEach(item=>{
+      rawEntries.forEach(item=>{
         const key=`${item.month}-${item.lineIndex}-${item.value}`;
         if(!dedup.some(d=>d.key===key))dedup.push({...item,key});
       });
+      if(!dedup.length)return null;
       const uniqueMonths=[...new Set(dedup.map(item=>item.month).filter(Boolean))];
       let raw=[],labels=[];
       if(uniqueMonths.length>=6){
         const byMonth={};
-        dedup.forEach(item=>{if(item.month&&!byMonth[item.month])byMonth[item.month]=item.value;});
+        // Mantém a primeira ocorrência de cada mês. Em faturas de 13 linhas, isso preserva o mês mais recente.
+        dedup.forEach(item=>{if(item.month&&!Object.prototype.hasOwnProperty.call(byMonth,item.month))byMonth[item.month]=item.value;});
         raw=Array.from({length:12},(_,i)=>byMonth[i+1]??0);
         labels=months;
       }else{
@@ -4147,21 +4190,57 @@ ${result?.data?.text||''}`;
       const reviewed=reviewConsumptionValues(raw,labels);
       warnings.push(...reviewed.warnings);
       return {values:reviewed.values,warnings};
+    };
+    if(entries.length>=4){
+      const result=buildFromEntries(entries);
+      if(result&&result.values.filter(Boolean).length>=4)return result;
     }
+
+    // 1.1) OCR tolerante: aceita mês com ano grudado ou pequenas sobras, ex.: ABR26, ABRI26, OUT/25.
+    if(entries.length<4){
+      source.split(/\n+/).forEach((rawLine,lineIndex)=>{
+        const line=String(rawLine||'').toUpperCase()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+          .replace(/[|;]+/g,' ')
+          .replace(/([A-Z]{3})([0-9]{2,4})/g,'$1/$2')
+          .replace(/\s+/g,' ')
+          .trim();
+        const m=line.match(/\b(JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)[A-Z0-9\/.-]{0,6}\b([\s\S]*)/i);
+        if(!m)return;
+        const month=monthNumber(m[1]);
+        const value=chooseConsumption(m[2]||'');
+        if(value>0||/\b0\b/.test(m[2]||''))addEntry(month,value,lineIndex,months[month-1]);
+      });
+      if(entries.length>=4){
+        const result=buildFromEntries(entries);
+        if(result&&result.values.filter(Boolean).length>=4)return result;
+      }
+    }
+
+    // 2) Formato por colunas: primeiro os meses, depois a coluna Consumo Faturado, depois Dias Faturados.
+    const monthTokens=[...source.matchAll(new RegExp(`\\b(${monthPattern})\\s*(?:[/.-]\\s*\\d{2,4})?\\b`,'gi'))]
+      .map((m,index)=>({month:monthNumber(m[1]),index:m.index,label:months[(monthNumber(m[1])||1)-1]}))
+      .filter(item=>item.month);
+    const consumoSegment=(source.match(/consumo\s+faturado([\s\S]{0,900}?)(?:dias\s+faturados|$)/i)||['',''])[1];
+    if(monthTokens.length>=4&&consumoSegment){
+      const nums=numberMatches(consumoSegment).map(item=>item.value).filter(v=>v>31||v===0).slice(0,monthTokens.length);
+      if(nums.length>=4){
+        const colEntries=monthTokens.slice(0,nums.length).map((m,i)=>({month:m.month,value:nums[i],lineIndex:i,label:m.label}));
+        const result=buildFromEntries(colEntries);
+        if(result&&result.values.filter(Boolean).length>=4)return result;
+      }
+    }
+
+    // 3) Último recurso: janela textual do quadro, usando números mais prováveis de consumo.
     const normalized=source.replace(/\s+/g,' ');
-    const historyWindow=(normalized.match(/(?:hist[oó]rico|consumo\s+(?:dos\s+)?(?:últimos|ultimos)?\s*12|kwh\s+faturado|demonstrativo\s+de\s+consumo)[\s\S]{0,1100}/i)||[''])[0];
-    const windowNumbers=[...historyWindow.matchAll(/\b([0-9]{1,7})(?:[,.]\d+)?\b/g)].map(m=>Number(m[1])).filter(validConsumption).filter(v=>v>0||historyWindow.length>0);
-    if(windowNumbers.length>=6){
-      const last=windowNumbers.slice(-12);
-      const reviewed=reviewConsumptionValues(last);
+    const historyWindow=(normalized.match(/(?:hist[oó]rico\s+de\s+consumo|consumo\s+faturado|kwh\s+faturado|demonstrativo\s+de\s+consumo)[\s\S]{0,1100}/i)||[''])[0];
+    const windowNumbers=numberMatches(historyWindow).map(item=>item.value).filter(v=>v===0||v>31);
+    if(windowNumbers.length>=4){
+      const reviewed=reviewConsumptionValues(windowNumbers.slice(0,12),months);
       warnings.push(...reviewed.warnings);
       return {values:reviewed.values,warnings};
     }
-    const kwhMatches=[...normalized.matchAll(/(?:^|\s)(\d{1,7})(?:[,.]\d+)?\s*kwh\b/gi)].map(m=>Number(m[1])).filter(validConsumption);
-    const unique=[];kwhMatches.forEach(v=>{if(unique.at(-1)!==v)unique.push(v);});
-    const reviewed=reviewConsumptionValues(unique.slice(-12));
-    warnings.push(...reviewed.warnings);
-    return {values:reviewed.values,warnings};
+    return {values:[],warnings};
   }
 
   function extractTariffFromBill(original,normalized,totalAmount=0,consumption=[]){
@@ -4208,9 +4287,6 @@ ${result?.data?.text||''}`;
 
   function formatBillAnalysisSource(source=''){
     const map={
-      'ia':'IA',
-      'ai':'IA',
-      'openai':'IA',
       'local':'Leitura local',
       'ocr':'OCR local',
       'ocr-imagem':'OCR de imagem',
@@ -4289,22 +4365,28 @@ ${result?.data?.text||''}`;
 
   async function handleEnergyBillUpload(event){
     const file=event.target.files?.[0];if(!file)return;
-    activeProposal.billFileName=file.name;activeBillAiImages=[];activeBillExtractionMeta={pages:0,textLength:0,source:'upload'};
-    const btn=document.getElementById('billLocalAnalyzeBtn');if(btn){btn.disabled=true;btn.textContent='Lendo histórico...';}
-    setBillStatus('Preparando leitura do histórico de consumo',file.name,'info');
+    activeProposal.billFileName=file.name;
+    activeBillAiImages=[];
+    activeBillExtractionMeta={pages:0,textLength:0,source:'upload'};
+    const btn=document.getElementById('billLocalAnalyzeBtn');
+    if(btn){btn.disabled=true;btn.textContent='Lendo OCR do histórico...';}
+    setBillStatus('Preparando OCR do Histórico de Consumo',file.name,'info');
     try{
-      let fullText='';let historyText='';let ocrText='';let source='local';
+      let fullText='';let historyText='';let ocrText='';let source='ocr-historico';
       const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name);
       const isImage=file.type.startsWith('image/')||/\.(jpe?g|png|webp|bmp|tiff?)$/i.test(file.name);
       if(isImage){
         const image=await prepareHistoryImageForOCR(file);
-        activeBillAiImages=[image];activeBillExtractionMeta={pages:1,textLength:0,source:'history-image'};
-        ocrText=await runBillOCR(activeBillAiImages);historyText=ocrText;source='ocr-historico';
+        activeBillAiImages=[image];
+        activeBillExtractionMeta={pages:1,textLength:0,source:'history-image'};
+        ocrText=await runBillOCR(activeBillAiImages);
+        historyText=extractConsumptionHistoryOnlyText(ocrText)||ocrText;
       }else if(isPdf){
+        if(!window.pdfjsLib)throw new Error('Biblioteca PDF não carregada. Verifique a conexão com a internet e tente novamente.');
         const arrayBuffer=await file.arrayBuffer();
         const pdf=await pdfjsLib.getDocument({data:arrayBuffer}).promise;
         for(let pageNo=1;pageNo<=pdf.numPages;pageNo++){
-          setBillStatus('Lendo PDF',`Buscando somente o quadro HISTÓRICO DE CONSUMO · página ${pageNo} de ${pdf.numPages}.`,'info');
+          setBillStatus('Buscando o quadro Histórico de Consumo',`Página ${pageNo} de ${pdf.numPages}.`,'info');
           const page=await pdf.getPage(pageNo);
           const content=await page.getTextContent({normalizeWhitespace:true});
           const pageText=textItemsToLines(content.items);
@@ -4312,34 +4394,55 @@ ${result?.data?.text||''}`;
           const pageHistory=extractConsumptionHistoryOnlyText(pageText);
           if(pageHistory)historyText+=pageHistory+'\n';
           if(pageNo<=3){
-            try{activeBillAiImages.push(await renderPdfHistoryCropForOCR(page,1700,.94));}
+            try{activeBillAiImages.push(await renderPdfHistoryCropForOCR(page,1800,.96));}
             catch(imageError){console.warn('Não foi possível recortar o histórico para OCR:',imageError);}
           }
         }
-        const firstExtract=extractBillFields(fullText,historyText);
-        const needsOCR=historyText.trim().length<30||firstExtract.consumption.filter(Boolean).length<6;
-        if(needsOCR&&activeBillAiImages.length){
-          try{ocrText=await runBillOCR(activeBillAiImages);historyText=`${historyText}\n${ocrText}`.trim();source=fullText.trim().length>=120?'texto-historico+ocr':'ocr-pdf';}
-          catch(ocrError){console.warn('OCR indisponível:',ocrError);setBillStatus('Histórico lido parcialmente','Não foi possível executar OCR no quadro de consumo. Confira os meses preenchidos.','warning');}
+        // Sempre tenta OCR no recorte do quadro, mesmo quando o PDF possui texto,
+        // porque a fatura da CELESC pode juntar Consumo Faturado + Dias Faturados.
+        if(activeBillAiImages.length){
+          try{
+            const onlyOcr=await runBillOCR(activeBillAiImages);
+            const ocrHistory=extractConsumptionHistoryOnlyText(onlyOcr)||onlyOcr;
+            if(ocrHistory.trim()){
+              ocrText=ocrHistory;
+              historyText=`${ocrHistory}\n${historyText}`.trim();
+              source='ocr-historico';
+            }
+          }catch(ocrError){
+            console.warn('OCR indisponível:',ocrError);
+            if(!historyText.trim())throw ocrError;
+            source='texto-historico';
+            setBillStatus('OCR indisponível, usando texto do PDF','Confira os meses preenchidos. Para fatura escaneada, o OCR precisa carregar corretamente.','warning');
+          }
         }
-        activeBillExtractionMeta={pages:pdf.numPages,textLength:(fullText+'\n'+historyText).trim().length,source:source.includes('ocr')?'history-ocr':'history-text'};
+        activeBillExtractionMeta={pages:pdf.numPages,textLength:(fullText+'\n'+historyText).trim().length,source:source};
       }else{
         throw new Error('Formato não suportado. Use PDF, JPG ou PNG.');
       }
       const combinedText=`${fullText}\n${historyText}`.trim();
       activeProposal.billText=combinedText.slice(0,100000);
-      activeProposal.billHistoryText=historyText.slice(0,50000);
-      const extracted=extractBillFields(combinedText,historyText);
+      activeProposal.billHistoryText=String(historyText||ocrText||'').slice(0,50000);
+      const extracted=extractBillFields(combinedText,activeProposal.billHistoryText);
       applyBillAnalysisResult(extracted,source);
       renderProposalBuilder();
-      const filled=(extracted.consumption||[]).filter(Boolean).length;
-      if(filled>=6){toast('Histórico de consumo lido',`Foram preenchidos ${filled} mês(es) usando somente o quadro da fatura.`,'success');}
-      else{toast('Leitura concluída com revisão',`Foram encontrados ${filled} mês(es) no quadro Histórico de Consumo. Confira antes de continuar.`,'info');}
+      const filled=(extracted.consumption||[]).filter(v=>Number(v)>0).length;
+      if(filled>=6){
+        toast('Histórico de consumo lido',`Foram preenchidos ${filled} mês(es) usando somente o quadro da fatura.`,'success');
+        setBillStatus('Histórico de consumo lido com sucesso',`Foram preenchidos ${filled} mês(es). Revise antes de avançar.`,'info');
+      }else{
+        toast('Leitura concluída com revisão',`Foram encontrados ${filled} mês(es). Confira o quadro Histórico de Consumo.`,'info');
+        setBillStatus('Leitura precisa de revisão',`Foram encontrados ${filled} mês(es). Envie um PDF de exemplo para ajustar o recorte com precisão.`,filled?'warning':'danger');
+      }
     }catch(error){
-      console.error(error);activeProposal.billText='';activeProposal.billHistoryText='';activeBillAiImages=[];
-      toast('Não foi possível ler o histórico',error.message||'Tente outro PDF ou uma foto mais nítida do quadro Histórico de Consumo.','error');
+      console.error(error);
+      activeProposal.billText='';activeProposal.billHistoryText='';activeBillAiImages=[];
+      toast('Não foi possível ler o histórico',error.message||'Tente outro PDF ou uma imagem mais nítida do quadro Histórico de Consumo.','error');
       setBillStatus('Falha na leitura do histórico',error.message||'Tente outro arquivo.','danger');
-    }finally{if(btn){btn.disabled=false;btn.textContent='↻ Reaplicar leitura automática';}}
+    }finally{
+      if(btn){btn.disabled=false;btn.textContent='↻ Reaplicar OCR do histórico';}
+      if(event?.target)event.target.value='';
+    }
   }
 
   function extractBillFields(text,historyText=''){
@@ -4389,49 +4492,9 @@ ${result?.data?.text||''}`;
       const warningCount=Array.isArray(localResult.warnings)?localResult.warnings.length:0;
       toast('Histórico de consumo processado',warningCount?`${warningCount} campo(s) precisam de revisão manual.`:'Os meses foram preenchidos usando somente o quadro Histórico de Consumo.','info');
     }catch(error){console.error(error);toast('Falha na leitura automática',error.message||'Não foi possível processar o histórico de consumo.','error');}
-    finally{const current=document.getElementById('billLocalAnalyzeBtn');if(current){current.disabled=false;current.textContent='↻ Reaplicar leitura automática';}}
+    finally{const current=document.getElementById('billLocalAnalyzeBtn');if(current){current.disabled=false;current.textContent='↻ Reaplicar leitura do histórico';}}
   }
 
-  async function analyzeBillWithAI(){
-    if(!activeProposal){toast('Nenhuma proposta aberta','Abra uma proposta antes de analisar a fatura.','error');return;}
-    if(!activeProposal.billText&&!activeBillAiImages.length){toast('Importe a conta primeiro','Selecione PDF, JPG ou PNG da fatura antes de usar IA.','error');return;}
-    const aiConfig=loadBillAiConfig();
-    const functionUrl=aiConfig.functionUrl;
-    if(!functionUrl){configureBillAiFunctionUrl();return;}
-    const btn=document.getElementById('billAiAnalyzeBtn');
-    const localBtn=document.getElementById('billLocalAnalyzeBtn');
-    if(btn){btn.disabled=true;btn.textContent='🤖 Analisando com IA...';}
-    if(localBtn)localBtn.disabled=true;
-    setBillStatus('IA analisando o histórico','Enviando somente o texto/recorte do quadro HISTÓRICO DE CONSUMO para sua Firebase Function.','info');
-    try{
-      const response=await fetch(functionUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-        provider:aiConfig.provider,
-        model:aiConfig.model,
-        billText:String(activeProposal.billText||'').slice(0,50000),
-        images:Array.isArray(activeBillAiImages)?activeBillAiImages.slice(0,3):[],
-        fileName:activeProposal.billFileName||'',
-        extractionMeta:activeBillExtractionMeta||{}
-      })});
-      let data=null;
-      const raw=await response.text();
-      try{data=raw?JSON.parse(raw):null;}catch(parseError){throw new Error(raw?.slice(0,220)||'A função não retornou JSON válido.');}
-      if(!response.ok)throw new Error(data?.error||data?.message||data?.details||'Erro ao analisar a fatura com IA.');
-      applyBillAnalysisResult(data,'ia');
-      renderProposalBuilder();
-      const consumptionCount=normalizeConsumption(data.consumption||[]).filter(Boolean).length;
-      toast(`Fatura lida com ${getBillAiProviderLabel(aiConfig.provider)}`,`Confiança: ${formatBillConfidence(data.confidence)||'—'} · ${consumptionCount} mês(es) de consumo.`,'success');
-    }catch(error){
-      console.error(error);
-      const message=String(error?.message||'Não foi possível analisar a fatura.');
-      setBillStatus('Falha na leitura com IA',message,'danger');
-      toast('Erro na IA',message,'error');
-    }finally{
-      const current=document.getElementById('billAiAnalyzeBtn');
-      const localCurrent=document.getElementById('billLocalAnalyzeBtn');
-      if(current){current.disabled=false;current.textContent='🤖 Ler fatura com IA';}
-      if(localCurrent)localCurrent.disabled=false;
-    }
-  }
 
   function upsertClientFromProposal(proposal,status='Em negociação'){
     const data=proposal.client||{};
@@ -4712,7 +4775,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
 
   function renderSettings(){
     const root=document.getElementById('settingsBody');if(!root)return;
-    const tabs=[['profile','Meu usuário'],['company','Empresa'],['branding','Identidade e fotos'],['firebase','Firebase'],['ai','IA / Gemini'],['users','Usuários e permissões'],['backup','Backup e dados']];
+    const tabs=[['profile','Meu usuário'],['company','Empresa'],['branding','Identidade e fotos'],['firebase','Firebase'],['users','Usuários e permissões'],['backup','Backup e dados']];
     root.innerHTML=`<div class="settings-tabs">${tabs.map(([id,label])=>`<button class="settings-tab ${settingsTab===id?'active':''}" data-settings-tab="${id}">${label}</button>`).join('')}</div><div id="settingsPanel">${renderSettingsPanel(settingsTab)}</div>`;
     root.querySelectorAll('[data-settings-tab]').forEach(btn=>btn.addEventListener('click',()=>{settingsTab=btn.dataset.settingsTab;renderSettings();}));
     bindSettingsEvents();
@@ -4754,12 +4817,6 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
       const loggedEmail=window.FirebaseCRM?.auth?.currentUser?.email||state.currentUser.email||'';
       const profileActionLabel=firebaseLastDiagnostic?.code==='bootstrap-owner-profile-missing'?'Reparar meu perfil':firebaseLastDiagnostic?.code==='profile-missing-bootstrap-available'?'Ativar meu perfil administrador':'Ativar ou reparar meu perfil';
       return `<div class="firebase-status"><div><strong>${escapeHtml(status.title)}</strong><span>${escapeHtml(status.detail)}</span></div><span class="status ${status.className}">${escapeHtml(status.badge)}</span></div>${firebaseDiagnosticHtml()}<div class="notice" style="margin-top:14px"><strong>Perfil Firebase:</strong> a conta lucas@igenergia.com.br está pré-aprovada como administradora da empresa company-demo. As demais contas continuam dependendo de aprovação em Usuários e permissões.</div><form id="firebaseSettingsForm" style="margin-top:15px"><div class="form-grid">${['apiKey','authDomain','databaseURL','projectId','storageBucket','messagingSenderId','appId','functionsRegion'].map(key=>settingsInput(key,firebaseLabels[key],firebaseConfig[key]||'',key==='apiKey'?'password':'text')).join('')}</div><div class="notice" style="margin-top:12px"><strong>Configuração carregada:</strong> projeto ${escapeHtml(firebaseConfig.projectId||'—')} · chave ${escapeHtml(firebaseKeyPreview(firebaseConfig.apiKey))} · origem ${escapeHtml(location.origin==='null'?location.protocol:location.origin)}.${location.protocol==='file:'?' O arquivo está aberto por file://; se a chave tiver restrição de site, use Firebase Hosting ou localhost.':''}</div><div style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px"><button class="btn btn-ghost" id="firebaseRestoreConfigBtn" type="button">Restaurar configuração oficial</button><button class="btn btn-ghost" id="firebaseTestBtn" type="button">Testar conexão</button><button class="btn btn-primary" type="submit">Salvar e conectar</button></div></form><div class="form-section" style="margin-top:15px"><div class="form-section-head"><div><h3>Acesso ao Firebase</h3><p>Use e-mail e senha. No primeiro acesso, o botão de criação prepara automaticamente o administrador inicial e a empresa ativa.</p></div></div><div class="inline-fields"><label class="field"><span>E-mail</span><input id="firebaseLoginEmail" type="email" value="${attr(loggedEmail)}"></label><label class="field"><span>Senha</span><input id="firebaseLoginPassword" type="password" minlength="6"></label><button class="btn btn-secondary" id="firebaseLoginBtn" type="button" style="align-self:end">Entrar</button></div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-primary" id="firebaseRegisterBtn" type="button">Criar conta e primeiro administrador</button><button class="btn btn-ghost" id="firebaseBootstrapBtn" type="button">${escapeHtml(profileActionLabel)}</button><button class="btn btn-ghost" id="firebaseDiagnoseBtn" type="button">Diagnosticar</button><button class="btn btn-ghost" id="firebaseLogoutBtn" type="button">Sair</button></div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost" id="firebasePullBtn" type="button">Carregar dados da nuvem</button><button class="btn btn-primary" id="firebaseSyncBtn" type="button">Enviar dados locais</button></div></div>`;
-    }
-    if(tab==='ai'){
-      const ai=loadBillAiConfig();
-      const defaultUrl=getDefaultBillAiFunctionUrl();
-      const secretCommand='firebase functions:secrets:set GEMINI_API_KEY';
-      return `<form id="billAiSettingsForm"><div class="form-section"><div class="form-section-head"><div><h3>Leitura de fatura com IA</h3><p>Configure a conexão do CRM com a Firebase Function que chama o Gemini. A chave da API fica protegida no Firebase Secrets.</p></div><span class="status green">${escapeHtml(getBillAiProviderLabel(ai.provider))}</span></div><div class="form-grid"><label class="field"><span>Provedor</span><select name="provider"><option value="gemini" ${ai.provider==='gemini'?'selected':''}>Gemini</option><option value="openai" ${ai.provider==='openai'?'selected':''}>OpenAI</option></select><small>Use Gemini para a chave do Google AI Studio.</small></label><label class="field"><span>Modelo</span><input name="model" value="${attr(ai.model)}" placeholder="gemini-3.5-flash"><small>Pode ser alterado conforme o modelo disponível na sua conta.</small></label><label class="field full"><span>URL da Firebase Function</span><input name="functionUrl" value="${attr(ai.functionUrl||defaultUrl)}" placeholder="https://REGIAO-SEU-PROJETO.cloudfunctions.net/analisarFatura"><small>Essa URL é chamada pelo botão “Ler fatura com IA”.</small></label></div><div class="notice warning" style="margin-top:12px"><strong>Chave Gemini protegida:</strong> não salve a chave dentro do HTML. Salve no terminal com <code>${escapeHtml(secretCommand)}</code>. Depois publique a Function.</div><div class="notice" style="margin-top:12px"><strong>URL padrão detectada:</strong> ${escapeHtml(defaultUrl||'configure primeiro o Project ID e a região em Firebase')}.</div><div style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px"><button class="btn btn-ghost" id="billAiDefaultUrlBtn" type="button">Usar URL padrão</button><button class="btn btn-ghost" id="billAiCopySecretCommandBtn" type="button">Copiar comando do Secret</button><button class="btn btn-primary" type="submit">Salvar conexão da IA</button></div></div></form><div class="form-section" style="margin-top:15px"><div class="form-section-head"><div><h3>Status da integração</h3><p>Quando a Function estiver publicada, importe uma fatura na proposta e clique em “🤖 Ler fatura com IA”.</p></div></div><div class="detail-grid"><div class="detail-item"><span>Provedor</span><strong>${escapeHtml(getBillAiProviderLabel(ai.provider))}</strong></div><div class="detail-item"><span>Modelo</span><strong>${escapeHtml(ai.model||'—')}</strong></div><div class="detail-item full"><span>Endpoint</span><strong>${escapeHtml(ai.functionUrl||'Não configurado')}</strong></div></div></div>`;
     }
     if(tab==='users')return renderUserPermissionsPanel();
     return `<div class="grid grid-2"><div class="form-section"><div class="form-section-head"><div><h3>Exportar backup</h3><p>Baixe todas as informações cadastradas em JSON.</p></div></div><button class="btn btn-primary" id="settingsExportBackup" type="button">Exportar backup completo</button></div><div class="form-section"><div class="form-section-head"><div><h3>Importar backup</h3><p>Restaure um arquivo exportado anteriormente.</p></div></div><button class="btn btn-ghost" id="settingsImportBackup" type="button">Selecionar arquivo JSON</button></div></div><div class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Apagar dados locais</h3><p>Remove definitivamente os cadastros deste navegador e retorna para uma base vazia. Os dados já enviados ao Firebase não são apagados.</p></div></div><button class="btn btn-danger" id="resetCleanData" type="button">Apagar dados locais</button></div>`;
@@ -5319,7 +5376,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     return {passed:tests.every(test=>test.passed),total:tests.length,success:tests.filter(test=>test.passed).length,tests};
   }
 
-  window.SolarCRMDebug={SYSTEM_VERSION,calculateProposal,extractBillFields,normalizeState,renderProposalDocument,projectStages,projectDocumentCategories,defaultAutomationRule,executeAutomationRules,queueAutomationRule,ensureProjectStructure,ensureAllProjectStructures,updateProjectStage,runSystemSelfTests,runWorkflowSelfTests,loadFirebaseConfig,clearFirebaseConfig,firebaseApiKeyLooksValid,finishAuthenticatedSession,loadUserPermissionData,openPermissionMatrix,defaultPermissionMatrix,normalizePermissionMatrix,permissionArraysFromMatrix,hasPermission,lockSystemForAuthentication,unlockSystemAfterAuthentication,buildClientPortalRecord,publishClientPortalStatus,clientPortalUrl,analyzeBillWithAI,configureBillAiFunctionUrl,getBillAiFunctionUrl,loadBillAiConfig,saveBillAiConfig,getState:()=>deepClone(state)};
+  window.SolarCRMDebug={SYSTEM_VERSION,calculateProposal,extractBillFields,normalizeState,renderProposalDocument,projectStages,projectDocumentCategories,defaultAutomationRule,executeAutomationRules,queueAutomationRule,ensureProjectStructure,ensureAllProjectStructures,updateProjectStage,runSystemSelfTests,runWorkflowSelfTests,loadFirebaseConfig,clearFirebaseConfig,firebaseApiKeyLooksValid,finishAuthenticatedSession,loadUserPermissionData,openPermissionMatrix,defaultPermissionMatrix,normalizePermissionMatrix,permissionArraysFromMatrix,hasPermission,lockSystemForAuthentication,unlockSystemAfterAuthentication,buildClientPortalRecord,publishClientPortalStatus,clientPortalUrl,getState:()=>deepClone(state)};
   document.addEventListener('DOMContentLoaded',()=>{init();autoConnectFirebase();});
 })();
 
