@@ -3738,7 +3738,7 @@ body.auth-ready #loginScreen { display:none !important; }
       </div>${nav}`;
     if(step===1)return `
       <div class="form-section">${heading('Importar conta de energia','O sistema lê automaticamente PDF, foto ou fatura escaneada e preenche o consumo.')}
-        <div class="grid grid-2"><label class="upload-drop"><div><strong>Importar fatura PDF</strong><span>${p.billFileName?`Arquivo: ${escapeHtml(p.billFileName)}`:'Selecione o PDF, JPG ou PNG da fatura.'}</span><input id="energyBillInput" type="file" accept="application/pdf,image/*" style="margin-top:10px"></div></label><div><div id="billStatusBox" class="notice success"><strong>Leitura local ativada</strong><br><span>Sem IA. O consumo é lido somente do quadro “HISTÓRICO DE CONSUMO”; Unidade Consumidora, Classe, Grupo Tarifário, Distribuidora e Tarifa são lidos dos dados da fatura.</span></div><div style="display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px"><button id="billLocalAnalyzeBtn" class="btn btn-secondary" type="button">↻ Reaplicar OCR da fatura</button></div>${p.billAnalysis?`<div class="notice" style="margin-top:10px">Última análise: <strong>${escapeHtml(formatBillAnalysisSource(p.billAnalysis.source||'automática'))}</strong>${formatBillConfidence(p.billAnalysis.confidence)?` · ${formatBillConfidence(p.billAnalysis.confidence)} de confiança`:''}${p.billAnalysis.warnings?.length?`<br><span>${escapeHtml(p.billAnalysis.warnings.join(' '))}</span>`:''}</div>`:''}</div></div>
+        <div class="grid grid-2"><label class="upload-drop"><div><strong>Importar fatura PDF</strong><span>${p.billFileName?`Arquivo: ${escapeHtml(p.billFileName)}`:'Selecione o PDF, JPG ou PNG da fatura.'}</span><input id="energyBillInput" type="file" accept="application/pdf,image/*" style="margin-top:10px"></div></label><div><div id="billStatusBox" class="notice success"><strong>Leitura local ativada</strong><br><span>Sem IA. O consumo é lido somente do quadro “HISTÓRICO DE CONSUMO”; Unidade Consumidora é lida exclusivamente do campo “Unidade Consumidora”; Classe, Grupo Tarifário, Distribuidora e Tarifa são lidos dos dados da fatura.</span></div><div style="display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px"><button id="billLocalAnalyzeBtn" class="btn btn-secondary" type="button">↻ Reaplicar OCR da fatura</button></div>${p.billAnalysis?`<div class="notice" style="margin-top:10px">Última análise: <strong>${escapeHtml(formatBillAnalysisSource(p.billAnalysis.source||'automática'))}</strong>${formatBillConfidence(p.billAnalysis.confidence)?` · ${formatBillConfidence(p.billAnalysis.confidence)} de confiança`:''}${p.billAnalysis.warnings?.length?`<br><span>${escapeHtml(p.billAnalysis.warnings.join(' '))}</span>`:''}</div>`:''}</div></div>
       </div>
       <div class="form-section">${heading('Dados identificados','Revise os campos antes de continuar.')}
         <div class="form-grid">${proposalField('client.consumerUnit','Unidade consumidora','text')}${proposalField('client.className','Classe','text')}${proposalField('client.tariffGroup','Grupo tarifário','text')}${proposalField('client.distributor','Distribuidora','text')}${proposalField('currentTariff','Tarifa atual (R$/kWh)','number')}${proposalField('technical.targetCoverage','Cobertura desejada (%)','number')}</div>
@@ -4525,24 +4525,36 @@ ${result?.data?.text||''}`;
   }
 
   function extractConsumerUnitFromBill(text,normalized){
-    const celescTop=String(text||'').match(/(?:COMERCIAL|RESIDENCIAL|RURAL|INDUSTRIAL|PODER\s+P[UÚ]BLICO|SERVI[CÇ]O\s+P[UÚ]BLICO)[^\n]{5,180}\n\s*([0-9]{5,12})\b/i);
-    if(celescTop?.[1])return celescTop[1].replace(/^0+(?=\d)/,'');
-    const celescLabel=normalized.match(/Unidade\s+Consumidora\s+([0-9]{5,14})\b/i);
-    if(celescLabel?.[1])return celescLabel[1].replace(/^0+(?=\d)/,'');
-    const patterns=[
-      /(?:unidade\s+consumidora|unid\.?\s*cons\.?|n[ºo°]?\s*(?:da\s*)?uc|\buc\b|c[oó]digo\s+da\s+unidade|c[oó]digo\s+da\s+instala[cç][aã]o|instala[cç][aã]o)\s*[:#\-–]?\s*([0-9][0-9.\-\/\s]{4,25})/i,
-      /(?:cliente|c[oó]digo\s+do\s+cliente)\s*[:#\-–]?\s*([0-9][0-9.\-\/\s]{4,25})/i
-    ];
-    for(const pattern of patterns){
-      const m=normalized.match(pattern);
-      if(m?.[1]){
-        const digits=String(m[1]).replace(/\D/g,'').replace(/^0+(?=\d)/,'');
-        if(digits.length>=5&&digits.length<=20)return digits;
+    // REGRA CELESC: a unidade consumidora deve sair somente do campo escrito
+    // “Unidade Consumidora”. Não usar número solto do cabeçalho, Cliente ou
+    // Código para Cadastro em Débito Automático, mesmo que o valor seja parecido.
+    const cleanUc=value=>{
+      const digits=String(value||'').replace(/\D/g,'').replace(/^0+(?=\d)/,'');
+      return digits.length>=5&&digits.length<=14?digits:'';
+    };
+    const lines=String(text||'').split(/\n+/).map(line=>line.replace(/\s+/g,' ').trim()).filter(Boolean);
+    for(let i=0;i<lines.length;i++){
+      const line=lines[i];
+      if(!/\bUnidade\s+Consumidora\b/i.test(line))continue;
+
+      // 1) Quando o número está na mesma linha do rótulo.
+      const afterLabel=line.replace(/^.*?\bUnidade\s+Consumidora\b\s*[:#\-–]?\s*/i,'');
+      let uc=cleanUc((afterLabel.match(/\b0*\d{5,14}\b/)||[])[0]);
+      if(uc)return uc;
+
+      // 2) Quando o número vem na linha seguinte, como no boleto CELESC:
+      // Unidade Consumidora -> 0040679596.
+      for(let j=i+1;j<Math.min(lines.length,i+6);j++){
+        const candidate=lines[j];
+        if(/\b(Nosso\s+N[uú]mero|Refer[eê]ncia|Vencimento|Total\s+a\s+Pagar|C[oó]digo\s+para\s+Cadastro|Cliente|CPF|CNPJ)\b/i.test(candidate))break;
+        uc=cleanUc((candidate.match(/\b0*\d{5,14}\b/)||[])[0]);
+        if(uc)return uc;
       }
     }
-    const lineValue=findBillFieldOnLines(text,/(?:unidade\s+consumidora|unid\.?\s*cons\.?|n[ºo°]?\s*(?:da\s*)?uc|\buc\b)/ig,/([0-9][0-9.\-\/\s]{4,25})/);
-    const digits=String(lineValue).replace(/\D/g,'').replace(/^0+(?=\d)/,'');
-    return digits.length>=5&&digits.length<=20?digits:'';
+
+    // 3) Fallback ainda restrito ao rótulo: texto extraído sem quebras de linha.
+    const labeled=String(normalized||'').match(/\bUnidade\s+Consumidora\b\s*[:#\-–]?\s*(?:N[uú]mero\s*)?(0*\d{5,14})\b/i);
+    return cleanUc(labeled?.[1]);
   }
 
   function cleanBillClassName(value){
