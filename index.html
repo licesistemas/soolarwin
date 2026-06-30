@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#08111f" />
-  <title>SolarCRM Pro v2.9.8 — CRM para Energia Solar</title>
+  <title>SolarCRM Pro v2.9.9 — CRM para Energia Solar</title>
   <meta name="description" content="CRM completo para empresas de energia solar com propostas profissionais, Kanban, Firebase, financeiro, obras e pós-venda." />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <style>
@@ -810,6 +810,7 @@ body.auth-ready #loginScreen { display:none !important; }
   <script src="https://cdn.jsdelivr.net/npm/jspdf@3.0.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.2.0/dist/signature_pad.umd.min.js"></script>
 </head>
 <body data-theme="dark" class="auth-locked">
@@ -1053,7 +1054,7 @@ body.auth-ready #loginScreen { display:none !important; }
   <input id="backupImportInput" type="file" accept="application/json" hidden />
 
   <script>
-/* Adaptador Firebase modular — SolarCRM Pro v2.9.8. */
+/* Adaptador Firebase modular — SolarCRM Pro v2.9.9. */
 (() => {
   'use strict';
   const SDK_VERSION = '11.10.0';
@@ -1806,7 +1807,7 @@ body.auth-ready #loginScreen { display:none !important; }
   const LEGACY_FIREBASE_CONFIG_KEYS = ['solarcrm-firebase-config-v2-8','solarcrm-firebase-config-v2-7','solarcrm-firebase-config-v2-6','solarcrm-firebase-config'];
   const DEFAULT_FIREBASE_CONFIG = Object.freeze({"apiKey":"AIzaSyCYSQfnPLyV9B6osiZhsLYYrF64YLhGkMA","authDomain":"energiasolar-67b14.firebaseapp.com","databaseURL":"https://energiasolar-67b14-default-rtdb.firebaseio.com","projectId":"energiasolar-67b14","storageBucket":"energiasolar-67b14.firebasestorage.app","messagingSenderId":"394822890491","appId":"1:394822890491:web:5afc55e01902bbf142915e","functionsRegion":"southamerica-east1"});
   const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-2';
-  const SYSTEM_VERSION = '2.9.8';
+  const SYSTEM_VERSION = '2.9.9';
   let storageWarningShown = false;
   let draftSaveTimer = null;
   let firebaseLastDiagnostic = null;
@@ -3736,8 +3737,8 @@ body.auth-ready #loginScreen { display:none !important; }
         <div class="grid grid-2"><label class="upload-drop"><div><strong>Selecionar foto da capa</strong><span>JPG ou PNG. A imagem será otimizada automaticamente.</span><input id="coverPhotoInput" type="file" accept="image/*" style="margin-top:10px"></div></label><div>${p.coverPhoto?`<img class="upload-preview" src="${p.coverPhoto}" alt="Foto da capa">`:`<div class="upload-drop"><div><strong>Pré-visualização</strong><span>Nenhuma foto selecionada. Será usado um fundo ilustrado.</span></div></div>`}</div></div>
       </div>${nav}`;
     if(step===1)return `
-      <div class="form-section">${heading('Importar conta de energia','O sistema lê o texto do PDF e tenta identificar os principais campos.')}
-        <div class="grid grid-2"><label class="upload-drop"><div><strong>Importar PDF da fatura</strong><span>${p.billFileName?`Arquivo: ${escapeHtml(p.billFileName)}`:'Arraste ou selecione a conta de energia.'}</span><input id="energyBillInput" type="file" accept="application/pdf" style="margin-top:10px"></div></label><div><div class="notice success">A versão atual usa extração local da fatura, sem IA e sem backend OpenAI.</div><button id="billLocalAnalyzeBtn" class="btn btn-secondary" type="button" style="margin-top:10px;width:100%">↻ Reaplicar extração local</button>${p.billAnalysis?`<div class="notice" style="margin-top:10px">Última análise: <strong>local</strong>${p.billAnalysis.confidence?` · ${Math.round(p.billAnalysis.confidence*100)}% de confiança`:''}</div>`:''}</div></div>
+      <div class="form-section">${heading('Importar conta de energia','O sistema lê automaticamente PDF, foto ou fatura escaneada e preenche o consumo.')}
+        <div class="grid grid-2"><label class="upload-drop"><div><strong>Importar fatura automaticamente</strong><span>${p.billFileName?`Arquivo: ${escapeHtml(p.billFileName)}`:'Selecione PDF, JPG ou PNG da conta de energia.'}</span><input id="energyBillInput" type="file" accept="application/pdf,image/*" style="margin-top:10px"></div></label><div><div id="billStatusBox" class="notice success">Leitura automática ativada: PDF com texto + OCR para imagem ou fatura digitalizada, sem backend OpenAI.</div><button id="billLocalAnalyzeBtn" class="btn btn-secondary" type="button" style="margin-top:10px;width:100%">↻ Reaplicar leitura automática</button>${p.billAnalysis?`<div class="notice" style="margin-top:10px">Última análise: <strong>${escapeHtml(p.billAnalysis.source||'automática')}</strong>${p.billAnalysis.confidence?` · ${Math.round(p.billAnalysis.confidence*100)}% de confiança`:''}${p.billAnalysis.warnings?.length?`<br><span>${escapeHtml(p.billAnalysis.warnings.join(' '))}</span>`:''}</div>`:''}</div></div>
       </div>
       <div class="form-section">${heading('Dados identificados','Revise os campos antes de continuar.')}
         <div class="form-grid">${proposalField('client.consumerUnit','Unidade consumidora','text')}${proposalField('client.className','Classe','text')}${proposalField('client.tariffGroup','Grupo tarifário','text')}${proposalField('client.distributor','Distribuidora','text')}${proposalField('currentTariff','Tarifa atual (R$/kWh)','number')}${proposalField('technical.targetCoverage','Cobertura desejada (%)','number')}</div>
@@ -3845,6 +3846,41 @@ body.auth-ready #loginScreen { display:none !important; }
     return canvas.toDataURL('image/jpeg',quality);
   }
 
+  function setBillStatus(title,message='',type='info'){
+    const box=document.getElementById('billStatusBox');
+    if(box){box.className=`notice ${type==='warning'?'warning':type==='danger'?'danger-note':'success'}`;box.innerHTML=`<strong>${escapeHtml(title)}</strong>${message?`<br><span>${escapeHtml(message)}</span>`:''}`;}
+  }
+
+  function readFileAsDataURL(file){
+    return new Promise((resolve,reject)=>{
+      const reader=new FileReader();reader.onerror=()=>reject(reader.error||new Error('Falha ao ler arquivo.'));reader.onload=()=>resolve(reader.result);reader.readAsDataURL(file);
+    });
+  }
+
+  async function prepareImageForOCR(file,maxW=2200,maxH=2200,quality=.94){
+    try{return await resizeImage(file,maxW,maxH,quality);}catch(_){return await readFileAsDataURL(file);}
+  }
+
+  async function runBillOCR(imageSources=[]){
+    if(!imageSources.length)return'';
+    if(!window.Tesseract)throw new Error('Biblioteca OCR não carregada. Verifique a conexão com a internet e tente novamente.');
+    let text='';
+    for(let index=0;index<imageSources.length;index++){
+      setBillStatus('Lendo fatura por OCR',`Página/imagem ${index+1} de ${imageSources.length}. Aguarde a leitura automática do consumo...`,'info');
+      const result=await Tesseract.recognize(imageSources[index],'por+eng',{
+        logger:m=>{
+          if(m?.status){
+            const pct=Number.isFinite(m.progress)?` ${Math.round(m.progress*100)}%`:'';
+            setBillStatus('Lendo fatura por OCR',`${m.status}${pct} · imagem ${index+1}/${imageSources.length}`,'info');
+          }
+        }
+      });
+      text+=`
+${result?.data?.text||''}`;
+    }
+    return text;
+  }
+
   function textItemsToLines(items=[]){
     const rows=[];
     items.filter(item=>String(item?.str||'').trim()).forEach(item=>{
@@ -3873,30 +3909,40 @@ body.auth-ready #loginScreen { display:none !important; }
   }
 
   function extractConsumptionHistory(text){
+    const source=String(text||'');
     const monthMap={JAN:1,JANEIRO:1,FEV:2,FEVEREIRO:2,MAR:3,MARCO:3,'MARÇO':3,ABR:4,ABRIL:4,MAI:5,MAIO:5,JUN:6,JUNHO:6,JUL:7,JULHO:7,AGO:8,AGOSTO:8,SET:9,SETEMBRO:9,OUT:10,OUTUBRO:10,NOV:11,NOVEMBRO:11,DEZ:12,DEZEMBRO:12};
     const monthPattern='JAN(?:EIRO)?|FEV(?:EREIRO)?|MAR(?:ÇO|CO)?|ABR(?:IL)?|MAI(?:O)?|JUN(?:HO)?|JUL(?:HO)?|AGO(?:STO)?|SET(?:EMBRO)?|OUT(?:UBRO)?|NOV(?:EMBRO)?|DEZ(?:EMBRO)?';
+    const normalizeMonthKey=value=>String(value||'').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace('MARCO','MAR');
+    const validConsumption=v=>Number.isFinite(v)&&v>=20&&v<=500000&&!(v>=2000&&v<=2100);
+    const pickConsumptionFromText=snippet=>{
+      const candidates=[...String(snippet||'').matchAll(/\b([0-9]{1,6}(?:[.,][0-9]+)?)\b/g)]
+        .map(m=>normalizeBillNumber(m[1]))
+        .filter(validConsumption);
+      return candidates[0]||0;
+    };
     const found=[];
-    String(text||'').split(/\n+/).forEach((line,lineIndex)=>{
+    source.split(/\n+/).forEach((line,lineIndex)=>{
       const upper=line.toUpperCase();
-      const monthMatch=upper.match(new RegExp(`\\b(${monthPattern})\\b`,'i'));
+      const monthMatch=upper.match(new RegExp(`\b(${monthPattern})\b`,'i'));
       if(!monthMatch)return;
-      const monthKey=monthMatch[1].toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace('MARCO','MAR');
+      const monthKey=normalizeMonthKey(monthMatch[1]);
       const month=monthMap[monthKey]||monthMap[monthKey.slice(0,3)]||0;
       const after=line.slice(monthMatch.index+monthMatch[0].length);
-      const kwh=after.match(/(?:^|[^0-9])([0-9]{1,6}(?:[.,][0-9]+)?)\s*kwh\b/i);
-      let value=kwh?normalizeBillNumber(kwh[1]):0;
-      if(!value){
-        const candidates=[...after.matchAll(/\b([0-9]{1,6}(?:[.,][0-9]+)?)\b/g)].map(m=>normalizeBillNumber(m[1])).filter(v=>v>=20&&v<=500000&&!(v>=2000&&v<=2100));
-        value=candidates[0]||0;
-      }
+      const before=line.slice(0,monthMatch.index);
+      const explicit=after.match(/(?:^|[^0-9])([0-9]{1,6}(?:[.,][0-9]+)?)\s*kwh\b/i)||before.match(/(?:^|[^0-9])([0-9]{1,6}(?:[.,][0-9]+)?)\s*kwh\b/i);
+      let value=explicit?normalizeBillNumber(explicit[1]):pickConsumptionFromText(after);
+      if(!value)value=pickConsumptionFromText(before);
       if(value)found.push({month,value,lineIndex});
     });
     if(found.length>=4){
-      const dedup=[];found.forEach(item=>{const key=`${item.month}-${item.lineIndex}`;if(!dedup.some(d=>d.key===key))dedup.push({...item,key});});
+      const dedup=[];found.forEach(item=>{const key=`${item.month}-${item.lineIndex}-${item.value}`;if(!dedup.some(d=>d.key===key))dedup.push({...item,key});});
       return dedup.slice(-12).map(item=>item.value);
     }
-    const normalized=String(text||'').replace(/\s+/g,' ');
-    const kwhMatches=[...normalized.matchAll(/(?:^|\s)(\d{2,6})(?:[,.]\d+)?\s*kwh\b/gi)].map(m=>Number(m[1])).filter(v=>v>=20&&v<=500000);
+    const normalized=source.replace(/\s+/g,' ');
+    const historyWindow=(normalized.match(/(?:hist[oó]rico|consumo\s+(?:dos\s+)?(?:últimos|ultimos)?\s*12|kwh\s+faturado|demonstrativo\s+de\s+consumo)[\s\S]{0,900}/i)||[''])[0];
+    const windowNumbers=[...historyWindow.matchAll(/\b([0-9]{2,6})(?:[,.]\d+)?\b/g)].map(m=>Number(m[1])).filter(validConsumption);
+    if(windowNumbers.length>=6)return windowNumbers.slice(-12);
+    const kwhMatches=[...normalized.matchAll(/(?:^|\s)(\d{2,6})(?:[,.]\d+)?\s*kwh\b/gi)].map(m=>Number(m[1])).filter(validConsumption);
     const unique=[];kwhMatches.forEach(v=>{if(unique.at(-1)!==v)unique.push(v);});
     return unique.slice(-12);
   }
@@ -3920,34 +3966,53 @@ body.auth-ready #loginScreen { display:none !important; }
 
   async function handleEnergyBillUpload(event){
     const file=event.target.files?.[0];if(!file)return;
-    activeProposal.billFileName=file.name;activeBillAiImages=[];activeBillExtractionMeta={pages:0,textLength:0,source:'pdf'};
-    const btn=document.getElementById('aiBillAnalyzeBtn');if(btn){btn.disabled=true;btn.textContent='Lendo PDF...';}
+    activeProposal.billFileName=file.name;activeBillAiImages=[];activeBillExtractionMeta={pages:0,textLength:0,source:'upload'};
+    const btn=document.getElementById('billLocalAnalyzeBtn');if(btn){btn.disabled=true;btn.textContent='Lendo fatura...';}
+    setBillStatus('Preparando leitura automática',file.name,'info');
     try{
-      const arrayBuffer=await file.arrayBuffer();
-      const pdf=await pdfjsLib.getDocument({data:arrayBuffer}).promise;
-      let fullText='';
-      for(let pageNo=1;pageNo<=pdf.numPages;pageNo++){
-        const page=await pdf.getPage(pageNo);
-        const content=await page.getTextContent({normalizeWhitespace:true});
-        fullText+=textItemsToLines(content.items)+'\n';
-        if(pageNo<=3){
-          try{activeBillAiImages.push(await renderPdfPageForAI(page));}catch(imageError){console.warn('Não foi possível preparar a página para IA:',imageError);}
+      let fullText='';let ocrText='';let source='local';
+      const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name);
+      const isImage=file.type.startsWith('image/')||/\.(jpe?g|png|webp|bmp|tiff?)$/i.test(file.name);
+      if(isImage){
+        const image=await prepareImageForOCR(file);
+        activeBillAiImages=[image];activeBillExtractionMeta={pages:1,textLength:0,source:'image'};
+        ocrText=await runBillOCR(activeBillAiImages);source='ocr-imagem';
+      }else if(isPdf){
+        const arrayBuffer=await file.arrayBuffer();
+        const pdf=await pdfjsLib.getDocument({data:arrayBuffer}).promise;
+        for(let pageNo=1;pageNo<=pdf.numPages;pageNo++){
+          setBillStatus('Lendo texto do PDF',`Página ${pageNo} de ${pdf.numPages}.`,'info');
+          const page=await pdf.getPage(pageNo);
+          const content=await page.getTextContent({normalizeWhitespace:true});
+          fullText+=textItemsToLines(content.items)+'\n';
+          if(pageNo<=3){
+            try{activeBillAiImages.push(await renderPdfPageForAI(page,1500,.86));}catch(imageError){console.warn('Não foi possível preparar a página para OCR:',imageError);}
+          }
         }
-      }
-      activeProposal.billText=fullText.slice(0,100000);
-      activeBillExtractionMeta={pages:pdf.numPages,textLength:fullText.trim().length,source:fullText.trim().length>=120?'text':'image'};
-      const extracted=extractBillFields(fullText);
-      applyBillAnalysisResult(extracted,'local');
-      renderProposalBuilder();
-      if(fullText.trim().length<120){
-        toast('Fatura digitalizada detectada','O PDF possui pouco texto selecionável. Preencha manualmente os campos que não forem identificados.','info');
+        const firstExtract=extractBillFields(fullText);
+        const needsOCR=fullText.trim().length<120||firstExtract.consumption.length<6;
+        if(needsOCR&&activeBillAiImages.length){
+          try{ocrText=await runBillOCR(activeBillAiImages);source=fullText.trim().length>=120?'texto+ocr':'ocr-pdf';}
+          catch(ocrError){console.warn('OCR indisponível:',ocrError);setBillStatus('PDF lido parcialmente','Não foi possível executar OCR. Confira os campos preenchidos.','warning');}
+        }
+        activeBillExtractionMeta={pages:pdf.numPages,textLength:(fullText+ocrText).trim().length,source:source.includes('ocr')?'ocr':'text'};
       }else{
-        toast('Fatura processada',`Foram lidas ${pdf.numPages} página(s) e aplicada a extração local.`);
+        throw new Error('Formato não suportado. Use PDF, JPG ou PNG.');
       }
+      const combinedText=`${fullText}
+${ocrText}`.trim();
+      activeProposal.billText=combinedText.slice(0,100000);
+      const extracted=extractBillFields(combinedText);
+      applyBillAnalysisResult(extracted,source);
+      renderProposalBuilder();
+      const filled=normalizeConsumption(extracted.consumption||[]).filter(Boolean).length;
+      if(filled>=6){toast('Consumo lido automaticamente',`Foram preenchidos ${filled} mês(es) de consumo da fatura.`,'success');}
+      else{toast('Leitura concluída com revisão',`Foram encontrados ${filled} mês(es). Confira o histórico antes de continuar.`,'info');}
     }catch(error){
       console.error(error);activeProposal.billText='';activeBillAiImages=[];
-      toast('Não foi possível ler o PDF','O arquivo pode estar protegido ou corrompido. Tente salvar uma nova cópia em PDF.','error');
-    }finally{if(btn){btn.disabled=false;btn.textContent='↻ Reaplicar extração local';}}
+      toast('Não foi possível ler a fatura',error.message||'Tente outro PDF ou uma foto mais nítida da conta de energia.','error');
+      setBillStatus('Falha na leitura automática',error.message||'Tente outro arquivo.','danger');
+    }finally{if(btn){btn.disabled=false;btn.textContent='↻ Reaplicar leitura automática';}}
   }
 
   function extractBillFields(text){
@@ -3981,16 +4046,22 @@ body.auth-ready #loginScreen { display:none !important; }
     return {client:{consumerUnit:uc,className,tariffGroup:group,distributor},consumerUnit:uc,className,tariffGroup:group,distributor,currentTariff:tariff,consumption,averageConsumption:average(consumption)||0,annualConsumption:sum(consumption)||0,totalAmount,confidence,warnings};
   }
   async function analyzeBillLocally(){
-    if(!activeProposal?.billText){toast('Importe a conta primeiro','Selecione o PDF da fatura antes de reaplicar a extração local.','error');return;}
+    if(!activeProposal?.billText&&!activeBillAiImages.length){toast('Importe a conta primeiro','Selecione PDF, JPG ou PNG da fatura antes de reaplicar a leitura.','error');return;}
     const btn=document.getElementById('billLocalAnalyzeBtn');if(btn){btn.disabled=true;btn.textContent='Processando...';}
     try{
-      const localResult=extractBillFields(activeProposal.billText||'');
-      applyBillAnalysisResult(localResult,'local');
+      let source='local';let text=activeProposal.billText||'';
+      let localResult=extractBillFields(text);
+      if(localResult.consumption.length<6&&activeBillAiImages.length){
+        const ocrText=await runBillOCR(activeBillAiImages);
+        text=`${text}
+${ocrText}`.trim();activeProposal.billText=text.slice(0,100000);source='ocr';localResult=extractBillFields(text);
+      }
+      applyBillAnalysisResult(localResult,source);
       renderProposalBuilder();
       const warningCount=Array.isArray(localResult.warnings)?localResult.warnings.length:0;
-      toast('Extração local concluída',warningCount?`${warningCount} campo(s) precisam de revisão manual.`:'Os campos disponíveis foram preenchidos.','info');
-    }catch(error){console.error(error);toast('Falha na extração local',error.message||'Não foi possível processar a fatura.','error');}
-    finally{const current=document.getElementById('billLocalAnalyzeBtn');if(current){current.disabled=false;current.textContent='↻ Reaplicar extração local';}}
+      toast('Leitura automática concluída',warningCount?`${warningCount} campo(s) precisam de revisão manual.`:'Consumo e campos disponíveis foram preenchidos.','info');
+    }catch(error){console.error(error);toast('Falha na leitura automática',error.message||'Não foi possível processar a fatura.','error');}
+    finally{const current=document.getElementById('billLocalAnalyzeBtn');if(current){current.disabled=false;current.textContent='↻ Reaplicar leitura automática';}}
   }
 
   function upsertClientFromProposal(proposal,status='Em negociação'){
