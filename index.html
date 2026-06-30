@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#08111f" />
-  <title>SolarCRM Pro v3.0.1 — OCR Histórico de Consumo</title>
+  <title>SolarCRM Pro v3.1.1 — OCR Histórico de Consumo</title>
   <meta name="description" content="CRM completo para empresas de energia solar com propostas profissionais, Kanban, Firebase, financeiro, obras e pós-venda." />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <style>
@@ -1807,10 +1807,6 @@ body.auth-ready #loginScreen { display:none !important; }
   const LEGACY_FIREBASE_CONFIG_KEYS = ['solarcrm-firebase-config-v2-8','solarcrm-firebase-config-v2-7','solarcrm-firebase-config-v2-6','solarcrm-firebase-config'];
   const DEFAULT_FIREBASE_CONFIG = Object.freeze({"apiKey":"AIzaSyCYSQfnPLyV9B6osiZhsLYYrF64YLhGkMA","authDomain":"energiasolar-67b14.firebaseapp.com","databaseURL":"https://energiasolar-67b14-default-rtdb.firebaseio.com","projectId":"energiasolar-67b14","storageBucket":"energiasolar-67b14.firebasestorage.app","messagingSenderId":"394822890491","appId":"1:394822890491:web:5afc55e01902bbf142915e","functionsRegion":"southamerica-east1"});
   const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-2';
-  const BILL_AI_FUNCTION_URL_KEY = 'solarcrm-bill-ai-function-url-v1';
-  const BILL_AI_CONFIG_KEY = 'solarcrm-bill-ai-config-v1';
-  const BILL_AI_FUNCTION_NAME = 'analisarFatura';
-  const DEFAULT_BILL_AI_CONFIG = Object.freeze({provider:'gemini',model:'gemini-3.5-flash',functionUrl:''});
   const SYSTEM_VERSION = '3.0.1-ocr-historico-sem-ia';
   let storageWarningShown = false;
   let draftSaveTimer = null;
@@ -2179,7 +2175,7 @@ body.auth-ready #loginScreen { display:none !important; }
   let activeView = state.currentView || 'dashboard';
   let entityContext = { collection:null, id:null };
   let activeProposal = null;
-  let activeBillAiImages = [];
+  let activeBillOcrImages = [];
   let activeBillExtractionMeta = {pages:0,textLength:0,source:'none'};
   let proposalStep = 0;
   let proposalCharts = [];
@@ -4298,54 +4294,6 @@ body.auth-ready #loginScreen { display:none !important; }
     return map[source]||source||'automática';
   }
 
-  function getDefaultBillAiFunctionUrl(){
-    const config=(typeof loadFirebaseConfig==='function'?loadFirebaseConfig():null)||DEFAULT_FIREBASE_CONFIG||{};
-    const projectId=config.projectId||DEFAULT_FIREBASE_CONFIG?.projectId||'';
-    const region=config.functionsRegion||DEFAULT_FIREBASE_CONFIG?.functionsRegion||'us-central1';
-    return projectId?`https://${region}-${projectId}.cloudfunctions.net/${BILL_AI_FUNCTION_NAME}`:'';
-  }
-
-  function normalizeBillAiFunctionUrl(url){
-    let value=String(url||'').trim();
-    if(!value)return'';
-    value=value.replace(/\/+$/,'');
-    if(!/^https?:\/\//i.test(value))value=`https://${value}`;
-    if(/cloudfunctions\.net$/i.test(value))value+=`/${BILL_AI_FUNCTION_NAME}`;
-    return value;
-  }
-
-  function normalizeBillAiConfig(raw={}){
-    const legacyUrl=safeStorageGet(BILL_AI_FUNCTION_URL_KEY)||'';
-    const provider=String(raw.provider||DEFAULT_BILL_AI_CONFIG.provider).trim().toLowerCase()==='openai'?'openai':'gemini';
-    const model=String(raw.model||DEFAULT_BILL_AI_CONFIG.model).trim()||DEFAULT_BILL_AI_CONFIG.model;
-    const functionUrl=normalizeBillAiFunctionUrl(raw.functionUrl||legacyUrl||getDefaultBillAiFunctionUrl());
-    return {provider,model,functionUrl};
-  }
-
-  function loadBillAiConfig(){
-    try{return normalizeBillAiConfig(JSON.parse(safeStorageGet(BILL_AI_CONFIG_KEY)||'{}'));}
-    catch(_){return normalizeBillAiConfig({});}
-  }
-
-  function saveBillAiConfig(config){
-    const normalized=normalizeBillAiConfig(config);
-    safeStorageSet(BILL_AI_CONFIG_KEY,JSON.stringify(normalized));
-    if(normalized.functionUrl)safeStorageSet(BILL_AI_FUNCTION_URL_KEY,normalized.functionUrl);else safeStorageRemove(BILL_AI_FUNCTION_URL_KEY);
-    return normalized;
-  }
-
-  function getBillAiFunctionUrl(){
-    return loadBillAiConfig().functionUrl;
-  }
-
-  function getBillAiProviderLabel(provider){
-    return provider==='openai'?'OpenAI':'Gemini';
-  }
-
-  function configureBillAiFunctionUrl(){
-    openSettings('ai');
-  }
-
   function applyBillAnalysisResult(data={},source='local'){
     if(!activeProposal)return;
     const client=data.client||{};
@@ -4366,7 +4314,7 @@ body.auth-ready #loginScreen { display:none !important; }
   async function handleEnergyBillUpload(event){
     const file=event.target.files?.[0];if(!file)return;
     activeProposal.billFileName=file.name;
-    activeBillAiImages=[];
+    activeBillOcrImages=[];
     activeBillExtractionMeta={pages:0,textLength:0,source:'upload'};
     const btn=document.getElementById('billLocalAnalyzeBtn');
     if(btn){btn.disabled=true;btn.textContent='Lendo OCR do histórico...';}
@@ -4377,9 +4325,9 @@ body.auth-ready #loginScreen { display:none !important; }
       const isImage=file.type.startsWith('image/')||/\.(jpe?g|png|webp|bmp|tiff?)$/i.test(file.name);
       if(isImage){
         const image=await prepareHistoryImageForOCR(file);
-        activeBillAiImages=[image];
+        activeBillOcrImages=[image];
         activeBillExtractionMeta={pages:1,textLength:0,source:'history-image'};
-        ocrText=await runBillOCR(activeBillAiImages);
+        ocrText=await runBillOCR(activeBillOcrImages);
         historyText=extractConsumptionHistoryOnlyText(ocrText)||ocrText;
       }else if(isPdf){
         if(!window.pdfjsLib)throw new Error('Biblioteca PDF não carregada. Verifique a conexão com a internet e tente novamente.');
@@ -4394,15 +4342,15 @@ body.auth-ready #loginScreen { display:none !important; }
           const pageHistory=extractConsumptionHistoryOnlyText(pageText);
           if(pageHistory)historyText+=pageHistory+'\n';
           if(pageNo<=3){
-            try{activeBillAiImages.push(await renderPdfHistoryCropForOCR(page,1800,.96));}
+            try{activeBillOcrImages.push(await renderPdfHistoryCropForOCR(page,1800,.96));}
             catch(imageError){console.warn('Não foi possível recortar o histórico para OCR:',imageError);}
           }
         }
         // Sempre tenta OCR no recorte do quadro, mesmo quando o PDF possui texto,
         // porque a fatura da CELESC pode juntar Consumo Faturado + Dias Faturados.
-        if(activeBillAiImages.length){
+        if(activeBillOcrImages.length){
           try{
-            const onlyOcr=await runBillOCR(activeBillAiImages);
+            const onlyOcr=await runBillOCR(activeBillOcrImages);
             const ocrHistory=extractConsumptionHistoryOnlyText(onlyOcr)||onlyOcr;
             if(ocrHistory.trim()){
               ocrText=ocrHistory;
@@ -4436,7 +4384,7 @@ body.auth-ready #loginScreen { display:none !important; }
       }
     }catch(error){
       console.error(error);
-      activeProposal.billText='';activeProposal.billHistoryText='';activeBillAiImages=[];
+      activeProposal.billText='';activeProposal.billHistoryText='';activeBillOcrImages=[];
       toast('Não foi possível ler o histórico',error.message||'Tente outro PDF ou uma imagem mais nítida do quadro Histórico de Consumo.','error');
       setBillStatus('Falha na leitura do histórico',error.message||'Tente outro arquivo.','danger');
     }finally{
@@ -4475,13 +4423,13 @@ body.auth-ready #loginScreen { display:none !important; }
     return {client:{consumerUnit:uc,className,tariffGroup:group,distributor},consumerUnit:uc,className,tariffGroup:group,distributor,currentTariff:tariff,consumption,averageConsumption:average(consumption)||0,annualConsumption:sum(consumption)||0,totalAmount,confidence,warnings};
   }
   async function analyzeBillLocally(){
-    if(!activeProposal?.billText&&!activeBillAiImages.length){toast('Importe a conta primeiro','Selecione PDF, JPG ou PNG da fatura antes de reaplicar a leitura.','error');return;}
+    if(!activeProposal?.billText&&!activeBillOcrImages.length){toast('Importe a conta primeiro','Selecione PDF, JPG ou PNG da fatura antes de reaplicar a leitura.','error');return;}
     const btn=document.getElementById('billLocalAnalyzeBtn');if(btn){btn.disabled=true;btn.textContent='Processando histórico...';}
     try{
       let source='local';let text=activeProposal.billText||'';let historyText=activeProposal.billHistoryText||extractConsumptionHistoryOnlyText(text);
       let localResult=extractBillFields(text,historyText);
-      if(localResult.consumption.filter(Boolean).length<6&&activeBillAiImages.length){
-        const ocrText=await runBillOCR(activeBillAiImages);
+      if(localResult.consumption.filter(Boolean).length<6&&activeBillOcrImages.length){
+        const ocrText=await runBillOCR(activeBillOcrImages);
         historyText=`${historyText}\n${ocrText}`.trim();
         activeProposal.billHistoryText=historyText.slice(0,50000);
         activeProposal.billText=`${text}\n${historyText}`.trim().slice(0,100000);
@@ -4768,7 +4716,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     }catch(error){toast('Falha no aceite',error.message||'Não foi possível registrar.','error');}
     finally{btn.disabled=false;btn.textContent='Confirmar aceite';}
   }
-  // ---------- CONFIGURAÇÕES, FIREBASE E IA ----------
+  // ---------- CONFIGURAÇÕES E FIREBASE ----------
   function openSettings(tab='company'){
     settingsTab=tab;renderSettings();openModal('settingsModal');
   }
@@ -4970,9 +4918,6 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     document.getElementById('firebaseLogoutBtn')?.addEventListener('click',firebaseLogout);
     document.getElementById('firebaseSyncBtn')?.addEventListener('click',syncLocalToFirebase);
     document.getElementById('firebasePullBtn')?.addEventListener('click',syncFirebaseToLocal);
-    document.getElementById('billAiSettingsForm')?.addEventListener('submit',e=>{e.preventDefault();const fd=new FormData(e.currentTarget);const config=saveBillAiConfig(Object.fromEntries(fd.entries()));toast('Conexão da IA salva',`${getBillAiProviderLabel(config.provider)} · ${config.model} · ${config.functionUrl||'sem URL'}`,'success');renderSettings();});
-    document.getElementById('billAiDefaultUrlBtn')?.addEventListener('click',()=>{const current=loadBillAiConfig();const config=saveBillAiConfig({...current,functionUrl:getDefaultBillAiFunctionUrl()});toast('URL padrão aplicada',config.functionUrl||'Configure primeiro o Firebase.','info');renderSettings();});
-    document.getElementById('billAiCopySecretCommandBtn')?.addEventListener('click',async()=>{const command='firebase functions:secrets:set GEMINI_API_KEY';try{await navigator.clipboard?.writeText(command);toast('Comando copiado',command,'success');}catch(_){toast('Comando do Secret',command,'info');}});
     document.getElementById('refreshUserPermissions')?.addEventListener('click',()=>{permissionUsersLoaded=false;loadUserPermissionData(true);});
     document.querySelectorAll('[data-approve-access]').forEach(button=>button.addEventListener('click',()=>approveAccessFromSettings(button.dataset.approveAccess)));
     document.querySelectorAll('[data-reject-access]').forEach(button=>button.addEventListener('click',()=>rejectAccessFromSettings(button.dataset.rejectAccess)));
