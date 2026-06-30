@@ -2166,7 +2166,16 @@ body.auth-ready #loginScreen { display:none !important; }
 
   function defaultProposal() {
     const proposal=createSampleProposal(newId('prop'),'','',Array(12).fill(0),0,'Rascunho');
-    proposal.client={name:'',document:'',phone:'',email:'',city:state?.company?.city||'',address:'',consumerUnit:'',className:'Residencial',tariffGroup:'B1',distributor:''};
+    // Nova coleta de dados sempre começa limpa.
+    proposal.client={name:'',document:'',phone:'',email:'',city:'',address:'',consumerUnit:'',className:'',tariffGroup:'',distributor:''};
+    proposal.coverPhoto='';
+    proposal.billFileName='';
+    proposal.billText='';
+    proposal.billAnalysis=null;
+    proposal.consumption=Array(12).fill(0);
+    proposal.currentTariff=0;
+    proposal.tariffHistory=Array(12).fill(0);
+    proposal.technical={...proposal.technical,targetCoverage:100};
     proposal.seller={name:state?.currentUser?.name||'',email:state?.currentUser?.email||state?.company?.email||''};
     return proposal;
   }
@@ -3678,20 +3687,24 @@ body.auth-ready #loginScreen { display:none !important; }
   function openProposalBuilder(id=null){
     if(!hasPermission('proposals',id?'edit':'create')){denyPermission('proposals',id?'edit':'create');return;}
     const found=id?state.proposals.find(p=>p.id===id):null;
-    let restored=null;
+
+    // Ao criar uma nova proposta/coleta, não reaproveita rascunho, fatura anterior ou dados antigos.
     if(!found){
-      try{
-        const draft=JSON.parse(safeStorageGet(ACTIVE_DRAFT_KEY)||'null');
-        if(draft?.proposal?.companyId===state.currentCompanyId&&daysBetween(draft.savedAt)<7)restored=draft.proposal;
-      }catch(_){/* ignora rascunho inválido */}
+      safeStorageRemove(ACTIVE_DRAFT_KEY);
+      activeBillOcrImages=[];
+      activeBillExtractionMeta={pages:0,textLength:0,source:'none'};
     }
-    activeProposal=deepClone(found||restored||defaultProposal());
+
+    activeProposal=deepClone(found||defaultProposal());
     activeProposal.companyId=state.currentCompanyId;
-    if(!found&&!restored){activeProposal.number=`PROP-${String(companyRows('proposals').length+1).padStart(4,'0')}`;activeProposal.createdAt=todayISO();activeProposal.validUntil=addDaysISO(state.company.proposalValidityDays||10);}
+    if(!found){
+      activeProposal.number=`PROP-${String(companyRows('proposals').length+1).padStart(4,'0')}`;
+      activeProposal.createdAt=todayISO();
+      activeProposal.validUntil=addDaysISO(state.company.proposalValidityDays||10);
+    }
     proposalStep=0;
-    document.getElementById('proposalBuilderTitle').textContent=found?`Editar ${activeProposal.number}`:restored?`Continuar ${activeProposal.number}`:'Nova proposta solar';
+    document.getElementById('proposalBuilderTitle').textContent=found?`Editar ${activeProposal.number}`:'Nova proposta solar';
     renderProposalBuilder();openModal('proposalBuilderModal');
-    if(restored)toast('Rascunho recuperado','A proposta que estava em edição foi restaurada.','info');
   }
 
   function scheduleProposalDraftSave(){
@@ -3893,12 +3906,15 @@ body.auth-ready #loginScreen { display:none !important; }
 
   function cropCelescHeaderRegionFromCanvas(sourceCanvas,quality=.96){
     const w=sourceCanvas.width,h=sourceCanvas.height;
-    const region={x:Math.round(w*.015),y:Math.round(h*.105),w:Math.round(w*.86),h:Math.round(h*.145)};
+    // CELESC: a Unidade Consumidora fica no cartão azul/amarelo do cabeçalho,
+    // acima de Cliente/Etapa/Grupo. O recorte abaixo foca nesse cartão,
+    // evitando que o OCR leia a UC do boleto/rodapé.
+    const region={x:Math.round(w*.285),y:Math.round(h*.115),w:Math.round(w*.235),h:Math.round(h*.095)};
     const crop=document.createElement('canvas');
     crop.width=Math.max(1,region.w);crop.height=Math.max(1,region.h);
     const ctx=crop.getContext('2d',{alpha:false});
     ctx.fillStyle='#fff';ctx.fillRect(0,0,crop.width,crop.height);
-    ctx.filter='contrast(1.28) brightness(1.05) saturate(1.08)';
+    ctx.filter='contrast(1.45) brightness(1.08) saturate(1.12)';
     ctx.drawImage(sourceCanvas,region.x,region.y,region.w,region.h,0,0,crop.width,crop.height);
     ctx.filter='none';
     return crop.toDataURL('image/jpeg',quality);
@@ -4111,7 +4127,7 @@ ${result?.data?.text||''}`;
       || !(normalizeBillNumber(data.currentTariff)>0);
   }
 
-  function textItemsToLines(items=[]){
+  function textItemsToRows(items=[]){
     const rows=[];
     items.filter(item=>String(item?.str||'').trim()).forEach(item=>{
       const y=Number(item.transform?.[5]||0),x=Number(item.transform?.[4]||0);
@@ -4119,7 +4135,48 @@ ${result?.data?.text||''}`;
       if(!row){row={y,items:[]};rows.push(row);}
       row.items.push({x,text:String(item.str).trim()});
     });
-    return rows.sort((a,b)=>b.y-a.y).map(row=>row.items.sort((a,b)=>a.x-b.x).map(i=>i.text).join(' ').replace(/\s+/g,' ').trim()).filter(Boolean).join('\n');
+    return rows.sort((a,b)=>b.y-a.y).map(row=>{
+      const sorted=row.items.sort((a,b)=>a.x-b.x);
+      const text=sorted.map(i=>i.text).join(' ').replace(/\s+/g,' ').trim();
+      const x1=Math.min(...sorted.map(i=>i.x));
+      const x2=Math.max(...sorted.map(i=>i.x));
+      return {...row,items:sorted,text,x1,x2};
+    }).filter(row=>row.text);
+  }
+
+  function textItemsToLines(items=[]){
+    return textItemsToRows(items).map(row=>row.text).join('\n');
+  }
+
+  function extractCelescHeaderUCFromPdfItems(items=[]){
+    const cleanUc=value=>{const digits=String(value||'').replace(/\D/g,'').replace(/^0+(?=\d)/,'');return digits.length>=5&&digits.length<=14?digits:'';};
+    const rows=textItemsToRows(items);
+    if(!rows.length)return'';
+    const numberFromRow=row=>{
+      const nums=[...String(row?.text||'').matchAll(/\b0*\d{5,14}\b/g)].map(m=>cleanUc(m[0])).filter(Boolean);
+      return nums[0]||'';
+    };
+    // 1) Prioridade máxima: campo visual do cabeçalho “UNIDADE CONSUMIDORA”.
+    // Em alguns PDFs a palavra do cartão não vem no texto, mas o número aparece
+    // entre a classificação/modalidade e a linha “Cliente:”.
+    const explicitIndex=rows.findIndex(row=>/\bUNIDADE\s+CONSUMIDORA\b/i.test(row.text));
+    if(explicitIndex>=0){
+      const same=numberFromRow(rows[explicitIndex]);if(same)return same;
+      for(let i=explicitIndex+1;i<Math.min(rows.length,explicitIndex+5);i++){
+        if(/\b(Cliente|Etapa|Grupo\/Subgrupo|CPF|CNPJ|Endere[cç]o|Refer[eê]ncia|Vencimento|Total)\b/i.test(rows[i].text))break;
+        const uc=numberFromRow(rows[i]);if(uc)return uc;
+      }
+    }
+    const classIndex=rows.findIndex(row=>/(Classifica[cç][aã]o\s*\/\s*Modalidade|Tipo\s+de\s+Fornecimento|^(COMERCIAL|RESIDENCIAL|RURAL|INDUSTRIAL|PODER\s+P[UÚ]BLICO|SERVI[CÇ]O\s+P[UÚ]BLICO)\b)/i.test(row.text));
+    if(classIndex>=0){
+      const stop=rows.findIndex((row,i)=>i>classIndex&&/\bCliente\s*:/i.test(row.text));
+      const end=stop>classIndex?stop:Math.min(rows.length,classIndex+8);
+      for(let i=classIndex+1;i<end;i++){
+        const uc=numberFromRow(rows[i]);
+        if(uc)return uc;
+      }
+    }
+    return'';
   }
 
   function normalizeBillNumber(value){
@@ -4472,9 +4529,14 @@ ${headerText}`;
           setBillStatus('Buscando dados e Histórico de Consumo',`Página ${pageNo} de ${pdf.numPages}.`,'info');
           const page=await pdf.getPage(pageNo);
           const content=await page.getTextContent({normalizeWhitespace:true});
-          const pageText=textItemsToLines(content.items);
-          const headerUcFromText=extractCelescHeaderConsumerUnitCandidate(pageText);
-          if(pageNo===1&&headerUcFromText)headerText+=`CELESC_HEADER_UC ${headerUcFromText}\n`;
+          const pageItems=content.items||[];
+          const pageText=textItemsToLines(pageItems);
+          if(pageNo===1){
+            const headerUcFromItems=extractCelescHeaderUCFromPdfItems(pageItems);
+            const headerUcFromText=extractCelescHeaderConsumerUnitCandidate(pageText);
+            const headerUc=headerUcFromItems||headerUcFromText;
+            if(headerUc)headerText+=`CELESC_HEADER_UC ${headerUc}\n`;
+          }
           fullText+=pageText+'\n';
           const pageHistory=extractConsumptionHistoryOnlyText(pageText);
           if(pageHistory)historyText+=pageHistory+'\n';
