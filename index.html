@@ -3738,7 +3738,7 @@ body.auth-ready #loginScreen { display:none !important; }
       </div>${nav}`;
     if(step===1)return `
       <div class="form-section">${heading('Importar conta de energia','O sistema lê automaticamente PDF, foto ou fatura escaneada e preenche o consumo.')}
-        <div class="grid grid-2"><label class="upload-drop"><div><strong>Importar fatura PDF</strong><span>${p.billFileName?`Arquivo: ${escapeHtml(p.billFileName)}`:'Selecione o PDF, JPG ou PNG da fatura.'}</span><input id="energyBillInput" type="file" accept="application/pdf,image/*" style="margin-top:10px"></div></label><div><div id="billStatusBox" class="notice success"><strong>Leitura local ativada</strong><br><span>Sem IA. O sistema procura somente o quadro “HISTÓRICO DE CONSUMO” e extrai Mês, Consumo Faturado e Dias Faturados para preencher cada mês.</span></div><div style="display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px"><button id="billLocalAnalyzeBtn" class="btn btn-secondary" type="button">↻ Reaplicar leitura do histórico</button></div>${p.billAnalysis?`<div class="notice" style="margin-top:10px">Última análise: <strong>${escapeHtml(formatBillAnalysisSource(p.billAnalysis.source||'automática'))}</strong>${formatBillConfidence(p.billAnalysis.confidence)?` · ${formatBillConfidence(p.billAnalysis.confidence)} de confiança`:''}${p.billAnalysis.warnings?.length?`<br><span>${escapeHtml(p.billAnalysis.warnings.join(' '))}</span>`:''}</div>`:''}</div></div>
+        <div class="grid grid-2"><label class="upload-drop"><div><strong>Importar fatura PDF</strong><span>${p.billFileName?`Arquivo: ${escapeHtml(p.billFileName)}`:'Selecione o PDF, JPG ou PNG da fatura.'}</span><input id="energyBillInput" type="file" accept="application/pdf,image/*" style="margin-top:10px"></div></label><div><div id="billStatusBox" class="notice success"><strong>Leitura local ativada</strong><br><span>Sem IA. O consumo é lido somente do quadro “HISTÓRICO DE CONSUMO”; Unidade Consumidora, Classe, Grupo Tarifário, Distribuidora e Tarifa são lidos dos dados da fatura.</span></div><div style="display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px"><button id="billLocalAnalyzeBtn" class="btn btn-secondary" type="button">↻ Reaplicar OCR da fatura</button></div>${p.billAnalysis?`<div class="notice" style="margin-top:10px">Última análise: <strong>${escapeHtml(formatBillAnalysisSource(p.billAnalysis.source||'automática'))}</strong>${formatBillConfidence(p.billAnalysis.confidence)?` · ${formatBillConfidence(p.billAnalysis.confidence)} de confiança`:''}${p.billAnalysis.warnings?.length?`<br><span>${escapeHtml(p.billAnalysis.warnings.join(' '))}</span>`:''}</div>`:''}</div></div>
       </div>
       <div class="form-section">${heading('Dados identificados','Revise os campos antes de continuar.')}
         <div class="form-grid">${proposalField('client.consumerUnit','Unidade consumidora','text')}${proposalField('client.className','Classe','text')}${proposalField('client.tariffGroup','Grupo tarifário','text')}${proposalField('client.distributor','Distribuidora','text')}${proposalField('currentTariff','Tarifa atual (R$/kWh)','number')}${proposalField('technical.targetCoverage','Cobertura desejada (%)','number')}</div>
@@ -3834,7 +3834,7 @@ body.auth-ready #loginScreen { display:none !important; }
     });
   }
 
-  async function renderPdfPageForAI(page,maxWidth=1200,quality=.72){
+  async function renderPdfPageForFullOCR(page,maxWidth=1200,quality=.72){
     const baseViewport=page.getViewport({scale:1});
     const scale=Math.min(2,Math.max(1,maxWidth/Math.max(baseViewport.width,1)));
     const viewport=page.getViewport({scale});
@@ -3948,7 +3948,9 @@ body.auth-ready #loginScreen { display:none !important; }
   }
 
   function extractConsumptionHistoryOnlyText(text){
-    const lines=String(text||'').split(/\n+/).map(line=>line.replace(/\s+/g,' ').trim()).filter(Boolean);
+    const raw=String(text||'');
+    if(/consumo\s+benefici[aá]ria|inje[cç][aã]o\s+no\s+per[ií]odo|saldo\s+benefici[aá]ria/i.test(raw) && !/(hist[oó]rico\s+de\s+consumo|consumo\s+faturado\s*dias\s+faturados|consumo\s+faturado[\s\S]{0,80}dias\s+faturados)/i.test(raw))return'';
+    const lines=raw.split(/\n+/).map(line=>line.replace(/\s+/g,' ').trim()).filter(Boolean);
     if(!lines.length)return'';
     const monthLine=/\b(?:JAN|FEV|MAR|ABR|MAI|JUN|JUL|AGO|SET|OUT|NOV|DEZ)(?:\s*[/.-]?\s*\d{2,4})?\b/i;
     const headerLine=/(hist[oó]rico\s+de\s+consumo|consumo\s+faturado|dias\s+faturados)/i;
@@ -3963,15 +3965,15 @@ body.auth-ready #loginScreen { display:none !important; }
     if(start<0)return'';
     const out=[];
     let monthCount=0,emptyAfterMonths=0;
-    for(let i=start;i<Math.min(lines.length,start+28);i++){
+    for(let i=start;i<Math.min(lines.length,start+42);i++){
       const line=lines[i];
       const isHeader=headerLine.test(line);
       const isMonth=monthLine.test(line);
       if(isMonth)monthCount++;
       if(out.length&&monthCount>=6&&!isMonth&&!isHeader&&!/\b\d{1,7}\b/.test(line))emptyAfterMonths++;
-      if(emptyAfterMonths>=2)break;
+      if(emptyAfterMonths>=3)break;
       out.push(line);
-      if(monthCount>=12)break;
+      if(monthCount>=13&&/\b(Lida|Leitura|Medidor|Legenda|Benefici[aá]rio)\b/i.test(line))break;
     }
     return out.join('\n');
   }
@@ -4021,6 +4023,47 @@ body.auth-ready #loginScreen { display:none !important; }
       text+=`\n${result?.data?.text||''}`;
     }
     return text;
+  }
+
+
+  async function runBillDataOCR(imageSources=[]){
+    if(!imageSources.length)return'';
+    if(!window.Tesseract)throw new Error('Biblioteca OCR não carregada. Abra o arquivo com internet ativa ou publique no Firebase Hosting.');
+    let text='';
+    for(let index=0;index<imageSources.length;index++){
+      const logger=m=>{
+        if(m?.status){
+          const pct=Number.isFinite(m.progress)?` ${Math.round(m.progress*100)}%`:'';
+          setBillStatus('Lendo dados da fatura',`${m.status}${pct} · página/imagem ${index+1}/${imageSources.length}`,'info');
+        }
+      };
+      setBillStatus('Lendo dados da fatura',`OCR local para unidade consumidora, classe, grupo, distribuidora e tarifa. Página/imagem ${index+1} de ${imageSources.length}.`,'info');
+      let result=null;
+      try{
+        result=await Tesseract.recognize(imageSources[index],'por+eng',{
+          logger,
+          tessedit_pageseg_mode:'11',
+          preserve_interword_spaces:'1'
+        });
+      }catch(firstError){
+        console.warn('OCR de dados por+eng falhou; tentando eng:',firstError);
+        result=await Tesseract.recognize(imageSources[index],'eng',{
+          logger,
+          tessedit_pageseg_mode:'11',
+          preserve_interword_spaces:'1'
+        });
+      }
+      text+=`
+${result?.data?.text||''}`;
+    }
+    return text;
+  }
+
+  function needsBillDataOcr(data={}){
+    return !String(data.consumerUnit||data.client?.consumerUnit||'').trim()
+      || !String(data.className||data.client?.className||'').trim()
+      || !String(data.tariffGroup||data.client?.tariffGroup||'').trim()
+      || !(normalizeBillNumber(data.currentTariff)>0);
   }
 
   function textItemsToLines(items=[]){
@@ -4125,15 +4168,12 @@ body.auth-ready #loginScreen { display:none !important; }
       .map(m=>({raw:m[1],value:normalizeBillNumber(m[1])}))
       .filter(item=>validConsumption(item.value));
     const chooseConsumption=txt=>{
-      let nums=numberMatches(txt)
-        .filter(item=>!(String(item.raw).includes(',')&&item.value<10));
+      let nums=numberMatches(txt).filter(item=>!(String(item.raw).includes(',')&&item.value<10));
       if(!nums.length)return 0;
-      // Formato correto: MÊS/ANO CONSUMO DIAS. Quando vier colado, ex.: 338629, separa 3386 + 29.
       for(const item of nums){
         const split=splitConsumptionAndDays(item.raw);
         if(split||/^0+$/.test(String(item.raw)))return split;
       }
-      // A coluna Dias Faturados normalmente fica entre 20 e 35; consumo é a primeira coluna numérica fora desse intervalo.
       const overDays=nums.find(item=>item.value>35)||nums.find(item=>item.value>31);
       return (overDays||nums[0]).value||0;
     };
@@ -4142,8 +4182,60 @@ body.auth-ready #loginScreen { display:none !important; }
       value=normalizeBillNumber(value);
       if(month&&validConsumption(value))entries.push({month,value,lineIndex,label:label||months[month-1]||`Mês ${month}`});
     };
+    const buildFromEntries=(rawEntries)=>{
+      const dedup=[];
+      rawEntries.forEach(item=>{
+        const key=`${item.month}-${item.lineIndex}-${item.value}`;
+        if(!dedup.some(d=>d.key===key))dedup.push({...item,key});
+      });
+      if(!dedup.length)return null;
+      const uniqueMonths=[...new Set(dedup.map(item=>item.month).filter(Boolean))];
+      let raw=[],labels=[];
+      if(uniqueMonths.length>=6){
+        const byMonth={};
+        dedup.forEach(item=>{if(item.month&&!Object.prototype.hasOwnProperty.call(byMonth,item.month))byMonth[item.month]=item.value;});
+        raw=Array.from({length:12},(_,i)=>byMonth[i+1]??0);
+        labels=months;
+      }else{
+        const last=dedup.slice(0,12);
+        raw=last.map(item=>item.value);
+        labels=last.map(item=>item.label);
+      }
+      const reviewed=reviewConsumptionValues(raw,labels);
+      warnings.push(...reviewed.warnings);
+      return {values:reviewed.values,warnings};
+    };
 
-    // 1) Formato ideal da CELESC: ABR/26 3386 29 — pega somente o primeiro número após o mês, ignorando dias.
+    // CELESC em PDF texto: cabeçalho do quadro, depois todos os meses, depois a coluna Consumo Faturado e por último Dias Faturados.
+    const celescBlockMatch=source.match(/(?:hist[oó]rico\s+de\s+consumo[\s\S]{0,120})?consumo\s+faturado\s*dias\s+faturados([\s\S]{0,1400}?)(?:\bLida\b|\bLeitura\b|\bMedidor\b|\bLEGENDA\b|\bBenefici[aá]rio\b|$)/i)
+      || source.match(/consumo\s+faturado[\s\S]{0,80}dias\s+faturados([\s\S]{0,1400}?)(?:\bLida\b|\bLeitura\b|\bMedidor\b|\bLEGENDA\b|\bBenefici[aá]rio\b|$)/i);
+    if(celescBlockMatch){
+      const block=celescBlockMatch[1]||'';
+      const tokens=[...block.matchAll(new RegExp(`(${monthPattern})\\s*(?:[/.-]?\\s*\\d{2,4})?|([0-9]{1,7})`,'gi'))]
+        .map(m=>m[1]?{type:'month',month:monthNumber(m[1]),raw:m[0],index:m.index}:{type:'num',value:Number(m[2]),raw:m[2],index:m.index});
+      const headerMonths=[];
+      const values=[];
+      let readingValues=false;
+      for(const token of tokens){
+        if(!readingValues&&token.type==='month'&&token.month){
+          headerMonths.push(token);
+          continue;
+        }
+        if(token.type==='num'&&headerMonths.length>=4){
+          if(token.value===0||token.value>35){readingValues=true;values.push(token.value);}
+          continue;
+        }
+        if(readingValues&&token.type==='month')break;
+      }
+      if(headerMonths.length>=4&&values.length>=4){
+        const count=Math.min(12,headerMonths.length,values.length);
+        const colEntries=headerMonths.slice(0,count).map((m,i)=>({month:m.month,value:values[i],lineIndex:i,label:months[m.month-1]}));
+        const result=buildFromEntries(colEntries);
+        if(result&&result.values.filter(Boolean).length>=4)return result;
+      }
+    }
+
+    // 1) Formato ideal: ABR/26 659 29 — pega somente o consumo e ignora dias faturados.
     source.split(/\n+/).forEach((rawLine,lineIndex)=>{
       const line=String(rawLine||'')
         .replace(/[|;]+/g,' ')
@@ -4162,31 +4254,6 @@ body.auth-ready #loginScreen { display:none !important; }
         if(value>0||/\b0\b/.test(tail))addEntry(month,value,lineIndex,months[month-1]);
       }
     });
-
-    const buildFromEntries=(rawEntries)=>{
-      const dedup=[];
-      rawEntries.forEach(item=>{
-        const key=`${item.month}-${item.lineIndex}-${item.value}`;
-        if(!dedup.some(d=>d.key===key))dedup.push({...item,key});
-      });
-      if(!dedup.length)return null;
-      const uniqueMonths=[...new Set(dedup.map(item=>item.month).filter(Boolean))];
-      let raw=[],labels=[];
-      if(uniqueMonths.length>=6){
-        const byMonth={};
-        // Mantém a primeira ocorrência de cada mês. Em faturas de 13 linhas, isso preserva o mês mais recente.
-        dedup.forEach(item=>{if(item.month&&!Object.prototype.hasOwnProperty.call(byMonth,item.month))byMonth[item.month]=item.value;});
-        raw=Array.from({length:12},(_,i)=>byMonth[i+1]??0);
-        labels=months;
-      }else{
-        const last=dedup.slice(-12);
-        raw=last.map(item=>item.value);
-        labels=last.map(item=>item.label);
-      }
-      const reviewed=reviewConsumptionValues(raw,labels);
-      warnings.push(...reviewed.warnings);
-      return {values:reviewed.values,warnings};
-    };
     if(entries.length>=4){
       const result=buildFromEntries(entries);
       if(result&&result.values.filter(Boolean).length>=4)return result;
@@ -4213,26 +4280,12 @@ body.auth-ready #loginScreen { display:none !important; }
       }
     }
 
-    // 2) Formato por colunas: primeiro os meses, depois a coluna Consumo Faturado, depois Dias Faturados.
-    const monthTokens=[...source.matchAll(new RegExp(`\\b(${monthPattern})\\s*(?:[/.-]\\s*\\d{2,4})?\\b`,'gi'))]
-      .map((m,index)=>({month:monthNumber(m[1]),index:m.index,label:months[(monthNumber(m[1])||1)-1]}))
-      .filter(item=>item.month);
-    const consumoSegment=(source.match(/consumo\s+faturado([\s\S]{0,900}?)(?:dias\s+faturados|$)/i)||['',''])[1];
-    if(monthTokens.length>=4&&consumoSegment){
-      const nums=numberMatches(consumoSegment).map(item=>item.value).filter(v=>v>31||v===0).slice(0,monthTokens.length);
-      if(nums.length>=4){
-        const colEntries=monthTokens.slice(0,nums.length).map((m,i)=>({month:m.month,value:nums[i],lineIndex:i,label:m.label}));
-        const result=buildFromEntries(colEntries);
-        if(result&&result.values.filter(Boolean).length>=4)return result;
-      }
-    }
-
-    // 3) Último recurso: janela textual do quadro, usando números mais prováveis de consumo.
+    // 2) Último recurso: janela textual do quadro, usando números mais prováveis de consumo.
     const normalized=source.replace(/\s+/g,' ');
     const historyWindow=(normalized.match(/(?:hist[oó]rico\s+de\s+consumo|consumo\s+faturado|kwh\s+faturado|demonstrativo\s+de\s+consumo)[\s\S]{0,1100}/i)||[''])[0];
-    const windowNumbers=numberMatches(historyWindow).map(item=>item.value).filter(v=>v===0||v>31);
+    const windowNumbers=numberMatches(historyWindow).map(item=>item.value).filter(v=>v===0||v>35).slice(0,12);
     if(windowNumbers.length>=4){
-      const reviewed=reviewConsumptionValues(windowNumbers.slice(0,12),months);
+      const reviewed=reviewConsumptionValues(windowNumbers,months);
       warnings.push(...reviewed.warnings);
       return {values:reviewed.values,warnings};
     }
@@ -4241,6 +4294,13 @@ body.auth-ready #loginScreen { display:none !important; }
 
   function extractTariffFromBill(original,normalized,totalAmount=0,consumption=[]){
     let tariff=0;
+    const celescTe=normalized.match(/\(0D\)\s*Consumo\s+TE\s+KWH\s+[0-9.,]+\s+([0-9]+[,.][0-9]{3,8})/i)
+      || normalized.match(/Consumo\s+TE\s+KWH\s+[0-9.,]+\s+([0-9]+[,.][0-9]{3,8})/i);
+    const celescTusd=normalized.match(/\(0E\)\s*Consumo\s+TUSD\s+KWH\s+[0-9.,]+\s+([0-9]+[,.][0-9]{3,8})/i)
+      || normalized.match(/Consumo\s+TUSD\s+KWH\s+[0-9.,]+\s+([0-9]+[,.][0-9]{3,8})/i);
+    const teValue=celescTe?.[1]?normalizeBillNumber(celescTe[1]):0;
+    const tusdValue=celescTusd?.[1]?normalizeBillNumber(celescTusd[1]):0;
+    if(teValue&&tusdValue&&teValue+tusdValue<5)return Number((teValue+tusdValue).toFixed(6));
     const tariffPatterns=[
       /(?:tarifa(?:\s+atual)?|tarifa\s+aplicada|pre[cç]o unit[aá]rio|valor unit[aá]rio|R\$\/kWh)[^0-9]{0,40}([0-9]+[,.][0-9]{3,8})/i,
       /TE\s*\+\s*TUSD[^0-9]{0,30}([0-9]+[,.][0-9]{3,8})/i
@@ -4256,12 +4316,25 @@ body.auth-ready #loginScreen { display:none !important; }
       return values[0]||0;
     };
     let tusd=0,te=0;
-    original.split(/\n+/).forEach(line=>{
-      if(!/kwh/i.test(line))return;
-      if(/\bTUSD\b/i.test(line)&&!tusd)tusd=pickUnit(line);
-      if((/\bTE\b/i.test(line)||/energia/i.test(line))&&!te)te=pickUnit(line);
+    original.split(/\n+/).forEach((line,idx,arr)=>{
+      const joined=[line,arr[idx+1]||'',arr[idx+2]||''].join(' ');
+      if(/Consumo\s+TUSD/i.test(joined)&&!tusd)tusd=pickUnit(joined);
+      if(/Consumo\s+TE/i.test(joined)&&!te)te=pickUnit(joined);
     });
-    if(tusd&&te&&tusd+te<5)return tusd+te;
+    // Varredura sequencial para PDFs em que cada coluna vira uma linha.
+    const lines=original.split(/\n+/).map(line=>line.trim()).filter(Boolean);
+    for(let i=0;i<lines.length;i++){
+      const window=lines.slice(i,i+5).join(' ');
+      if(!te&&/\(0D\)\s*Consumo\s+TE|Consumo\s+TE/i.test(window)){
+        const m=window.match(/KWH\s+[0-9.,]+\s+([0-9]+[,.][0-9]{3,8})/i)||window.match(/\b([0-9]+[,.][0-9]{6,8})\b/);
+        if(m)te=normalizeBillNumber(m[1]);
+      }
+      if(!tusd&&/\(0E\)\s*Consumo\s+TUSD|Consumo\s+TUSD/i.test(window)){
+        const m=window.match(/KWH\s+[0-9.,]+\s+([0-9]+[,.][0-9]{3,8})/i)||window.match(/\b([0-9]+[,.][0-9]{6,8})\b/);
+        if(m)tusd=normalizeBillNumber(m[1]);
+      }
+    }
+    if(tusd&&te&&tusd+te<5)return Number((tusd+te).toFixed(6));
     if(!tariff&&totalAmount&&consumption.length){
       const base=consumption.find(v=>v>0)||average(consumption)||1;
       const estimated=totalAmount/base;
@@ -4317,13 +4390,19 @@ body.auth-ready #loginScreen { display:none !important; }
     activeBillOcrImages=[];
     activeBillExtractionMeta={pages:0,textLength:0,source:'upload'};
     const btn=document.getElementById('billLocalAnalyzeBtn');
-    if(btn){btn.disabled=true;btn.textContent='Lendo OCR do histórico...';}
-    setBillStatus('Preparando OCR do Histórico de Consumo',file.name,'info');
+    if(btn){btn.disabled=true;btn.textContent='Lendo fatura...';}
+    setBillStatus('Preparando leitura da fatura',file.name,'info');
     try{
-      let fullText='';let historyText='';let ocrText='';let source='ocr-historico';
+      let fullText='';let dataText='';let historyText='';let ocrText='';let source='ocr-historico';
       const isPdf=file.type==='application/pdf'||/\.pdf$/i.test(file.name);
       const isImage=file.type.startsWith('image/')||/\.(jpe?g|png|webp|bmp|tiff?)$/i.test(file.name);
       if(isImage){
+        try{
+          const fullImage=await prepareImageForOCR(file,2400,2400,.92);
+          dataText=await runBillDataOCR([fullImage]);
+        }catch(dataError){
+          console.warn('OCR dos dados identificados indisponível:',dataError);
+        }
         const image=await prepareHistoryImageForOCR(file);
         activeBillOcrImages=[image];
         activeBillExtractionMeta={pages:1,textLength:0,source:'history-image'};
@@ -4333,21 +4412,31 @@ body.auth-ready #loginScreen { display:none !important; }
         if(!window.pdfjsLib)throw new Error('Biblioteca PDF não carregada. Verifique a conexão com a internet e tente novamente.');
         const arrayBuffer=await file.arrayBuffer();
         const pdf=await pdfjsLib.getDocument({data:arrayBuffer}).promise;
+        const dataOcrImages=[];
         for(let pageNo=1;pageNo<=pdf.numPages;pageNo++){
-          setBillStatus('Buscando o quadro Histórico de Consumo',`Página ${pageNo} de ${pdf.numPages}.`,'info');
+          setBillStatus('Buscando dados e Histórico de Consumo',`Página ${pageNo} de ${pdf.numPages}.`,'info');
           const page=await pdf.getPage(pageNo);
           const content=await page.getTextContent({normalizeWhitespace:true});
           const pageText=textItemsToLines(content.items);
           fullText+=pageText+'\n';
           const pageHistory=extractConsumptionHistoryOnlyText(pageText);
           if(pageHistory)historyText+=pageHistory+'\n';
+          if(pageNo<=2){
+            try{dataOcrImages.push(await renderPdfPageForFullOCR(page,1600,.86));}
+            catch(dataImageError){console.warn('Não foi possível preparar a página para OCR dos dados:',dataImageError);}
+          }
           if(pageNo<=3){
             try{activeBillOcrImages.push(await renderPdfHistoryCropForOCR(page,1800,.96));}
             catch(imageError){console.warn('Não foi possível recortar o histórico para OCR:',imageError);}
           }
         }
-        // Sempre tenta OCR no recorte do quadro, mesmo quando o PDF possui texto,
-        // porque a fatura da CELESC pode juntar Consumo Faturado + Dias Faturados.
+        const preliminary=extractBillFields(`${fullText}\n${historyText}`.trim(),historyText);
+        if(needsBillDataOcr(preliminary)&&dataOcrImages.length){
+          try{dataText=await runBillDataOCR(dataOcrImages);}
+          catch(dataOcrError){console.warn('OCR dos dados identificados indisponível:',dataOcrError);}
+        }
+        // O consumo continua vindo somente do quadro Histórico de Consumo.
+        // O OCR da página completa serve apenas para Unidade Consumidora, Classe, Grupo, Distribuidora e Tarifa.
         if(activeBillOcrImages.length){
           try{
             const onlyOcr=await runBillOCR(activeBillOcrImages);
@@ -4364,20 +4453,21 @@ body.auth-ready #loginScreen { display:none !important; }
             setBillStatus('OCR indisponível, usando texto do PDF','Confira os meses preenchidos. Para fatura escaneada, o OCR precisa carregar corretamente.','warning');
           }
         }
-        activeBillExtractionMeta={pages:pdf.numPages,textLength:(fullText+'\n'+historyText).trim().length,source:source};
+        activeBillExtractionMeta={pages:pdf.numPages,textLength:(fullText+'\n'+dataText+'\n'+historyText).trim().length,source:source};
       }else{
         throw new Error('Formato não suportado. Use PDF, JPG ou PNG.');
       }
-      const combinedText=`${fullText}\n${historyText}`.trim();
-      activeProposal.billText=combinedText.slice(0,100000);
+      const combinedText=`${fullText}\n${dataText}\n${historyText}`.trim();
+      activeProposal.billText=combinedText.slice(0,120000);
       activeProposal.billHistoryText=String(historyText||ocrText||'').slice(0,50000);
       const extracted=extractBillFields(combinedText,activeProposal.billHistoryText);
       applyBillAnalysisResult(extracted,source);
       renderProposalBuilder();
       const filled=(extracted.consumption||[]).filter(v=>Number(v)>0).length;
+      const identified=[extracted.consumerUnit?'UC':'',extracted.className?'classe':'',extracted.tariffGroup?'grupo':'',extracted.distributor?'distribuidora':'',extracted.currentTariff?'tarifa':''].filter(Boolean).join(', ');
       if(filled>=6){
-        toast('Histórico de consumo lido',`Foram preenchidos ${filled} mês(es) usando somente o quadro da fatura.`,'success');
-        setBillStatus('Histórico de consumo lido com sucesso',`Foram preenchidos ${filled} mês(es). Revise antes de avançar.`,'info');
+        toast('Fatura lida',`Histórico: ${filled} mês(es). Dados identificados: ${identified||'revise manualmente'}.`,'success');
+        setBillStatus('Fatura lida com sucesso',`Histórico preenchido com ${filled} mês(es). Dados: ${identified||'alguns campos precisam de revisão'}.`,'info');
       }else{
         toast('Leitura concluída com revisão',`Foram encontrados ${filled} mês(es). Confira o quadro Histórico de Consumo.`,'info');
         setBillStatus('Leitura precisa de revisão',`Foram encontrados ${filled} mês(es). Envie um PDF de exemplo para ajustar o recorte com precisão.`,filled?'warning':'danger');
@@ -4385,31 +4475,157 @@ body.auth-ready #loginScreen { display:none !important; }
     }catch(error){
       console.error(error);
       activeProposal.billText='';activeProposal.billHistoryText='';activeBillOcrImages=[];
-      toast('Não foi possível ler o histórico',error.message||'Tente outro PDF ou uma imagem mais nítida do quadro Histórico de Consumo.','error');
-      setBillStatus('Falha na leitura do histórico',error.message||'Tente outro arquivo.','danger');
+      toast('Não foi possível ler a fatura',error.message||'Tente outro PDF ou uma imagem mais nítida da conta.','error');
+      setBillStatus('Falha na leitura da fatura',error.message||'Tente outro arquivo.','danger');
     }finally{
-      if(btn){btn.disabled=false;btn.textContent='↻ Reaplicar OCR do histórico';}
+      if(btn){btn.disabled=false;btn.textContent='↻ Reaplicar OCR da fatura';}
       if(event?.target)event.target.value='';
     }
+  }
+
+  function cleanBillFieldValue(value){
+    return String(value||'')
+      .replace(/[|•·]+/g,' ')
+      .replace(/^[\s:;\-–—#]+/,'')
+      .replace(/\s+/g,' ')
+      .trim();
+  }
+
+  function cropBillValueAtNextLabel(value){
+    return cleanBillFieldValue(value)
+      .replace(/\b(?:Unidade\s+Consumidora|UC|Classe|Subclasse|Classifica[cç][aã]o|Grupo|Subgrupo|Modalidade|Tipo\s+de\s+Fornecimento|Distribuidora|Concession[aá]ria|CPF|CNPJ|Endere[cç]o|CEP|Roteiro|Medidor|Leitura|Consumo|Hist[oó]rico|Vencimento|Total\s+a\s+pagar)\b[\s\S]*$/i,'')
+      .trim();
+  }
+
+  function billTextLines(text){
+    return String(text||'').split(/\n+/).map(line=>cleanBillFieldValue(line)).filter(Boolean);
+  }
+
+  function findBillFieldOnLines(text,labelRegex,valueRegex=null){
+    const lines=billTextLines(text);
+    for(let i=0;i<lines.length;i++){
+      const line=lines[i];
+      if(!labelRegex.test(line))continue;
+      labelRegex.lastIndex=0;
+      if(valueRegex){
+        const direct=line.match(valueRegex);
+        if(direct?.[1])return cleanBillFieldValue(direct[1]);
+        const next=(lines[i+1]||'').match(valueRegex);
+        if(next?.[1])return cleanBillFieldValue(next[1]);
+      }
+      const after=cleanBillFieldValue(line.replace(labelRegex,''));
+      const cropped=cropBillValueAtNextLabel(after);
+      if(cropped)return cropped;
+      if(lines[i+1]&&!labelRegex.test(lines[i+1])){
+        const next=cropBillValueAtNextLabel(lines[i+1]);
+        if(next)return next;
+      }
+    }
+    return'';
+  }
+
+  function extractConsumerUnitFromBill(text,normalized){
+    const celescTop=String(text||'').match(/(?:COMERCIAL|RESIDENCIAL|RURAL|INDUSTRIAL|PODER\s+P[UÚ]BLICO|SERVI[CÇ]O\s+P[UÚ]BLICO)[^\n]{5,180}\n\s*([0-9]{5,12})\b/i);
+    if(celescTop?.[1])return celescTop[1].replace(/^0+(?=\d)/,'');
+    const celescLabel=normalized.match(/Unidade\s+Consumidora\s+([0-9]{5,14})\b/i);
+    if(celescLabel?.[1])return celescLabel[1].replace(/^0+(?=\d)/,'');
+    const patterns=[
+      /(?:unidade\s+consumidora|unid\.?\s*cons\.?|n[ºo°]?\s*(?:da\s*)?uc|\buc\b|c[oó]digo\s+da\s+unidade|c[oó]digo\s+da\s+instala[cç][aã]o|instala[cç][aã]o)\s*[:#\-–]?\s*([0-9][0-9.\-\/\s]{4,25})/i,
+      /(?:cliente|c[oó]digo\s+do\s+cliente)\s*[:#\-–]?\s*([0-9][0-9.\-\/\s]{4,25})/i
+    ];
+    for(const pattern of patterns){
+      const m=normalized.match(pattern);
+      if(m?.[1]){
+        const digits=String(m[1]).replace(/\D/g,'').replace(/^0+(?=\d)/,'');
+        if(digits.length>=5&&digits.length<=20)return digits;
+      }
+    }
+    const lineValue=findBillFieldOnLines(text,/(?:unidade\s+consumidora|unid\.?\s*cons\.?|n[ºo°]?\s*(?:da\s*)?uc|\buc\b)/ig,/([0-9][0-9.\-\/\s]{4,25})/);
+    const digits=String(lineValue).replace(/\D/g,'').replace(/^0+(?=\d)/,'');
+    return digits.length>=5&&digits.length<=20?digits:'';
+  }
+
+  function cleanBillClassName(value){
+    let s=cleanBillFieldValue(value)
+      .replace(/\b(?:classe|subclasse|classe\/subclasse|classifica[cç][aã]o|classe\s+de\s+consumo)\b\s*[:\-–]?/ig,'')
+      .replace(/\b(?:grupo|subgrupo|grupo\/subgrupo|modalidade|tipo\s+de\s+fornecimento|tens[aã]o|unidade\s+consumidora|uc|cpf|cnpj|roteiro|medidor|leitura|consumo|hist[oó]rico)\b[\s\S]*$/i,'')
+      .replace(/[0-9]{5,}.*/,'')
+      .trim();
+    if(!s||s.length<3||/^[0-9\s.,\-\/]+$/.test(s))return'';
+    return s.slice(0,70);
+  }
+
+  function extractClassAndModalityFromBill(text,normalized){
+    const firstLine=String(text||'').split(/\n+/).map(line=>line.replace(/\s+/g,' ').trim()).find(line=>/^(COMERCIAL|RESIDENCIAL|RURAL|INDUSTRIAL|PODER\s+P[UÚ]BLICO|SERVI[CÇ]O\s+P[UÚ]BLICO)\b/i.test(line));
+    if(firstLine&&firstLine.length>=8)return firstLine.slice(0,110);
+    const classPatterns=[
+      /(?:classifica[cç][aã]o\s*\/\s*modalidade\s+tarif[aá]ria\s*\/\s*tipo\s+de\s+fornecimento|classe\s*\/\s*subclasse|classe\s+e\s+subclasse|classe\s+de\s+consumo|classifica[cç][aã]o|\bclasse\b)\s*[:\-–]?\s*([A-Za-zÀ-ÿ0-9 .\/\-]{3,130}?)(?=\s+(?:grupo|subgrupo|modalidade|tipo\s+de\s+fornecimento|tens[aã]o|unidade\s+consumidora|uc|cpf|cnpj|roteiro|medidor|leitura|consumo|hist[oó]rico)\b|$)/i,
+      /\b(B[1-4])\s*[-–\/]?\s*((?:RESIDENCIAL|RURAL|COMERCIAL|INDUSTRIAL|PODER\s+P[UÚ]BLICO|SERVI[CÇ]O\s+P[UÚ]BLICO)[A-Za-zÀ-ÿ0-9 .\/\-]*)/i
+    ];
+    let className='';
+    for(const pattern of classPatterns){
+      const m=normalized.match(pattern);
+      if(m?.[2])className=cleanBillClassName(`${m[1]} ${m[2]}`);
+      else if(m?.[1])className=cleanBillClassName(m[1]);
+      if(className)break;
+    }
+    if(!className){
+      className=cleanBillClassName(findBillFieldOnLines(text,/(?:classifica[cç][aã]o\s*\/\s*modalidade\s+tarif[aá]ria\s*\/\s*tipo\s+de\s+fornecimento|classe\s*\/\s*subclasse|classe\s+de\s+consumo|classifica[cç][aã]o|\bclasse\b)/ig));
+    }
+    const modality=cleanBillFieldValue((normalized.match(/(?:modalidade\s+tarif[aá]ria|modalidade)\s*[:\-–]?\s*([A-Za-zÀ-ÿ0-9 .\/\-]{3,60}?)(?=\s+(?:grupo|subgrupo|classe|tipo\s+de\s+fornecimento|tens[aã]o|unidade|uc|cpf|cnpj|roteiro|medidor|leitura|consumo)\b|$)/i)||[])[1]||findBillFieldOnLines(text,/(?:modalidade\s+tarif[aá]ria|modalidade)/ig));
+    const cleanModality=cropBillValueAtNextLabel(modality).slice(0,45);
+    if(className&&cleanModality&&!className.toLowerCase().includes(cleanModality.toLowerCase()))return `${className} / ${cleanModality}`;
+    return className||cleanModality||'';
+  }
+
+  function extractTariffGroupFromBill(text,normalized,className=''){
+    const celesc=normalized.match(/Grupo\s*\/\s*Subgrupo\s+Tens[aã]o\s*:?\s*([AB])\s*\/?\s*(B[1-4]|A[1-4]A?|AS)/i)
+      || normalized.match(/Grupo\s*\/\s*Subgrupo\s+Tens[aã]o\s*:?\s*([AB])\s+\/?\s*(B[1-4]|A[1-4]A?|AS)/i);
+    if(celesc?.[1]&&celesc?.[2])return `${celesc[1].toUpperCase()}/${celesc[2].toUpperCase()}`;
+    const lines=String(text||'').split(/\n+/).map(line=>line.trim()).filter(Boolean);
+    for(let i=0;i<lines.length;i++){
+      if(/Grupo\s*\/\s*Subgrupo\s+Tens[aã]o/i.test(lines[i])){
+        const prev=(lines[i-1]||'').match(/^([AB])$/i);
+        const nextLine=(lines[i+1]||'').match(/^(B[1-4]|A[1-4]A?|AS)$/i);
+        if(prev&&nextLine)return `${prev[1].toUpperCase()}/${nextLine[1].toUpperCase()}`;
+        const next=lines.slice(Math.max(0,i-1),i+5).join(' ');
+        const m=next.match(/\b([AB])\b\s*\/?\s*\b(B[1-4]|A[1-4]A?|AS)\b/i)||next.match(/\b(B[1-4]|A[1-4]A?|AS)\b/i);
+        if(m?.[2])return `${m[1].toUpperCase()}/${m[2].toUpperCase()}`;
+        if(m?.[1])return m[1].toUpperCase();
+      }
+    }
+    const patterns=[
+      /(?:grupo\s*\/\s*subgrupo|grupo\s+tarif[aá]rio|subgrupo|\bgrupo\b)\s*[:\-–]?\s*(A[1-4]A?|AS|B[1-4])/i,
+      /\b(subgrupo\s+(A[1-4]A?|AS|B[1-4]))\b/i
+    ];
+    for(const pattern of patterns){
+      const m=normalized.match(pattern);
+      if(m){return String(m[2]||m[1]).replace(/^subgrupo\s+/i,'').toUpperCase();}
+    }
+    const lineValue=findBillFieldOnLines(text,/(?:grupo\s*\/\s*subgrupo|grupo\s+tarif[aá]rio|subgrupo|\bgrupo\b)/ig,/\b(A[1-4]A?|AS|B[1-4])\b/i);
+    if(lineValue)return lineValue.toUpperCase();
+    const fromClass=String(className||'').match(/\b(A[1-4]A?|AS|B[1-4])\b/i);
+    if(fromClass)return fromClass[1].toUpperCase();
+    const any=normalized.match(/\b(A[1-4]A?|AS|B[1-4])\b/i);
+    return any?any[1].toUpperCase():'';
+  }
+
+  function extractDistributorFromBill(text,normalized){
+    const distributors=['CELESC','COPEL','CPFL','ENEL','EQUATORIAL','ENERGISA','NEOENERGIA','CEMIG','LIGHT','EDP','ELEKTRO','RGE','CEEE','AMAZONAS ENERGIA'];
+    const upper=normalized.toUpperCase();
+    const known=distributors.find(d=>upper.includes(d));
+    if(known)return known;
+    return cropBillValueAtNextLabel(findBillFieldOnLines(text,/(?:distribuidora|concession[aá]ria|permission[aá]ria)/ig)).slice(0,45);
   }
 
   function extractBillFields(text,historyText=''){
     const original=String(text||'');
     const normalized=original.replace(/\s+/g,' ');
-    const match=(patterns)=>{for(const p of patterns){const m=normalized.match(p);if(m?.[1])return m[1].trim().replace(/\s{2,}/g,' ');}return'';};
-    const uc=match([
-      /(?:unidade consumidora|n[ºo°]?\s*(?:da\s*)?(?:uc|instala[cç][aã]o)|c[oó]digo da instala[cç][aã]o|instala[cç][aã]o)\s*[:#\-]?\s*([0-9.\-]{5,})/i,
-      /(?:c[oó]digo do cliente|n[ºo°]?\s*cliente)\s*[:#\-]?\s*([0-9.\-]{5,})/i,
-      /\bUC\s*[:#\-]\s*([0-9.\-]{5,})/i
-    ]);
-    const className=match([
-      /(?:classe|classifica[cç][aã]o)\s*[:\-]?\s*([A-Za-zÀ-ÿ0-9 /.-]{3,55}?)(?=\s+(?:grupo|subgrupo|modalidade|tipo de fornecimento|tens[aã]o|unidade|uc|cpf|cnpj)\b|$)/i,
-      /(?:classe de consumo)\s*[:\-]?\s*([A-Za-zÀ-ÿ0-9 /.-]{3,55})/i
-    ]);
-    const group=match([/(?:grupo tarif[aá]rio|subgrupo|grupo\/subgrupo)\s*[:\-]?\s*([AB][1-4]?(?:\s*[-–/]\s*[A-Za-z0-9]+)?)/i,/\b(SUBGRUPO\s+[AB][1-4])\b/i]).replace(/^SUBGRUPO\s+/i,'');
-    const distributors=['CELESC','COPEL','CPFL','ENEL','EQUATORIAL','ENERGISA','NEOENERGIA','CEMIG','LIGHT','EDP','ELEKTRO','RGE','CEEE','AMAZONAS ENERGIA','ENERGISA'].filter((d,i,a)=>a.indexOf(d)===i);
-    const distributor=distributors.find(d=>normalized.toUpperCase().includes(d))||match([/(?:distribuidora|concession[aá]ria)\s*[:\-]?\s*([A-Za-zÀ-ÿ0-9 ]{3,35})/i]);
-    const totalAmountMatch=normalized.match(/(?:total a pagar|valor total|total da fatura)\s*[:R$\s]*([0-9.]+,[0-9]{2})/i);
+    const uc=extractConsumerUnitFromBill(original,normalized);
+    const className=extractClassAndModalityFromBill(original,normalized);
+    const group=extractTariffGroupFromBill(original,normalized,className);
+    const distributor=extractDistributorFromBill(original,normalized);
+    const totalAmountMatch=normalized.match(/(?:total\s+a\s+pagar|valor\s+total|total\s+da\s+fatura)\s*[:R$\s]*([0-9.]+,[0-9]{2})/i);
     const totalAmount=totalAmountMatch?normalizeBillNumber(totalAmountMatch[1]):0;
     const historySource=String(historyText||'').trim()||extractConsumptionHistoryOnlyText(original)||original;
     const history=extractConsumptionHistoryDetailed(historySource);
@@ -4418,13 +4634,16 @@ body.auth-ready #loginScreen { display:none !important; }
     const confidence=[uc,className,group,distributor,tariff>0,consumption.filter(Boolean).length>=6].filter(Boolean).length/6;
     const warnings=[...(history.warnings||[])];
     if(!uc)warnings.push('Unidade consumidora não identificada.');
+    if(!className)warnings.push('Classe/modalidade não identificada.');
+    if(!group)warnings.push('Grupo tarifário não identificado.');
     if(consumption.filter(Boolean).length<6)warnings.push('Histórico de consumo incompleto; revise os 12 meses.');
     if(!tariff)warnings.push('Tarifa não identificada; informe o valor manualmente.');
     return {client:{consumerUnit:uc,className,tariffGroup:group,distributor},consumerUnit:uc,className,tariffGroup:group,distributor,currentTariff:tariff,consumption,averageConsumption:average(consumption)||0,annualConsumption:sum(consumption)||0,totalAmount,confidence,warnings};
   }
+
   async function analyzeBillLocally(){
     if(!activeProposal?.billText&&!activeBillOcrImages.length){toast('Importe a conta primeiro','Selecione PDF, JPG ou PNG da fatura antes de reaplicar a leitura.','error');return;}
-    const btn=document.getElementById('billLocalAnalyzeBtn');if(btn){btn.disabled=true;btn.textContent='Processando histórico...';}
+    const btn=document.getElementById('billLocalAnalyzeBtn');if(btn){btn.disabled=true;btn.textContent='Processando fatura...';}
     try{
       let source='local';let text=activeProposal.billText||'';let historyText=activeProposal.billHistoryText||extractConsumptionHistoryOnlyText(text);
       let localResult=extractBillFields(text,historyText);
@@ -4438,9 +4657,9 @@ body.auth-ready #loginScreen { display:none !important; }
       applyBillAnalysisResult(localResult,source);
       renderProposalBuilder();
       const warningCount=Array.isArray(localResult.warnings)?localResult.warnings.length:0;
-      toast('Histórico de consumo processado',warningCount?`${warningCount} campo(s) precisam de revisão manual.`:'Os meses foram preenchidos usando somente o quadro Histórico de Consumo.','info');
+      toast('Fatura processada',warningCount?`${warningCount} campo(s) precisam de revisão manual.`:'Histórico e dados identificados foram processados.','info');
     }catch(error){console.error(error);toast('Falha na leitura automática',error.message||'Não foi possível processar o histórico de consumo.','error');}
-    finally{const current=document.getElementById('billLocalAnalyzeBtn');if(current){current.disabled=false;current.textContent='↻ Reaplicar leitura do histórico';}}
+    finally{const current=document.getElementById('billLocalAnalyzeBtn');if(current){current.disabled=false;current.textContent='↻ Reaplicar OCR da fatura';}}
   }
 
 
@@ -5259,7 +5478,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
       try{const result=await window.FirebaseCRM.callFunction('generateSalesText',{prompt,company:{name:state.company.tradeName,city:state.company.city}});output.textContent=result?.data?.text||result?.data||'Resposta recebida sem texto.';return;}catch(error){output.textContent=`Erro no backend: ${error.message}`;return;}
     }
     const leadName=companyRows('leads').find(l=>!['Fechado','Perdido'].includes(l.stage))?.name||'cliente';
-    output.textContent=`Olá, ${leadName}! Tudo bem?\n\nPreparei uma análise personalizada para mostrar como a energia solar pode reduzir seus gastos e proteger você dos reajustes da tarifa. Podemos revisar juntos o consumo, o sistema ideal e as melhores condições de pagamento.\n\nEste texto foi gerado pelo modo local. Conecte o Firebase e configure a chave da OpenAI no Secret Manager para respostas reais baseadas no prompt:\n\n“${prompt}”`;
+    output.textContent=`Olá, ${leadName}! Tudo bem?\n\nPreparei uma análise personalizada para mostrar como a energia solar pode reduzir seus gastos e proteger você dos reajustes da tarifa. Podemos revisar juntos o consumo, o sistema ideal e as melhores condições de pagamento.\n\nEste texto foi gerado pelo modo local. Conecte o Firebase para respostas avançadas baseadas no prompt:\n\n“${prompt}”`;
   }
 
   // Conecta o Firebase e mantém o CRM bloqueado até autenticação e perfil autorizado.
