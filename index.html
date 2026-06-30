@@ -4525,34 +4525,72 @@ ${result?.data?.text||''}`;
   }
 
   function extractConsumerUnitFromBill(text,normalized){
-    // REGRA CELESC: a unidade consumidora deve sair somente do campo escrito
-    // “Unidade Consumidora”. Não usar número solto do cabeçalho, Cliente ou
-    // Código para Cadastro em Débito Automático, mesmo que o valor seja parecido.
+    // REGRA CELESC: priorizar o campo azul/amarelo do CABEÇALHO escrito
+    // “UNIDADE CONSUMIDORA”. Alguns PDFs extraem o rótulo visual separado ou
+    // omitem o rótulo no texto; nesses casos, o número aparece entre a
+    // classificação/modalidade e a linha “Cliente”.
     const cleanUc=value=>{
       const digits=String(value||'').replace(/\D/g,'').replace(/^0+(?=\d)/,'');
       return digits.length>=5&&digits.length<=14?digits:'';
     };
     const lines=String(text||'').split(/\n+/).map(line=>line.replace(/\s+/g,' ').trim()).filter(Boolean);
-    for(let i=0;i<lines.length;i++){
-      const line=lines[i];
+    const headerEndIndex=lines.findIndex(line=>/\b(Leitura\s+Anterior|Itens\s+de\s+Fatura|Comunicado\s+importante|NOTA\s+FISCAL|Hist[oó]rico\s+de\s+Consumo|Consumo\s+Faturado|PAG[AÁ]VEL|Nosso\s+N[uú]mero)\b/i.test(line));
+    const headerLines=lines.slice(0,headerEndIndex>0?Math.min(headerEndIndex,45):Math.min(lines.length,45));
+
+    const firstNumber=line=>{
+      const numbers=[...String(line||'').matchAll(/\b0*\d{5,14}\b/g)].map(m=>cleanUc(m[0])).filter(Boolean);
+      return numbers[0]||'';
+    };
+
+    // 1) Cabeçalho com o rótulo explícito “UNIDADE CONSUMIDORA”.
+    for(let i=0;i<headerLines.length;i++){
+      const line=headerLines[i];
       if(!/\bUnidade\s+Consumidora\b/i.test(line))continue;
 
-      // 1) Quando o número está na mesma linha do rótulo.
       const afterLabel=line.replace(/^.*?\bUnidade\s+Consumidora\b\s*[:#\-–]?\s*/i,'');
-      let uc=cleanUc((afterLabel.match(/\b0*\d{5,14}\b/)||[])[0]);
+      let uc=firstNumber(afterLabel);
       if(uc)return uc;
 
-      // 2) Quando o número vem na linha seguinte, como no boleto CELESC:
-      // Unidade Consumidora -> 0040679596.
-      for(let j=i+1;j<Math.min(lines.length,i+6);j++){
-        const candidate=lines[j];
-        if(/\b(Nosso\s+N[uú]mero|Refer[eê]ncia|Vencimento|Total\s+a\s+Pagar|C[oó]digo\s+para\s+Cadastro|Cliente|CPF|CNPJ)\b/i.test(candidate))break;
-        uc=cleanUc((candidate.match(/\b0*\d{5,14}\b/)||[])[0]);
+      for(let j=i+1;j<Math.min(headerLines.length,i+5);j++){
+        const candidate=headerLines[j];
+        if(/\b(Cliente|Etapa|Grupo\/Subgrupo|CPF|CNPJ|Nome|Endere[cç]o|CEP|Cidade|Refer[eê]ncia|Vencimento|Total\s+a\s+Pagar)\b/i.test(candidate))break;
+        uc=firstNumber(candidate);
         if(uc)return uc;
       }
     }
 
-    // 3) Fallback ainda restrito ao rótulo: texto extraído sem quebras de linha.
+    // 2) Fallback específico para PDF CELESC cujo texto omite o rótulo visual:
+    // Classificação/Modalidade -> número da UC -> Cliente.
+    for(let i=0;i<headerLines.length;i++){
+      const line=headerLines[i];
+      if(!/(Classifica[cç][aã]o\s*\/\s*Modalidade\s+Tarif[aá]ria|^(COMERCIAL|RESIDENCIAL|RURAL|INDUSTRIAL|PODER\s+P[UÚ]BLICO|SERVI[CÇ]O\s+P[UÚ]BLICO)\b)/i.test(line))continue;
+      for(let j=i+1;j<Math.min(headerLines.length,i+7);j++){
+        const candidate=headerLines[j];
+        if(/\b(Cliente|NOME|CPF\/CNPJ|CPF|CNPJ|Endere[cç]o|CEP|Cidade)\b/i.test(candidate))break;
+        const uc=firstNumber(candidate);
+        if(uc)return uc;
+      }
+    }
+
+    // 3) Último fallback: rótulo “Unidade Consumidora” em qualquer ponto.
+    // Mantém restrição ao rótulo e evita Código de Débito/Cliente.
+    for(let i=0;i<lines.length;i++){
+      const line=lines[i];
+      if(!/\bUnidade\s+Consumidora\b/i.test(line))continue;
+      if(/\b(C[oó]digo\s+para\s+Cadastro|D[eé]bito\s+Autom[aá]tico|Cliente|Nosso\s+N[uú]mero)\b/i.test(line))continue;
+
+      const afterLabel=line.replace(/^.*?\bUnidade\s+Consumidora\b\s*[:#\-–]?\s*/i,'');
+      let uc=firstNumber(afterLabel);
+      if(uc)return uc;
+
+      for(let j=i+1;j<Math.min(lines.length,i+5);j++){
+        const candidate=lines[j];
+        if(/\b(Nosso\s+N[uú]mero|Refer[eê]ncia|Vencimento|Total\s+a\s+Pagar|C[oó]digo\s+para\s+Cadastro|Cliente|CPF|CNPJ)\b/i.test(candidate))break;
+        uc=firstNumber(candidate);
+        if(uc)return uc;
+      }
+    }
+
     const labeled=String(normalized||'').match(/\bUnidade\s+Consumidora\b\s*[:#\-–]?\s*(?:N[uú]mero\s*)?(0*\d{5,14})\b/i);
     return cleanUc(labeled?.[1]);
   }
