@@ -1807,11 +1807,11 @@ body.auth-ready #loginScreen { display:none !important; }
   const LEGACY_FIREBASE_CONFIG_KEYS = ['solarcrm-firebase-config-v2-8','solarcrm-firebase-config-v2-7','solarcrm-firebase-config-v2-6','solarcrm-firebase-config'];
   const DEFAULT_FIREBASE_CONFIG = Object.freeze({"apiKey":"AIzaSyCYSQfnPLyV9B6osiZhsLYYrF64YLhGkMA","authDomain":"energiasolar-67b14.firebaseapp.com","databaseURL":"https://energiasolar-67b14-default-rtdb.firebaseio.com","projectId":"energiasolar-67b14","storageBucket":"energiasolar-67b14.firebasestorage.app","messagingSenderId":"394822890491","appId":"1:394822890491:web:5afc55e01902bbf142915e","functionsRegion":"southamerica-east1"});
   const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-2';
-  const BILL_AI_FUNCTION_URL_KEY = 'solarcrm-bill-ai-function-url-v1';
-  const BILL_AI_CONFIG_KEY = 'solarcrm-bill-ai-config-v1';
-  const BILL_AI_FUNCTION_NAME = 'analisarFatura';
-  const DEFAULT_BILL_AI_CONFIG = Object.freeze({provider:'gemini',model:'gemini-3.5-flash',functionUrl:''});
-  const SYSTEM_VERSION = '2.9.11-gemini-config';
+  const BILL_AI_FUNCTION_URL_KEY = 'solarcrm-bill-ai-function-url-v1'; // legado: versões anteriores usavam Firebase Function
+  const BILL_AI_CONFIG_KEY = 'solarcrm-bill-ai-config-v2';
+  const FIREBASE_AI_SDK_VERSION = '11.10.0';
+  const DEFAULT_BILL_AI_CONFIG = Object.freeze({provider:'firebase-ai',model:'gemini-3.5-flash',temperature:0.1});
+  const SYSTEM_VERSION = '2.9.12-firebase-ai-logic';
   let storageWarningShown = false;
   let draftSaveTimer = null;
   let firebaseLastDiagnostic = null;
@@ -3742,7 +3742,7 @@ body.auth-ready #loginScreen { display:none !important; }
       </div>${nav}`;
     if(step===1)return `
       <div class="form-section">${heading('Importar conta de energia','O sistema lê automaticamente PDF, foto ou fatura escaneada e preenche o consumo.')}
-        <div class="grid grid-2"><label class="upload-drop"><div><strong>Importar fatura automaticamente</strong><span>${p.billFileName?`Arquivo: ${escapeHtml(p.billFileName)}`:'Selecione PDF, JPG ou PNG da conta de energia.'}</span><input id="energyBillInput" type="file" accept="application/pdf,image/*" style="margin-top:10px"></div></label><div><div id="billStatusBox" class="notice success">Leitura automática ativada: PDF com texto + OCR local. Para maior precisão, use também a leitura com IA via Firebase Function.</div><div style="display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px"><button id="billLocalAnalyzeBtn" class="btn btn-secondary" type="button">↻ Reaplicar leitura automática</button><button id="billAiAnalyzeBtn" class="btn btn-primary" type="button">🤖 Ler fatura com IA</button><button id="billAiConfigBtn" class="btn btn-ghost" type="button">⚙️ Configurar URL da IA</button></div>${p.billAnalysis?`<div class="notice" style="margin-top:10px">Última análise: <strong>${escapeHtml(formatBillAnalysisSource(p.billAnalysis.source||'automática'))}</strong>${formatBillConfidence(p.billAnalysis.confidence)?` · ${formatBillConfidence(p.billAnalysis.confidence)} de confiança`:''}${p.billAnalysis.warnings?.length?`<br><span>${escapeHtml(p.billAnalysis.warnings.join(' '))}</span>`:''}</div>`:''}</div></div>
+        <div class="grid grid-2"><label class="upload-drop"><div><strong>Importar fatura automaticamente</strong><span>${p.billFileName?`Arquivo: ${escapeHtml(p.billFileName)}`:'Selecione PDF, JPG ou PNG da conta de energia.'}</span><input id="energyBillInput" type="file" accept="application/pdf,image/*" style="margin-top:10px"></div></label><div><div id="billStatusBox" class="notice success">Leitura automática ativada: PDF com texto + OCR local. Para maior precisão, use também a leitura com IA do Firebase AI Logic.</div><div style="display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px"><button id="billLocalAnalyzeBtn" class="btn btn-secondary" type="button">↻ Reaplicar leitura automática</button><button id="billAiAnalyzeBtn" class="btn btn-primary" type="button">🤖 Ler fatura com IA</button><button id="billAiConfigBtn" class="btn btn-ghost" type="button">⚙️ Configurar IA Firebase</button></div>${p.billAnalysis?`<div class="notice" style="margin-top:10px">Última análise: <strong>${escapeHtml(formatBillAnalysisSource(p.billAnalysis.source||'automática'))}</strong>${formatBillConfidence(p.billAnalysis.confidence)?` · ${formatBillConfidence(p.billAnalysis.confidence)} de confiança`:''}${p.billAnalysis.warnings?.length?`<br><span>${escapeHtml(p.billAnalysis.warnings.join(' '))}</span>`:''}</div>`:''}</div></div>
       </div>
       <div class="form-section">${heading('Dados identificados','Revise os campos antes de continuar.')}
         <div class="form-grid">${proposalField('client.consumerUnit','Unidade consumidora','text')}${proposalField('client.className','Classe','text')}${proposalField('client.tariffGroup','Grupo tarifário','text')}${proposalField('client.distributor','Distribuidora','text')}${proposalField('currentTariff','Tarifa atual (R$/kWh)','number')}${proposalField('technical.targetCoverage','Cobertura desejada (%)','number')}</div>
@@ -3969,6 +3969,7 @@ ${result?.data?.text||''}`;
       'ia':'IA',
       'ai':'IA',
       'openai':'IA',
+      'firebase-ai':'Firebase AI',
       'local':'Leitura local',
       'ocr':'OCR local',
       'ocr-imagem':'OCR de imagem',
@@ -3978,28 +3979,12 @@ ${result?.data?.text||''}`;
     return map[source]||source||'automática';
   }
 
-  function getDefaultBillAiFunctionUrl(){
-    const config=(typeof loadFirebaseConfig==='function'?loadFirebaseConfig():null)||DEFAULT_FIREBASE_CONFIG||{};
-    const projectId=config.projectId||DEFAULT_FIREBASE_CONFIG?.projectId||'';
-    const region=config.functionsRegion||DEFAULT_FIREBASE_CONFIG?.functionsRegion||'us-central1';
-    return projectId?`https://${region}-${projectId}.cloudfunctions.net/${BILL_AI_FUNCTION_NAME}`:'';
-  }
-
-  function normalizeBillAiFunctionUrl(url){
-    let value=String(url||'').trim();
-    if(!value)return'';
-    value=value.replace(/\/+$/,'');
-    if(!/^https?:\/\//i.test(value))value=`https://${value}`;
-    if(/cloudfunctions\.net$/i.test(value))value+=`/${BILL_AI_FUNCTION_NAME}`;
-    return value;
-  }
-
   function normalizeBillAiConfig(raw={}){
-    const legacyUrl=safeStorageGet(BILL_AI_FUNCTION_URL_KEY)||'';
-    const provider=String(raw.provider||DEFAULT_BILL_AI_CONFIG.provider).trim().toLowerCase()==='openai'?'openai':'gemini';
+    const provider='firebase-ai';
     const model=String(raw.model||DEFAULT_BILL_AI_CONFIG.model).trim()||DEFAULT_BILL_AI_CONFIG.model;
-    const functionUrl=normalizeBillAiFunctionUrl(raw.functionUrl||legacyUrl||getDefaultBillAiFunctionUrl());
-    return {provider,model,functionUrl};
+    const temperatureRaw=Number(raw.temperature??DEFAULT_BILL_AI_CONFIG.temperature);
+    const temperature=Number.isFinite(temperatureRaw)?Math.min(1,Math.max(0,temperatureRaw)):DEFAULT_BILL_AI_CONFIG.temperature;
+    return {provider,model,temperature};
   }
 
   function loadBillAiConfig(){
@@ -4010,20 +3995,118 @@ ${result?.data?.text||''}`;
   function saveBillAiConfig(config){
     const normalized=normalizeBillAiConfig(config);
     safeStorageSet(BILL_AI_CONFIG_KEY,JSON.stringify(normalized));
-    if(normalized.functionUrl)safeStorageSet(BILL_AI_FUNCTION_URL_KEY,normalized.functionUrl);else safeStorageRemove(BILL_AI_FUNCTION_URL_KEY);
+    safeStorageRemove(BILL_AI_FUNCTION_URL_KEY);
     return normalized;
   }
 
-  function getBillAiFunctionUrl(){
-    return loadBillAiConfig().functionUrl;
+  function getBillAiProviderLabel(provider){
+    return provider==='firebase-ai'?'Firebase AI Logic / Gemini':'Gemini';
   }
 
-  function getBillAiProviderLabel(provider){
-    return provider==='openai'?'OpenAI':'Gemini';
+  function getBillAiFunctionUrl(){
+    return '';
   }
 
   function configureBillAiFunctionUrl(){
     openSettings('ai');
+  }
+
+  let firebaseAiRuntimePromise=null;
+  function getFirebaseAiRuntime(){
+    if(firebaseAiRuntimePromise)return firebaseAiRuntimePromise;
+    firebaseAiRuntimePromise=(async()=>{
+      const config=normalizeFirebaseConfig(loadFirebaseConfig());
+      if(!config.apiKey||!config.projectId||!config.appId)throw new Error('Configure o Firebase do sistema antes de usar a IA. Abra Configurações → Firebase.');
+      const base=`https://www.gstatic.com/firebasejs/${FIREBASE_AI_SDK_VERSION}`;
+      const [appMod,aiMod]=await Promise.all([import(`${base}/firebase-app.js`),import(`${base}/firebase-ai.js`)]);
+      const firebaseOptions={apiKey:config.apiKey,authDomain:config.authDomain,databaseURL:config.databaseURL,projectId:config.projectId,storageBucket:config.storageBucket,messagingSenderId:config.messagingSenderId,appId:config.appId};
+      const appName='solar-crm-ai';
+      let app=appMod.getApps().find(item=>item.name===appName);
+      if(app){
+        const changed=Object.entries(firebaseOptions).some(([key,value])=>value&&app.options?.[key]!==value);
+        if(changed){await appMod.deleteApp(app);app=null;}
+      }
+      app=app||appMod.initializeApp(firebaseOptions,appName);
+      return {app,aiMod};
+    })().catch(error=>{firebaseAiRuntimePromise=null;throw error;});
+    return firebaseAiRuntimePromise;
+  }
+
+  function billImagePartFromDataUrl(dataUrl){
+    const value=String(dataUrl||'');
+    const match=value.match(/^data:([^;,]+);base64,(.+)$/i);
+    if(!match)return null;
+    return {inlineData:{mimeType:match[1],data:match[2]}};
+  }
+
+  function extractJsonObjectFromText(text){
+    const raw=String(text||'').trim();
+    if(!raw)throw new Error('A IA não retornou texto.');
+    try{return JSON.parse(raw);}catch(_){}
+    const cleaned=raw.replace(/^```(?:json)?\s*/i,'').replace(/```$/,'').trim();
+    try{return JSON.parse(cleaned);}catch(_){}
+    const first=cleaned.indexOf('{');const last=cleaned.lastIndexOf('}');
+    if(first>=0&&last>first)return JSON.parse(cleaned.slice(first,last+1));
+    throw new Error('A IA não retornou um JSON válido.');
+  }
+
+  function buildBillAiPrompt(){
+    const billText=String(activeProposal?.billText||'').slice(0,50000);
+    const fileName=activeProposal?.billFileName||'';
+    return `Você é um especialista em leitura de faturas de energia elétrica brasileiras para dimensionamento fotovoltaico.
+
+Extraia os dados da fatura e responda exclusivamente com um JSON válido, sem markdown, sem explicações e sem texto fora do JSON.
+
+Formato obrigatório:
+{
+  "consumerUnit": "string",
+  "clientName": "string",
+  "distributor": "string",
+  "className": "string",
+  "tariffGroup": "string",
+  "currentTariff": 0,
+  "consumption": [0],
+  "averageConsumption": 0,
+  "annualConsumption": 0,
+  "confidence": 0,
+  "warnings": ["string"]
+}
+
+Regras:
+- consumerUnit é a unidade consumidora/UC/código da instalação.
+- distributor deve ser CELESC, COPEL, ENEL, EQUATORIAL, ENERGISA, NEOENERGIA, CEMIG, CPFL ou o nome identificado.
+- currentTariff deve ser a tarifa em R$/kWh. Se não encontrar, use 0.
+- consumption deve conter até 12 valores mensais em kWh. Se encontrar histórico de consumo, priorize esses valores.
+- Não inclua valores monetários de conta como consumo.
+- averageConsumption deve ser a média dos consumos encontrados.
+- annualConsumption deve ser a soma dos consumos encontrados.
+- confidence deve ir de 0 a 100.
+- warnings deve indicar dados incertos ou ausentes.
+
+Arquivo: ${fileName}
+
+Texto extraído localmente/OCR:
+${billText}`;
+  }
+
+  async function callFirebaseAiForBill(aiConfig){
+    const {aiMod,app}=await getFirebaseAiRuntime();
+    const ai=aiMod.getAI(app,{backend:new aiMod.GoogleAIBackend()});
+    const model=aiMod.getGenerativeModel(ai,{
+      model:aiConfig.model||DEFAULT_BILL_AI_CONFIG.model,
+      generationConfig:{temperature:Number(aiConfig.temperature??0.1),responseMimeType:'application/json'}
+    });
+    const parts=[{text:buildBillAiPrompt()}];
+    (Array.isArray(activeBillAiImages)?activeBillAiImages:[]).slice(0,3).forEach(image=>{const part=billImagePartFromDataUrl(image);if(part)parts.push(part);});
+    let result;
+    try{result=await model.generateContent({contents:[{role:'user',parts}]});}
+    catch(firstError){
+      console.warn('Tentativa com contents falhou; tentando parts direto.',firstError);
+      result=await model.generateContent(parts);
+    }
+    const response=result?.response;
+    const text=typeof response?.text==='function'?response.text():String(response?.text||'');
+    return extractJsonObjectFromText(text);
   }
 
   function applyBillAnalysisResult(data={},source='local'){
@@ -4147,35 +4230,22 @@ ${ocrText}`.trim();activeProposal.billText=text.slice(0,100000);source='ocr';loc
     if(!activeProposal){toast('Nenhuma proposta aberta','Abra uma proposta antes de analisar a fatura.','error');return;}
     if(!activeProposal.billText&&!activeBillAiImages.length){toast('Importe a conta primeiro','Selecione PDF, JPG ou PNG da fatura antes de usar IA.','error');return;}
     const aiConfig=loadBillAiConfig();
-    const functionUrl=aiConfig.functionUrl;
-    if(!functionUrl){configureBillAiFunctionUrl();return;}
     const btn=document.getElementById('billAiAnalyzeBtn');
     const localBtn=document.getElementById('billLocalAnalyzeBtn');
-    if(btn){btn.disabled=true;btn.textContent='🤖 Analisando com IA...';}
+    if(btn){btn.disabled=true;btn.textContent='🤖 Analisando com Firebase AI...';}
     if(localBtn)localBtn.disabled=true;
-    setBillStatus('IA analisando a fatura','Enviando texto e imagem para sua Firebase Function.','info');
+    setBillStatus('Firebase AI analisando a fatura','Usando Firebase AI Logic / Gemini com o Firebase configurado no sistema.','info');
     try{
-      const response=await fetch(functionUrl,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-        provider:aiConfig.provider,
-        model:aiConfig.model,
-        billText:String(activeProposal.billText||'').slice(0,50000),
-        images:Array.isArray(activeBillAiImages)?activeBillAiImages.slice(0,3):[],
-        fileName:activeProposal.billFileName||'',
-        extractionMeta:activeBillExtractionMeta||{}
-      })});
-      let data=null;
-      const raw=await response.text();
-      try{data=raw?JSON.parse(raw):null;}catch(parseError){throw new Error(raw?.slice(0,220)||'A função não retornou JSON válido.');}
-      if(!response.ok)throw new Error(data?.error||data?.message||data?.details||'Erro ao analisar a fatura com IA.');
-      applyBillAnalysisResult(data,'ia');
+      const data=await callFirebaseAiForBill(aiConfig);
+      applyBillAnalysisResult(data,'firebase-ai');
       renderProposalBuilder();
       const consumptionCount=normalizeConsumption(data.consumption||[]).filter(Boolean).length;
-      toast(`Fatura lida com ${getBillAiProviderLabel(aiConfig.provider)}`,`Confiança: ${formatBillConfidence(data.confidence)||'—'} · ${consumptionCount} mês(es) de consumo.`,'success');
+      toast('Fatura lida com Firebase AI',`Confiança: ${formatBillConfidence(data.confidence)||'—'} · ${consumptionCount} mês(es) de consumo.`,'success');
     }catch(error){
       console.error(error);
       const message=String(error?.message||'Não foi possível analisar a fatura.');
-      setBillStatus('Falha na leitura com IA',message,'danger');
-      toast('Erro na IA',message,'error');
+      setBillStatus('Falha na leitura com Firebase AI',message,'danger');
+      toast('Erro na IA do Firebase',message,'error');
     }finally{
       const current=document.getElementById('billAiAnalyzeBtn');
       const localCurrent=document.getElementById('billLocalAnalyzeBtn');
@@ -4508,9 +4578,8 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     }
     if(tab==='ai'){
       const ai=loadBillAiConfig();
-      const defaultUrl=getDefaultBillAiFunctionUrl();
-      const secretCommand='firebase functions:secrets:set GEMINI_API_KEY';
-      return `<form id="billAiSettingsForm"><div class="form-section"><div class="form-section-head"><div><h3>Leitura de fatura com IA</h3><p>Configure a conexão do CRM com a Firebase Function que chama o Gemini. A chave da API fica protegida no Firebase Secrets.</p></div><span class="status green">${escapeHtml(getBillAiProviderLabel(ai.provider))}</span></div><div class="form-grid"><label class="field"><span>Provedor</span><select name="provider"><option value="gemini" ${ai.provider==='gemini'?'selected':''}>Gemini</option><option value="openai" ${ai.provider==='openai'?'selected':''}>OpenAI</option></select><small>Use Gemini para a chave do Google AI Studio.</small></label><label class="field"><span>Modelo</span><input name="model" value="${attr(ai.model)}" placeholder="gemini-3.5-flash"><small>Pode ser alterado conforme o modelo disponível na sua conta.</small></label><label class="field full"><span>URL da Firebase Function</span><input name="functionUrl" value="${attr(ai.functionUrl||defaultUrl)}" placeholder="https://REGIAO-SEU-PROJETO.cloudfunctions.net/analisarFatura"><small>Essa URL é chamada pelo botão “Ler fatura com IA”.</small></label></div><div class="notice warning" style="margin-top:12px"><strong>Chave Gemini protegida:</strong> não salve a chave dentro do HTML. Salve no terminal com <code>${escapeHtml(secretCommand)}</code>. Depois publique a Function.</div><div class="notice" style="margin-top:12px"><strong>URL padrão detectada:</strong> ${escapeHtml(defaultUrl||'configure primeiro o Project ID e a região em Firebase')}.</div><div style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px"><button class="btn btn-ghost" id="billAiDefaultUrlBtn" type="button">Usar URL padrão</button><button class="btn btn-ghost" id="billAiCopySecretCommandBtn" type="button">Copiar comando do Secret</button><button class="btn btn-primary" type="submit">Salvar conexão da IA</button></div></div></form><div class="form-section" style="margin-top:15px"><div class="form-section-head"><div><h3>Status da integração</h3><p>Quando a Function estiver publicada, importe uma fatura na proposta e clique em “🤖 Ler fatura com IA”.</p></div></div><div class="detail-grid"><div class="detail-item"><span>Provedor</span><strong>${escapeHtml(getBillAiProviderLabel(ai.provider))}</strong></div><div class="detail-item"><span>Modelo</span><strong>${escapeHtml(ai.model||'—')}</strong></div><div class="detail-item full"><span>Endpoint</span><strong>${escapeHtml(ai.functionUrl||'Não configurado')}</strong></div></div></div>`;
+      const firebaseConfig=loadFirebaseConfig();
+      return `<form id="billAiSettingsForm"><div class="form-section"><div class="form-section-head"><div><h3>Firebase AI Logic / Gemini</h3><p>Use a IA adicionada no Firebase para ler faturas diretamente pelo SDK Web. Não precisa de URL de Function.</p></div><span class="status green">Firebase AI</span></div><div class="form-grid"><label class="field"><span>Provedor</span><input value="Firebase AI Logic / Gemini" disabled><small>Chamadas feitas pelo SDK do Firebase usando o app Web configurado.</small></label><label class="field"><span>Modelo Gemini</span><input name="model" value="${attr(ai.model)}" placeholder="gemini-3.5-flash"><small>Modelo padrão recomendado pelo Firebase AI Logic.</small></label><label class="field"><span>Temperatura</span><input name="temperature" type="number" min="0" max="1" step="0.1" value="${attr(ai.temperature)}"><small>Use baixo para leitura de faturas: 0 a 0,2.</small></label><label class="field"><span>Projeto Firebase</span><input value="${attr(firebaseConfig.projectId||'Não configurado')}" disabled><small>Vem de Configurações → Firebase.</small></label></div><div class="notice warning" style="margin-top:12px"><strong>Sem Function URL:</strong> esta versão usa Firebase AI Logic direto. Para funcionar, o projeto precisa estar com AI Logic/Gemini ativado no Firebase Console e o CRM precisa estar publicado no Firebase Hosting ou em domínio autorizado.</div><div class="notice" style="margin-top:12px"><strong>Recomendado:</strong> ative App Check no Firebase para reduzir risco de abuso da IA quando o sistema estiver público.</div><div style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px"><button class="btn btn-ghost" id="billAiDefaultModelBtn" type="button">Usar modelo padrão</button><button class="btn btn-primary" type="submit">Salvar configuração da IA</button></div></div></form><div class="form-section" style="margin-top:15px"><div class="form-section-head"><div><h3>Status da integração</h3><p>Depois de salvar, importe uma fatura na proposta e clique em “🤖 Ler fatura com IA”.</p></div></div><div class="detail-grid"><div class="detail-item"><span>Provedor</span><strong>Firebase AI Logic</strong></div><div class="detail-item"><span>Modelo</span><strong>${escapeHtml(ai.model||'—')}</strong></div><div class="detail-item"><span>Project ID</span><strong>${escapeHtml(firebaseConfig.projectId||'—')}</strong></div><div class="detail-item"><span>App ID</span><strong>${escapeHtml(firebaseConfig.appId||'—')}</strong></div></div></div>`;
     }
     if(tab==='users')return renderUserPermissionsPanel();
     return `<div class="grid grid-2"><div class="form-section"><div class="form-section-head"><div><h3>Exportar backup</h3><p>Baixe todas as informações cadastradas em JSON.</p></div></div><button class="btn btn-primary" id="settingsExportBackup" type="button">Exportar backup completo</button></div><div class="form-section"><div class="form-section-head"><div><h3>Importar backup</h3><p>Restaure um arquivo exportado anteriormente.</p></div></div><button class="btn btn-ghost" id="settingsImportBackup" type="button">Selecionar arquivo JSON</button></div></div><div class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Apagar dados locais</h3><p>Remove definitivamente os cadastros deste navegador e retorna para uma base vazia. Os dados já enviados ao Firebase não são apagados.</p></div></div><button class="btn btn-danger" id="resetCleanData" type="button">Apagar dados locais</button></div>`;
@@ -4664,9 +4733,8 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     document.getElementById('firebaseLogoutBtn')?.addEventListener('click',firebaseLogout);
     document.getElementById('firebaseSyncBtn')?.addEventListener('click',syncLocalToFirebase);
     document.getElementById('firebasePullBtn')?.addEventListener('click',syncFirebaseToLocal);
-    document.getElementById('billAiSettingsForm')?.addEventListener('submit',e=>{e.preventDefault();const fd=new FormData(e.currentTarget);const config=saveBillAiConfig(Object.fromEntries(fd.entries()));toast('Conexão da IA salva',`${getBillAiProviderLabel(config.provider)} · ${config.model} · ${config.functionUrl||'sem URL'}`,'success');renderSettings();});
-    document.getElementById('billAiDefaultUrlBtn')?.addEventListener('click',()=>{const current=loadBillAiConfig();const config=saveBillAiConfig({...current,functionUrl:getDefaultBillAiFunctionUrl()});toast('URL padrão aplicada',config.functionUrl||'Configure primeiro o Firebase.','info');renderSettings();});
-    document.getElementById('billAiCopySecretCommandBtn')?.addEventListener('click',async()=>{const command='firebase functions:secrets:set GEMINI_API_KEY';try{await navigator.clipboard?.writeText(command);toast('Comando copiado',command,'success');}catch(_){toast('Comando do Secret',command,'info');}});
+    document.getElementById('billAiSettingsForm')?.addEventListener('submit',e=>{e.preventDefault();const fd=new FormData(e.currentTarget);const config=saveBillAiConfig(Object.fromEntries(fd.entries()));toast('Configuração da IA salva',`${getBillAiProviderLabel(config.provider)} · ${config.model}`,'success');renderSettings();});
+    document.getElementById('billAiDefaultModelBtn')?.addEventListener('click',()=>{const config=saveBillAiConfig({...loadBillAiConfig(),model:DEFAULT_BILL_AI_CONFIG.model,temperature:DEFAULT_BILL_AI_CONFIG.temperature});toast('Modelo padrão aplicado',config.model,'info');renderSettings();});
     document.getElementById('refreshUserPermissions')?.addEventListener('click',()=>{permissionUsersLoaded=false;loadUserPermissionData(true);});
     document.querySelectorAll('[data-approve-access]').forEach(button=>button.addEventListener('click',()=>approveAccessFromSettings(button.dataset.approveAccess)));
     document.querySelectorAll('[data-reject-access]').forEach(button=>button.addEventListener('click',()=>rejectAccessFromSettings(button.dataset.rejectAccess)));
