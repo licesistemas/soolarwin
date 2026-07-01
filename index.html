@@ -4481,7 +4481,9 @@ ${result?.data?.text||''}`;
       consumerUnit:String(data.consumerUnit??client.consumerUnit??activeProposal.client.consumerUnit??'').trim(),
       className:String(data.className??client.className??activeProposal.client.className??'').trim(),
       tariffGroup:String(data.tariffGroup??client.tariffGroup??activeProposal.client.tariffGroup??'').trim(),
-      distributor:String(data.distributor??client.distributor??activeProposal.client.distributor??'').trim()
+      distributor:String(data.distributor??client.distributor??activeProposal.client.distributor??'').trim(),
+      address:String(data.address??client.address??activeProposal.client.address??'').trim(),
+      city:String(data.city??client.city??activeProposal.client.city??'').trim()
     };
     const tariff=normalizeBillNumber(data.currentTariff);
     if(tariff>0&&tariff<20)activeProposal.currentTariff=tariff;
@@ -4496,7 +4498,7 @@ ${result?.data?.text||''}`;
     activeProposal.billFileName=file.name;
     // Sempre limpa os dados identificados antes de ler uma nova fatura.
     // Assim a UC anterior nunca fica reaproveitada se o OCR/PDF falhar.
-    activeProposal.client={...activeProposal.client,consumerUnit:'',className:'',tariffGroup:'',distributor:''};
+    activeProposal.client={...activeProposal.client,consumerUnit:'',className:'',tariffGroup:'',distributor:'',address:'',city:''};
     activeProposal.currentTariff='';
     activeProposal.billText='';
     activeProposal.billHistoryText='';
@@ -4609,7 +4611,7 @@ ${historyText}`.trim(),historyText);
       applyBillAnalysisResult(extracted,source);
       renderProposalBuilder();
       const filled=(extracted.consumption||[]).filter(v=>Number(v)>0).length;
-      const identified=[extracted.consumerUnit?'UC':'',extracted.className?'classe':'',extracted.tariffGroup?'grupo':'',extracted.distributor?'distribuidora':'',extracted.currentTariff?'tarifa':''].filter(Boolean).join(', ');
+      const identified=[extracted.consumerUnit?'UC':'',extracted.address?'endereço':'',extracted.className?'classe':'',extracted.tariffGroup?'grupo':'',extracted.distributor?'distribuidora':'',extracted.currentTariff?'tarifa':''].filter(Boolean).join(', ');
       if(filled>=6){
         toast('Fatura lida',`Histórico: ${filled} mês(es). Dados identificados: ${identified||'revise manualmente'}.`,'success');
         setBillStatus('Fatura lida com sucesso',`Histórico preenchido com ${filled} mês(es). Dados: ${identified||'alguns campos precisam de revisão'}.`,'info');
@@ -4787,6 +4789,77 @@ ${historyText}`.trim(),historyText);
     return cropBillValueAtNextLabel(findBillFieldOnLines(text,/(?:distribuidora|concession[aá]ria|permission[aá]ria)/ig)).slice(0,45);
   }
 
+
+  function normalizeBillCity(value){
+    let s=cleanBillFieldValue(value)
+      .replace(/\b(?:Grupo\s*\/\s*Subgrupo|Tens[aã]o|Cliente|Nome|CPF|CNPJ|Endere[cç]o|CEP)\b[\s\S]*$/i,'')
+      .replace(/\s+/g,' ')
+      .trim();
+    const uf=s.match(/\b(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)\b/i);
+    if(uf){
+      const before=s.slice(0,uf.index).trim();
+      return `${before} - ${uf[1].toUpperCase()}`.trim();
+    }
+    return s.slice(0,70);
+  }
+
+  function extractAddressFromBill(text,normalized=''){
+    const lines=billTextLines(text);
+    const badAddressLine=line=>/^(?:NOME|CPF\/?CNPJ|CNPJ|CPF|ENDERE[CÇ]O|CEP|CIDADE|CLIENTE|UNIDADE\s+CONSUMIDORA|NOSSO\s+N[ÚU]MERO|REFER[ÊE]NCIA|VENCIMENTO|TOTAL\s+A\s+PAGAR|C[ÓO]DIGO\s+PARA\s+CADASTRO|AG[ÊE]NCIA|PAGADOR|BENEFICI[ÁA]RIO|BRADESCO|SEGUNDA\s+VIA|PAGUE\s+COM\s+PIX)\b/i.test(String(line||''));
+    const cleanAddress=value=>cleanBillFieldValue(value)
+      .replace(/^Endere[cç]o\s*:?\s*/i,'')
+      .replace(/\b(?:CEP|Cidade|CPF\/?CNPJ|Cliente|Unidade\s+Consumidora|Nosso\s+N[úu]mero|Refer[eê]ncia|Vencimento|Total\s+a\s+Pagar|C[óo]digo\s+para\s+Cadastro)\b[\s\S]*$/i,'')
+      .replace(/\s+-\s*$/,'')
+      .trim();
+
+    const cepMatch=String(text||'').match(/\bCEP\s*:?\s*([0-9]{5}[-.]?[0-9]{3})\b/i);
+    const cep=cepMatch?cepMatch[1].replace('.', '-'):'';
+    const cityMatch=String(text||'').match(/\bCIDADE\s*:?\s*([A-Za-zÀ-ÿ\s]+?\s+(?:AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO))\b/i)
+      || String(text||'').match(/\bCidade\s*:?\s*([A-Za-zÀ-ÿ\s]+?\s+(?:AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO))\b/i);
+    const city=cityMatch?normalizeBillCity(cityMatch[1]):'';
+
+    let address='';
+
+    // Prioridade 1 — cabeçalho CELESC: o endereço vem antes do rótulo ENDEREÇO.
+    // Exemplo do PDF: CPF/CNPJ / JOAO JANUARIO AYROSO 426 CX 02 - / JARAGUA ESQUERDO-JSL / ENDERECO: / CEP...
+    for(let i=0;i<lines.length;i++){
+      if(!/^ENDERE[CÇ]O\s*:?$/i.test(lines[i]))continue;
+      const collected=[];
+      for(let j=i-1;j>=Math.max(0,i-5);j--){
+        const candidate=cleanAddress(lines[j]);
+        if(!candidate||badAddressLine(candidate))break;
+        collected.unshift(candidate);
+      }
+      if(collected.length){address=collected.join(' ').replace(/\s+/g,' ').trim();break;}
+    }
+
+    // Prioridade 2 — bloco entre CPF/CNPJ e CEP.
+    if(!address){
+      const cpfIndex=lines.findIndex(line=>/CPF\/?CNPJ\s*:/i.test(line));
+      const cepIndex=lines.findIndex((line,index)=>index>cpfIndex&&/^CEP\s*:/i.test(line));
+      if(cpfIndex>=0&&cepIndex>cpfIndex){
+        const collected=lines.slice(cpfIndex+1,cepIndex).map(cleanAddress).filter(line=>line&&!badAddressLine(line));
+        if(collected.length)address=collected.join(' ').replace(/\s+/g,' ').trim();
+      }
+    }
+
+    // Prioridade 3 — boleto/rodapé quando vier com “Endereço: RUA...” na mesma linha.
+    if(!address){
+      for(let i=0;i<lines.length;i++){
+        const line=lines[i];
+        const direct=line.match(/\bEndere[cç]o\s*:?\s*(.+)$/i);
+        if(direct&&direct[1]&&cleanAddress(direct[1])){
+          address=cleanAddress(direct[1]);
+          break;
+        }
+      }
+    }
+
+    address=address.replace(/\s+/g,' ').trim();
+    const full=[address,city,cep?`CEP ${cep}`:''].filter(Boolean).join(' · ');
+    return {address:full||address,city};
+  }
+
   function extractBillFields(text,historyText=''){
     const original=String(text||'');
     const normalized=original.replace(/\s+/g,' ');
@@ -4794,6 +4867,7 @@ ${historyText}`.trim(),historyText);
     const className=extractClassAndModalityFromBill(original,normalized);
     const group=extractTariffGroupFromBill(original,normalized,className);
     const distributor=extractDistributorFromBill(original,normalized);
+    const addressInfo=extractAddressFromBill(original,normalized);
     const totalAmountMatch=normalized.match(/(?:total\s+a\s+pagar|valor\s+total|total\s+da\s+fatura)\s*[:R$\s]*([0-9.]+,[0-9]{2})/i);
     const totalAmount=totalAmountMatch?normalizeBillNumber(totalAmountMatch[1]):0;
     const historySource=String(historyText||'').trim()||extractConsumptionHistoryOnlyText(original)||original;
@@ -4805,9 +4879,10 @@ ${historyText}`.trim(),historyText);
     if(!uc)warnings.push('Unidade consumidora não identificada.');
     if(!className)warnings.push('Classe/modalidade não identificada.');
     if(!group)warnings.push('Grupo tarifário não identificado.');
+    if(!addressInfo.address)warnings.push('Endereço da fatura não identificado.');
     if(consumption.filter(Boolean).length<6)warnings.push('Histórico de consumo incompleto; revise os 12 meses.');
     if(!tariff)warnings.push('Tarifa não identificada; informe o valor manualmente.');
-    return {client:{consumerUnit:uc,className,tariffGroup:group,distributor},consumerUnit:uc,className,tariffGroup:group,distributor,currentTariff:tariff,consumption,averageConsumption:average(consumption)||0,annualConsumption:sum(consumption)||0,totalAmount,confidence,warnings};
+    return {client:{consumerUnit:uc,className,tariffGroup:group,distributor,address:addressInfo.address,city:addressInfo.city},consumerUnit:uc,className,tariffGroup:group,distributor,address:addressInfo.address,city:addressInfo.city,currentTariff:tariff,consumption,averageConsumption:average(consumption)||0,annualConsumption:sum(consumption)||0,totalAmount,confidence,warnings};
   }
 
   async function analyzeBillLocally(){
