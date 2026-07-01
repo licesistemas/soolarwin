@@ -1807,7 +1807,7 @@ body.auth-ready #loginScreen { display:none !important; }
   const LEGACY_FIREBASE_CONFIG_KEYS = ['solarcrm-firebase-config-v2-8','solarcrm-firebase-config-v2-7','solarcrm-firebase-config-v2-6','solarcrm-firebase-config'];
   const DEFAULT_FIREBASE_CONFIG = Object.freeze({"apiKey":"AIzaSyCYSQfnPLyV9B6osiZhsLYYrF64YLhGkMA","authDomain":"energiasolar-67b14.firebaseapp.com","databaseURL":"https://energiasolar-67b14-default-rtdb.firebaseio.com","projectId":"energiasolar-67b14","storageBucket":"energiasolar-67b14.firebasestorage.app","messagingSenderId":"394822890491","appId":"1:394822890491:web:5afc55e01902bbf142915e","functionsRegion":"southamerica-east1"});
   const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-2';
-  const SYSTEM_VERSION = '3.0.3-uc-cabecalho-ocr';
+  const SYSTEM_VERSION = '3.0.4-uc-linha-acima-cliente';
   let storageWarningShown = false;
   let draftSaveTimer = null;
   let firebaseLastDiagnostic = null;
@@ -3751,7 +3751,7 @@ body.auth-ready #loginScreen { display:none !important; }
       </div>${nav}`;
     if(step===1)return `
       <div class="form-section">${heading('Importar conta de energia','O sistema lê automaticamente PDF, foto ou fatura escaneada e preenche o consumo.')}
-        <div class="grid grid-2"><label class="upload-drop"><div><strong>Importar fatura PDF</strong><span>${p.billFileName?`Arquivo: ${escapeHtml(p.billFileName)}`:'Selecione o PDF, JPG ou PNG da fatura.'}</span><input id="energyBillInput" type="file" accept="application/pdf,image/*" style="margin-top:10px"></div></label><div><div id="billStatusBox" class="notice success"><strong>Leitura local ativada</strong><br><span>Sem IA. O consumo é lido somente do quadro “HISTÓRICO DE CONSUMO”; Unidade Consumidora é lida somente do box azul/amarelo do cabeçalho, alinhado acima de Cliente; o boleto/rodapé é ignorado; Classe, Grupo Tarifário, Distribuidora e Tarifa são lidos dos dados da fatura.</span></div><div style="display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px"><button id="billLocalAnalyzeBtn" class="btn btn-secondary" type="button">↻ Reaplicar OCR da fatura</button></div>${p.billAnalysis?`<div class="notice" style="margin-top:10px">Última análise: <strong>${escapeHtml(formatBillAnalysisSource(p.billAnalysis.source||'automática'))}</strong>${formatBillConfidence(p.billAnalysis.confidence)?` · ${formatBillConfidence(p.billAnalysis.confidence)} de confiança`:''}${p.billAnalysis.warnings?.length?`<br><span>${escapeHtml(p.billAnalysis.warnings.join(' '))}</span>`:''}</div>`:''}</div></div>
+        <div class="grid grid-2"><label class="upload-drop"><div><strong>Importar fatura PDF</strong><span>${p.billFileName?`Arquivo: ${escapeHtml(p.billFileName)}`:'Selecione o PDF, JPG ou PNG da fatura.'}</span><input id="energyBillInput" type="file" accept="application/pdf,image/*" style="margin-top:10px"></div></label><div><div id="billStatusBox" class="notice success"><strong>Leitura local ativada</strong><br><span>Sem IA. O consumo é lido somente do quadro “HISTÓRICO DE CONSUMO”; Unidade Consumidora é a linha imediatamente acima de “Cliente:” no cabeçalho CELESC; a palavra “Unidade Consumidora” do boleto/rodapé é ignorada; Classe, Grupo Tarifário, Distribuidora e Tarifa são lidos dos dados da fatura.</span></div><div style="display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px"><button id="billLocalAnalyzeBtn" class="btn btn-secondary" type="button">↻ Reaplicar OCR da fatura</button></div>${p.billAnalysis?`<div class="notice" style="margin-top:10px">Última análise: <strong>${escapeHtml(formatBillAnalysisSource(p.billAnalysis.source||'automática'))}</strong>${formatBillConfidence(p.billAnalysis.confidence)?` · ${formatBillConfidence(p.billAnalysis.confidence)} de confiança`:''}${p.billAnalysis.warnings?.length?`<br><span>${escapeHtml(p.billAnalysis.warnings.join(' '))}</span>`:''}</div>`:''}</div></div>
       </div>
       <div class="form-section">${heading('Dados identificados','Revise os campos antes de continuar.')}
         <div class="form-grid">${proposalField('client.consumerUnit','Unidade consumidora','text')}${proposalField('client.className','Classe','text')}${proposalField('client.tariffGroup','Grupo tarifário','text')}${proposalField('client.distributor','Distribuidora','text')}${proposalField('currentTariff','Tarifa atual (R$/kWh)','number')}${proposalField('technical.targetCoverage','Cobertura desejada (%)','number')}</div>
@@ -4155,50 +4155,14 @@ ${result?.data?.text||''}`;
     };
     const rows=textItemsToRows(items);
     if(!rows.length)return'';
-    const numberMatches=row=>[...String(row?.text||'').matchAll(/\b0*\d{5,14}\b/g)].map(m=>cleanUc(m[0])).filter(Boolean);
-    const numberFromRow=row=>numberMatches(row)[0]||'';
-    const isOnlyNumberRow=row=>/^\s*0*\d{5,14}\s*$/.test(String(row?.text||''));
-    const looksLikeWrongHeaderNumber=row=>/\b(Cliente|CPF|CNPJ|CEP|Vencimento|Refer[eê]ncia|Total|Nota\s+Fiscal|Chave|Protocolo|Nosso\s+N[uú]mero|D[eé]bito\s+Autom[aá]tico|Cadastro)\b/i.test(String(row?.text||''));
 
-    // 1) PRIORIDADE ABSOLUTA: número do cartão azul/amarelo do cabeçalho.
-    // No PDF da CELESC, quando o label “UNIDADE CONSUMIDORA” vem no texto,
-    // o número pode estar na mesma linha ou em uma das próximas linhas, antes de “Cliente”.
-    const explicitIndex=rows.findIndex(row=>/\bUNIDADE\s+CONSUMIDORA\b/i.test(row.text));
-    if(explicitIndex>=0){
-      const same=numberFromRow(rows[explicitIndex]);if(same)return same;
-      for(let offset=1;offset<=6;offset++){
-        const before=rows[explicitIndex-offset],after=rows[explicitIndex+offset];
-        for(const row of [after,before]){
-          if(!row||looksLikeWrongHeaderNumber(row))continue;
-          const uc=numberFromRow(row);if(uc)return uc;
-        }
-      }
-    }
-
-    // 2) Regra geométrica: na CELESC, o número da UC fica logo acima da linha “Cliente:”,
-    // alinhado com o bloco Cliente/Etapa/Grupo. Isso evita pegar “Cliente:”, CPF/CNPJ,
-    // código de débito automático ou a UC do boleto/rodapé.
-    const clienteRows=rows.filter(row=>/\bCliente\s*:/i.test(row.text));
-    for(const clienteRow of clienteRows){
-      const candidates=rows
-        .filter(row=>row!==clienteRow)
-        .filter(row=>!looksLikeWrongHeaderNumber(row))
-        .map(row=>({row,uc:numberFromRow(row),dy:Math.abs(Number(row.y)-Number(clienteRow.y)),dx:Math.abs(((Number(row.x1)+Number(row.x2))/2)-((Number(clienteRow.x1)+Number(clienteRow.x2))/2))}))
-        .filter(item=>item.uc&&isOnlyNumberRow(item.row)&&item.dy<=45&&item.dx<=95)
-        .sort((a,b)=>(a.dy-b.dy)||(a.dx-b.dx));
-      if(candidates[0]?.uc)return candidates[0].uc;
-    }
-
-    // 3) Fallback controlado: se o PDF não trouxe o label nem a linha Cliente bem formada,
-    // pega somente um número isolado entre a classificação/modalidade e os dados do cliente.
-    const classRows=rows.filter(row=>/(Classifica[cç][aã]o\s*\/\s*Modalidade|Tipo\s+de\s+Fornecimento|^(COMERCIAL|RESIDENCIAL|RURAL|INDUSTRIAL|PODER\s+P[UÚ]BLICO|SERVI[CÇ]O\s+P[UÚ]BLICO)\b)/i.test(row.text));
-    for(const classRow of classRows){
-      const nearby=rows
-        .filter(row=>row!==classRow&&!looksLikeWrongHeaderNumber(row))
-        .map(row=>({row,uc:numberFromRow(row),dy:Math.abs(Number(row.y)-Number(classRow.y)),dx:Math.abs(((Number(row.x1)+Number(row.x2))/2)-((Number(classRow.x1)+Number(classRow.x2))/2))}))
-        .filter(item=>item.uc&&isOnlyNumberRow(item.row)&&item.dy<=55)
-        .sort((a,b)=>(a.dy-b.dy)||(a.dx-b.dx));
-      if(nearby[0]?.uc)return nearby[0].uc;
+    // REGRA FIXA CELESC: a Unidade Consumidora do cabeçalho é a LINHA ACIMA de “Cliente:”.
+    // Não procurar a palavra “Unidade Consumidora” no texto do PDF, porque ela aparece no boleto/rodapé.
+    const clienteIndex=rows.findIndex(row=>/^\s*Cliente\s*:/i.test(String(row.text||'')));
+    if(clienteIndex>0){
+      const lineAbove=String(rows[clienteIndex-1]?.text||'').trim();
+      const exact=lineAbove.match(/^0*\d{5,14}$/);
+      if(exact)return cleanUc(exact[0]);
     }
     return'';
   }
@@ -4689,62 +4653,29 @@ ${historyText}`.trim(),historyText);
   }
 
   function extractCelescHeaderConsumerUnitCandidate(text){
-    const cleanUc=value=>{const digits=String(value||'').replace(/\D/g,'').replace(/^0+(?=\d)/,'');return digits.length>=5&&digits.length<=14?digits:'';};
+    const cleanUc=value=>{
+      const digits=String(value||'').replace(/\D/g,'').replace(/^0+(?=\d)/,'');
+      return digits.length>=5&&digits.length<=14?digits:'';
+    };
     const raw=String(text||'');
     const lines=raw.split(/\n+/).map(line=>line.replace(/\s+/g,' ').trim()).filter(Boolean);
-    const headerStop=lines.findIndex(line=>/\b(Leitura\s+Anterior|Itens\s+de\s+Fatura|Comunicado\s+importante|NOTA\s+FISCAL|Hist[oó]rico\s+de\s+Consumo|Consumo\s+Faturado|PAG[AÁ]VEL|Nosso\s+N[uú]mero|C[oó]digo\s+para\s+Cadastro|Benefici[aá]rio)\b/i.test(line));
-    const headerLines=lines.slice(0,headerStop>=0?Math.min(headerStop,60):Math.min(lines.length,60));
-    const headerRaw=headerLines.join('\n');
-    const firstNumber=line=>{const values=[...String(line||'').matchAll(/\b0*\d{5,14}\b/g)].map(m=>cleanUc(m[0])).filter(Boolean);return values[0]||'';};
-    const isForbiddenUcContext=line=>/\b(Cliente\s*:|CPF|CNPJ|CEP|Vencimento|Refer[eê]ncia|Total|Nota\s+Fiscal|Chave|Protocolo|Nosso\s+N[uú]mero|D[eé]bito\s+Autom[aá]tico|Cadastro|Pagador|Benefici[aá]rio|Ag[eê]ncia|Cedente)\b/i.test(String(line||''));
+
     const marked=raw.match(/CELESC_HEADER_UC\s*[:=\-]?\s*(0*\d{5,14})/i);
     if(marked?.[1])return cleanUc(marked[1]);
 
-    // REGRA PRINCIPAL CELESC:
-    // O PDF de texto nem sempre entrega a palavra “UNIDADE CONSUMIDORA” do cartão azul/amarelo.
-    // Nesses casos, ele vem como: classificação/modalidade -> número da UC -> Cliente: xxxx.
-    // Portanto a UC correta é o número imediatamente ANTES de “Cliente:”.
-    const beforeClientRaw=headerRaw.match(/(?:^|\n)\s*(0*\d{5,14})\s*(?:\n|\s)+Cliente\s*:/i)
-      || headerRaw.match(/\b(0*\d{5,14})\b\s+Cliente\s*:/i);
-    if(beforeClientRaw?.[1]){
-      const uc=cleanUc(beforeClientRaw[1]);
-      if(uc)return uc;
-    }
-    for(let i=0;i<headerLines.length;i++){
-      if(!/^Cliente\s*:/i.test(headerLines[i]))continue;
-      for(let j=i-1;j>=Math.max(0,i-5);j--){
-        const candidate=headerLines[j];
-        if(isForbiddenUcContext(candidate))continue;
-        if(/^0*\d{5,14}$/.test(candidate)){
-          const uc=cleanUc(candidate);if(uc)return uc;
-        }
-      }
+    // REGRA FIXA CELESC: a UC correta é SEMPRE a linha imediatamente acima de “Cliente:”.
+    // Exemplo do PDF: [classificação] / 40679596 / Cliente: 20497840.
+    for(let i=0;i<lines.length;i++){
+      if(!/^Cliente\s*:/i.test(lines[i]))continue;
+      const lineAbove=String(lines[i-1]||'').trim();
+      const exact=lineAbove.match(/^0*\d{5,14}$/);
+      if(exact)return cleanUc(exact[0]);
     }
 
-    // Só usa o rótulo “Unidade Consumidora” quando ele estiver no cabeçalho capturado.
-    // O rótulo do boleto/rodapé é bloqueado pelo headerStop e pelos contextos proibidos.
-    for(let i=0;i<headerLines.length;i++){
-      const line=headerLines[i];
-      if(!/\bUnidade\s+Consumidora\b/i.test(line))continue;
-      if(isForbiddenUcContext(lines.slice(Math.max(0,i-4),Math.min(lines.length,i+8)).join(' ')))continue;
-      let uc=firstNumber(line.replace(/^.*?\bUnidade\s+Consumidora\b\s*[:#\-–]?\s*/i,''));
-      if(uc)return uc;
-      for(let j=i+1;j<Math.min(headerLines.length,i+6);j++){
-        const candidate=headerLines[j];
-        if(/\b(Cliente|Etapa|Grupo\/Subgrupo|Grupo|Subgrupo|CPF|CNPJ|Nome|Endere[cç]o|CEP|Cidade|Refer[eê]ncia|Vencimento|Total\s+a\s+Pagar)\b/i.test(candidate))break;
-        uc=firstNumber(candidate);if(uc)return uc;
-      }
-    }
-    for(let i=0;i<headerLines.length;i++){
-      const line=headerLines[i];
-      if(!/(Classifica[cç][aã]o\s*\/\s*Modalidade\s+Tarif[aá]ria|Tipo\s+de\s+Fornecimento|^(COMERCIAL|RESIDENCIAL|RURAL|INDUSTRIAL|PODER\s+P[UÚ]BLICO|SERVI[CÇ]O\s+P[UÚ]BLICO)\b)/i.test(line))continue;
-      for(let j=i+1;j<Math.min(headerLines.length,i+8);j++){
-        const candidate=headerLines[j];
-        if(/\b(Cliente|NOME|CPF\/CNPJ|CPF|CNPJ|Endere[cç]o|CEP|Cidade|Leitura|NOTA\s+FISCAL)\b/i.test(candidate))break;
-        if(isForbiddenUcContext(candidate))continue;
-        const uc=firstNumber(candidate);if(uc)return uc;
-      }
-    }
+    // Fallback só para quando o extrator junta as duas linhas: “40679596 Cliente: 20497840”.
+    const sameLine=raw.match(/(?:^|\n|\s)(0*\d{5,14})\s+Cliente\s*:/i);
+    if(sameLine?.[1])return cleanUc(sameLine[1]);
+
     return'';
   }
 
