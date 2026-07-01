@@ -804,6 +804,153 @@ body.auth-ready #loginScreen { display:none !important; }
   .permission-matrix-footer small{color:var(--muted);max-width:650px;line-height:1.45}
   .permission-chip{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:999px;background:var(--primary-soft);color:var(--primary);font-weight:800;font-size:9px}
 
+
+
+/* ===== CORREÇÃO DE CONTRASTE NO TEMA CLARO ===== */
+body[data-theme="light"] {
+  color: var(--text);
+}
+
+body[data-theme="light"] .page-head h2,
+body[data-theme="light"] .topbar h1,
+body[data-theme="light"] .brand-copy strong,
+body[data-theme="light"] .sidebar-company strong,
+body[data-theme="light"] .card-head h3,
+body[data-theme="light"] .metric-value,
+body[data-theme="light"] .quick-action strong,
+body[data-theme="light"] .activity-copy strong,
+body[data-theme="light"] .detail-item strong,
+body[data-theme="light"] .data-table .primary-cell strong,
+body[data-theme="light"] .kanban-card strong,
+body[data-theme="light"] .proposal-card h3,
+body[data-theme="light"] .form-section h3,
+body[data-theme="light"] .drawer-header h2,
+body[data-theme="light"] .modal-header h2,
+body[data-theme="light"] .summary-title,
+body[data-theme="light"] .summary-kpi strong,
+body[data-theme="light"] .summary-mini strong,
+body[data-theme="light"] .calc-box strong,
+body[data-theme="light"] .login-card-head h2,
+body[data-theme="light"] .login-status strong,
+body[data-theme="light"] .login-brand strong,
+body[data-theme="light"] .login-benefit b {
+  color: var(--text) !important;
+}
+
+body[data-theme="light"] .page-head p,
+body[data-theme="light"] .brand-copy span,
+body[data-theme="light"] .sidebar-company span,
+body[data-theme="light"] .card-head p,
+body[data-theme="light"] .metric-label,
+body[data-theme="light"] .quick-action span,
+body[data-theme="light"] .activity-copy span,
+body[data-theme="light"] .activity-time,
+body[data-theme="light"] .detail-item span,
+body[data-theme="light"] .data-table td,
+body[data-theme="light"] .kanban-card p,
+body[data-theme="light"] .proposal-card p,
+body[data-theme="light"] .form-section p,
+body[data-theme="light"] .field small,
+body[data-theme="light"] .summary-kpi span,
+body[data-theme="light"] .summary-mini span,
+body[data-theme="light"] .calc-box span,
+body[data-theme="light"] .login-card-head p,
+body[data-theme="light"] .login-status span,
+body[data-theme="light"] .login-brand span,
+body[data-theme="light"] .login-hero p,
+body[data-theme="light"] .login-benefit span,
+body[data-theme="light"] .login-secondary,
+body[data-theme="light"] .login-footer-note,
+body[data-theme="light"] .login-check,
+body[data-theme="light"] .login-divider {
+  color: var(--muted) !important;
+}
+
+body[data-theme="light"] .card,
+body[data-theme="light"] .metric-card,
+body[data-theme="light"] .quick-action,
+body[data-theme="light"] .detail-item,
+body[data-theme="light"] .proposal-card,
+body[data-theme="light"] .form-section,
+body[data-theme="light"] .kanban-card,
+body[data-theme="light"] .summary-kpi,
+body[data-theme="light"] .summary-mini,
+body[data-theme="light"] .calc-box,
+body[data-theme="light"] .sync-card {
+  color: var(--text);
+  background-color: var(--panel);
+}
+
+body[data-theme="light"] .topbar,
+body[data-theme="light"] .sidebar,
+body[data-theme="light"] .modal-dialog,
+body[data-theme="light"] .drawer {
+  color: var(--text);
+}
+
+body[data-theme="light"] input,
+body[data-theme="light"] select,
+body[data-theme="light"] textarea,
+body[data-theme="light"] .input,
+body[data-theme="light"] .table-search,
+body[data-theme="light"] .global-search-wrap input {
+  color: var(--text) !important;
+  background-color: transparent;
+}
+
+body[data-theme="light"] input::placeholder,
+body[data-theme="light"] textarea::placeholder,
+body[data-theme="light"] .global-search-wrap input::placeholder {
+  color: var(--muted) !important;
+}
+
+/* Tela inicial/login no tema claro */
+body[data-theme="light"] .login-screen {
+  background: #eef2f7;
+  color: var(--text);
+}
+
+body[data-theme="light"] .login-hero {
+  background:
+    radial-gradient(circle at 10% 0%, rgba(255,183,3,.18), transparent 34%),
+    radial-gradient(circle at 100% 100%, rgba(90,169,255,.12), transparent 32%),
+    #eef2f7;
+  color: var(--text);
+}
+
+body[data-theme="light"] .login-panel {
+  background: rgba(255,255,255,.74);
+  border-left-color: rgba(30,47,70,.12);
+}
+
+body[data-theme="light"] .login-card {
+  background: rgba(255,255,255,.97);
+  border-color: rgba(30,47,70,.12);
+  color: var(--text);
+  box-shadow: 0 30px 75px rgba(55,73,96,.16);
+}
+
+body[data-theme="light"] .login-input-wrap,
+body[data-theme="light"] .login-status {
+  background: var(--panel-2);
+  border-color: var(--line);
+}
+
+body[data-theme="light"] .login-input-wrap input {
+  color: var(--text) !important;
+}
+
+body[data-theme="light"] .login-link,
+body[data-theme="light"] .login-secondary button,
+body[data-theme="light"] .login-kicker {
+  color: #9a6600 !important;
+}
+
+body[data-theme="light"] .login-benefit {
+  background: rgba(255,255,255,.68);
+  border-color: rgba(30,47,70,.12);
+}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
