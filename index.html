@@ -2367,7 +2367,7 @@ body[data-theme="light"] .login-benefit {
     });
     data.automations = { whatsappLead:true, emailProposal:true, followup:true, reminders:true, collections:false, nps:true, lastRunAt:'', ...(data.automations || {}) };
     data.automationRules = (Array.isArray(data.automationRules) ? data.automationRules : []).map(rule => ({
-      enabled:true, trigger:'project_stage_enter', stage:'Qualquer etapa', channel:'whatsapp', recipient:'client', execution:'approval', delayMinutes:0, thresholdDays:3, useAI:false,
+      enabled:true, trigger:'project_stage_enter', stage:'Qualquer etapa', channel:'email', recipient:'client', execution:'approval', delayMinutes:0, thresholdDays:3, useAI:false,
       ...rule, companyId:rule.companyId || data.currentCompanyId
     }));
     data.activity = Array.isArray(data.activity) ? data.activity : [];
@@ -3171,6 +3171,7 @@ body[data-theme="light"] .login-benefit {
     const hom=companyRows('homologations').find(item=>item.proposalId===work.proposalId||item.clientName===work.clientName);if(hom){if(stageId==='Homologação'&&hom.status==='Documentação')hom.status='Em análise';if(targetIndex>1&&!['Aprovada','Reprovada'].includes(hom.status))hom.status='Aprovada';hom.updatedAt=new Date().toISOString();syncRecordToFirebase('homologations',hom);}
     if(stageId==='Operação'){projectTasksFor(projectId).forEach(task=>{task.status='Concluída';task.updatedAt=new Date().toISOString();syncRecordToFirebase('tasks',task);});work.progress=100;work.status='Concluída';ensureAfterSalesFromWork(work);}
     if(previous!==stageId&&work.portalPublishedAt)publishClientPortalStatus(work,{silent:true});
+    if(previous!==stageId)executeAutomationRules('project_stage_enter',work,{stage:stageId,previous,eventKey:`project-stage-${projectId}-${stageId}-${Date.now()}`});
     addActivity('⌁','Projeto avançou',`${work.clientName}: ${previous} → ${stageId}`);persist();syncRecordToFirebase('works',work);if(notify)toast('Etapa do projeto atualizada',`${work.clientName} → ${stageId}`);if(render){renderSidebar();if(activeView==='kanban')renderView('kanban');if(activeProjectId===projectId)renderProjectWorkspace();}
   }
 
@@ -3438,30 +3439,38 @@ body[data-theme="light"] .login-benefit {
   function renderAutomationRuleEditor(){
     if(!automationRuleEditor)return '';
     const rule=defaultAutomationRule(automationRuleEditor.id?companyRows('automationRules').find(item=>item.id===automationRuleEditor.id)||automationRuleEditor:automationRuleEditor);
-    return `<section class="form-section automation-rule-editor"><div class="form-section-head"><div><h3>${rule.id?'Editar regra inteligente':'Nova regra inteligente'}</h3><p>Defina quando agir, quem avisar e qual mensagem utilizar.</p></div><button class="btn btn-ghost btn-sm" data-cancel-rule type="button">Cancelar</button></div>
+    return `<section class="form-section automation-rule-editor"><div class="form-section-head"><div><h3>${rule.id?'Editar regra de e-mail':'Nova regra de e-mail'}</h3><p>Defina em qual etapa o cliente ou responsável receberá e-mail.</p></div><button class="btn btn-ghost btn-sm" data-cancel-rule type="button">Cancelar</button></div>
       <form id="automationRuleForm"><div class="form-grid"><label class="field full"><span>Nome da regra *</span><input name="name" value="${attr(rule.name)}" required></label>
       <label class="field"><span>Quando acontecer</span><select name="trigger">${automationRuleTriggers.map(item=>`<option value="${item.id}" ${item.id===rule.trigger?'selected':''}>${escapeHtml(item.label)}</option>`).join('')}</select></label>
       <label class="field"><span>Etapa do projeto</span><select name="stage"><option>Qualquer etapa</option>${projectStages.map(stage=>`<option ${stage.id===rule.stage?'selected':''}>${escapeHtml(stage.id)}</option>`).join('')}</select></label>
-      <label class="field"><span>Canal</span><select name="channel"><option value="whatsapp" ${rule.channel==='whatsapp'?'selected':''}>WhatsApp</option><option value="email" ${rule.channel==='email'?'selected':''}>E-mail</option><option value="internal" ${rule.channel==='internal'?'selected':''}>Notificação interna</option></select></label>
+      <label class="field"><span>Canal</span><select name="channel"><option value="email" ${rule.channel!=='internal'?'selected':''}>E-mail SMTP</option><option value="internal" ${rule.channel==='internal'?'selected':''}>Notificação interna</option></select></label>
       <label class="field"><span>Destinatário</span><select name="recipient"><option value="client" ${rule.recipient==='client'?'selected':''}>Cliente</option><option value="responsible" ${rule.recipient==='responsible'?'selected':''}>Responsável pelo projeto</option><option value="both" ${rule.recipient==='both'?'selected':''}>Cliente e responsável</option><option value="current_user" ${rule.recipient==='current_user'?'selected':''}>Usuário atual</option></select></label>
       <label class="field"><span>Forma de execução</span><select name="execution"><option value="approval" ${rule.execution==='approval'?'selected':''}>Colocar na fila para aprovação</option><option value="automatic" ${rule.execution==='automatic'?'selected':''}>Enviar automaticamente pelo backend</option></select></label>
       <label class="field"><span>Atraso após o evento (minutos)</span><input name="delayMinutes" type="number" min="0" value="${attr(rule.delayMinutes||0)}"></label>
       <label class="field"><span>Antecedência / inatividade (dias)</span><input name="thresholdDays" type="number" min="1" value="${attr(rule.thresholdDays||3)}"></label>
-      <label class="checkbox-row"><input name="enabled" type="checkbox" ${rule.enabled?'checked':''}><span>Regra ativa</span></label><label class="checkbox-row"><input name="useAI" type="checkbox" ${rule.useAI?'checked':''}><span>Usar IA para adaptar o texto antes do envio</span></label>
+      <label class="checkbox-row"><input name="enabled" type="checkbox" ${rule.enabled?'checked':''}><span>Regra ativa</span></label>
       <label class="field full"><span>Assunto do e-mail / título</span><input name="subject" value="${attr(rule.subject||'')}"></label>
       <label class="field full"><span>Mensagem *</span><textarea id="automationRuleMessage" name="message" required>${escapeHtml(rule.message||'')}</textarea></label></div>
       <div class="rule-variable-row"><span>Inserir variável:</span>${automationRuleVariables.map(([token,label])=>`<button class="rule-variable-chip" data-insert-rule-variable="${attr(token)}" type="button" title="${attr(label)}">${escapeHtml(token)}</button>`).join('')}</div>
-      <div class="notice" style="margin-top:12px"><strong>Envio automático:</strong> exige Banco de dados conectado, usuário autenticado e webhooks configurados. Sem backend, a comunicação permanece na fila para envio manual.</div>
+      <div class="notice" style="margin-top:12px"><strong>Envio SMTP seguro:</strong> as senhas do servidor ficam somente nas Cloud Functions. O HTML apenas dispara a função <code>sendEmail</code> autenticada.</div>
       <div style="display:flex;justify-content:flex-end;gap:9px;margin-top:14px"><button class="btn btn-ghost" data-cancel-rule type="button">Cancelar</button><button class="btn btn-primary" type="submit">Salvar regra</button></div></form></section>`;
   }
 
   function renderAutomationRuleCard(rule){
     const stage=rule.stage||'Qualquer etapa';const mode=rule.execution==='automatic'?'Automática':'Com aprovação';
-    return `<article class="automation-rule-card"><div class="automation-rule-head"><div><span class="status ${rule.enabled?'green':'gray'}">${rule.enabled?'Ativa':'Pausada'}</span><h3>${escapeHtml(rule.name)}</h3></div><label class="switch"><input type="checkbox" data-rule-toggle="${rule.id}" ${rule.enabled?'checked':''}><span></span></label></div><p>${escapeHtml(automationTriggerLabel(rule.trigger))}</p><div class="automation-rule-meta"><span>${escapeHtml(stage)}</span><span>${rule.channel==='whatsapp'?'WhatsApp':rule.channel==='email'?'E-mail':'Interno'}</span><span>${mode}</span>${rule.useAI?'<span>✦ Com IA</span>':''}</div><div class="automation-rule-preview">${escapeHtml(rule.message||'').slice(0,180)}${String(rule.message||'').length>180?'…':''}</div><div class="automation-rule-actions"><button class="btn btn-secondary btn-sm" data-test-rule="${rule.id}" type="button">Testar</button><button class="btn btn-ghost btn-sm" data-edit-rule="${rule.id}" type="button">Editar</button><button class="btn btn-ghost btn-sm" data-duplicate-rule="${rule.id}" type="button">Duplicar</button><button class="btn btn-danger btn-sm" data-delete-rule="${rule.id}" type="button">Excluir</button></div></article>`;
+    return `<article class="automation-rule-card"><div class="automation-rule-head"><div><span class="status ${rule.enabled?'green':'gray'}">${rule.enabled?'Ativa':'Pausada'}</span><h3>${escapeHtml(rule.name)}</h3></div><label class="switch"><input type="checkbox" data-rule-toggle="${rule.id}" ${rule.enabled?'checked':''}><span></span></label></div><p>${escapeHtml(automationTriggerLabel(rule.trigger))}</p><div class="automation-rule-meta"><span>${escapeHtml(stage)}</span><span>${rule.channel==='email'?'E-mail SMTP':'Interno'}</span><span>${mode}</span></div><div class="automation-rule-preview">${escapeHtml(rule.message||'').slice(0,180)}${String(rule.message||'').length>180?'…':''}</div><div class="automation-rule-actions"><button class="btn btn-secondary btn-sm" data-test-rule="${rule.id}" type="button">Testar</button><button class="btn btn-ghost btn-sm" data-edit-rule="${rule.id}" type="button">Editar</button><button class="btn btn-ghost btn-sm" data-duplicate-rule="${rule.id}" type="button">Duplicar</button><button class="btn btn-danger btn-sm" data-delete-rule="${rule.id}" type="button">Excluir</button></div></article>`;
   }
   function renderAutomations(){
-    return `${pageHead('Automações removidas','Esta versão não possui IA nem envio de mensagens automáticas por status de projeto. Use o Portal do Cliente para consulta por CPF.')}
-      <div class="empty-state card"><strong>Recurso removido</strong>As atualizações do projeto agora são consultadas pelo cliente em <code>cliente.html</code>, usando CPF/CNPJ.</div>`;
+    const rules=companyRows('automationRules').sort((a,b)=>String(a.name||'').localeCompare(String(b.name||'')));
+    const queue=companyRows('automationQueue').filter(job=>job.channel==='email'||job.channel==='internal');
+    const pending=queue.filter(job=>['Pendente','Processando','Agendada no backend'].includes(job.status));
+    const emailRules=rules.filter(rule=>rule.channel!=='internal');
+    const autoCount=rules.filter(rule=>rule.execution==='automatic'&&rule.enabled).length;
+    const content=rules.length?rules.map(renderAutomationRuleCard).join(''):'<div class="empty-state card"><strong>Nenhuma regra criada</strong><span>Crie uma regra para avisar o cliente quando o projeto mudar de etapa.</span></div>';
+    return `${pageHead('E-mails das etapas','Configure disparos de e-mail para cada avanço do projeto.',`<button class="btn btn-ghost" data-action="process-automations">Processar regras</button><button class="btn btn-secondary" data-action="automation-outbox">Fila de envio</button><button class="btn btn-primary" data-action="new-automation-rule">Nova regra de e-mail</button>`)}
+      <div class="grid grid-4"><div class="metric-card card"><div class="metric-top"><div class="metric-icon">✉</div><span class="metric-trend">SMTP</span></div><div class="metric-value">${emailRules.length}</div><div class="metric-label">Regras de e-mail</div></div><div class="metric-card card"><div class="metric-top"><div class="metric-icon">⏱</div><span class="metric-trend">Fila</span></div><div class="metric-value">${pending.length}</div><div class="metric-label">E-mails pendentes</div></div><div class="metric-card card"><div class="metric-top"><div class="metric-icon">⚙</div><span class="metric-trend">Auto</span></div><div class="metric-value">${autoCount}</div><div class="metric-label">Envio automático</div></div><div class="metric-card card"><div class="metric-top"><div class="metric-icon">☁</div><span class="metric-trend">${window.FirebaseCRM?.syncReady?'Online':'Local'}</span></div><div class="metric-value">${window.FirebaseCRM?.syncReady?'OK':'—'}</div><div class="metric-label">Backend de envio</div></div></div>
+      <div class="notice warning" style="margin:16px 0"><strong>Servidor de e-mail:</strong> configure SMTP em <button class="btn btn-ghost btn-sm" data-action="open-email-settings" type="button">Configurações → Servidor de e-mail</button>. Sem as Cloud Functions publicadas, os e-mails ficam na fila ou abrem no cliente de e-mail do navegador.</div>
+      ${renderAutomationRuleEditor()}<div class="automation-rule-grid">${content}</div>`;
   }
 
   function bindViewEvents(view){
@@ -3561,6 +3570,8 @@ body[data-theme="light"] .login-benefit {
       'automation-log':showAutomationLog,
       'automation-outbox':()=>showAutomationOutbox(),
       'process-automations':()=>processLocalAutomations(true),
+      'new-automation-rule':()=>{automationRuleEditor=defaultAutomationRule();renderView('automations');},
+      'open-email-settings':()=>openSettings('email'),
       'test-automation':testAutomation,
       'print-report':()=>window.print()
     };
@@ -5333,7 +5344,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
 
   function renderSettings(){
     const root=document.getElementById('settingsBody');if(!root)return;
-    const tabs=[['profile','Meu usuário'],['company','Empresa'],['branding','Identidade e fotos'],['firebase','Banco de dados'],['users','Usuários e permissões'],['backup','Backup e dados']];
+    const tabs=[['profile','Meu usuário'],['company','Empresa'],['branding','Identidade e fotos'],['firebase','Banco de dados'],['email','Servidor de e-mail'],['users','Usuários e permissões'],['backup','Backup e dados']];
     root.innerHTML=`<div class="settings-tabs">${tabs.map(([id,label])=>`<button class="settings-tab ${settingsTab===id?'active':''}" data-settings-tab="${id}">${label}</button>`).join('')}</div><div id="settingsPanel">${renderSettingsPanel(settingsTab)}</div>`;
     root.querySelectorAll('[data-settings-tab]').forEach(btn=>btn.addEventListener('click',()=>{settingsTab=btn.dataset.settingsTab;renderSettings();}));
     bindSettingsEvents();
@@ -5376,8 +5387,26 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
       const profileActionLabel=firebaseLastDiagnostic?.code==='bootstrap-owner-profile-missing'?'Reparar meu perfil':firebaseLastDiagnostic?.code==='profile-missing-bootstrap-available'?'Ativar meu perfil administrador':'Ativar ou reparar meu perfil';
       return `<div class="firebase-status"><div><strong>${escapeHtml(status.title)}</strong><span>${escapeHtml(status.detail)}</span></div><span class="status ${status.className}">${escapeHtml(status.badge)}</span></div>${firebaseDiagnosticHtml()}<div class="notice" style="margin-top:14px"><strong>Perfil do banco de dados:</strong> a conta lucas@igenergia.com.br está pré-aprovada como administradora da empresa company-demo. As demais contas continuam dependendo de aprovação em Usuários e permissões.</div><form id="firebaseSettingsForm" style="margin-top:15px"><div class="form-grid">${['apiKey','authDomain','databaseURL','projectId','storageBucket','messagingSenderId','appId','functionsRegion'].map(key=>settingsInput(key,firebaseLabels[key],firebaseConfig[key]||'',key==='apiKey'?'password':'text')).join('')}</div><div class="notice" style="margin-top:12px"><strong>Configuração carregada:</strong> projeto ${escapeHtml(firebaseConfig.projectId||'—')} · chave ${escapeHtml(firebaseKeyPreview(firebaseConfig.apiKey))} · origem ${escapeHtml(location.origin==='null'?location.protocol:location.origin)}.${location.protocol==='file:'?' O arquivo está aberto por file://; se a chave tiver restrição de site, use hospedagem web ou localhost.':''}</div><div style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px"><button class="btn btn-ghost" id="firebaseRestoreConfigBtn" type="button">Restaurar configuração oficial</button><button class="btn btn-ghost" id="firebaseTestBtn" type="button">Testar conexão</button><button class="btn btn-primary" type="submit">Salvar e conectar</button></div></form><div class="form-section" style="margin-top:15px"><div class="form-section-head"><div><h3>Acesso ao banco de dados</h3><p>Use e-mail e senha. No primeiro acesso, o botão de criação prepara automaticamente o administrador inicial e a empresa ativa.</p></div></div><div class="inline-fields"><label class="field"><span>E-mail</span><input id="firebaseLoginEmail" type="email" value="${attr(loggedEmail)}"></label><label class="field"><span>Senha</span><input id="firebaseLoginPassword" type="password" minlength="6"></label><button class="btn btn-secondary" id="firebaseLoginBtn" type="button" style="align-self:end">Entrar</button></div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-primary" id="firebaseRegisterBtn" type="button">Criar conta e primeiro administrador</button><button class="btn btn-ghost" id="firebaseBootstrapBtn" type="button">${escapeHtml(profileActionLabel)}</button><button class="btn btn-ghost" id="firebaseDiagnoseBtn" type="button">Diagnosticar</button><button class="btn btn-ghost" id="firebaseLogoutBtn" type="button">Sair</button></div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost" id="firebasePullBtn" type="button">Carregar dados da nuvem</button><button class="btn btn-primary" id="firebaseSyncBtn" type="button">Enviar dados locais</button></div></div>`;
     }
+    if(tab==='email')return renderEmailServerPanel();
     if(tab==='users')return renderUserPermissionsPanel();
     return `<div class="grid grid-2"><div class="form-section"><div class="form-section-head"><div><h3>Exportar backup</h3><p>Baixe todas as informações cadastradas em JSON.</p></div></div><button class="btn btn-primary" id="settingsExportBackup" type="button">Exportar backup completo</button></div><div class="form-section"><div class="form-section-head"><div><h3>Importar backup</h3><p>Restaure um arquivo exportado anteriormente.</p></div></div><button class="btn btn-ghost" id="settingsImportBackup" type="button">Selecionar arquivo JSON</button></div></div><div class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Apagar dados locais</h3><p>Remove definitivamente os cadastros deste navegador e retorna para uma base vazia. Os dados já enviados ao Banco de dados não são apagados.</p></div></div><button class="btn btn-danger" id="resetCleanData" type="button">Apagar dados locais</button></div>`;
+  }
+
+  function renderEmailServerPanel(){
+    const projectId=loadFirebaseConfig().projectId||'energiasolar-67b14';
+    const region=loadFirebaseConfig().functionsRegion||'southamerica-east1';
+    const testTo=state.currentUser.email||state.company.email||'';
+    return `<div class="firebase-status"><div><strong>Servidor SMTP via Firebase Functions</strong><span>As credenciais ficam protegidas como secrets no backend. Não coloque senha SMTP dentro do HTML.</span></div><span class="status ${window.FirebaseCRM?.syncReady?'green':'yellow'}">${window.FirebaseCRM?.syncReady?'Backend conectado':'Conecte o banco'}</span></div>
+      <div class="grid grid-2" style="margin-top:14px"><div class="form-section"><div class="form-section-head"><div><h3>Configuração necessária</h3><p>Execute estes comandos na pasta do projeto Firebase.</p></div></div><pre style="white-space:pre-wrap;font-size:10px;line-height:1.6;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px;color:var(--text-soft)">firebase use ${escapeHtml(projectId)}
+firebase functions:secrets:set SMTP_HOST
+firebase functions:secrets:set SMTP_PORT
+firebase functions:secrets:set SMTP_SECURE
+firebase functions:secrets:set SMTP_USER
+firebase functions:secrets:set SMTP_PASS
+firebase functions:secrets:set SMTP_FROM
+firebase deploy --only functions</pre><small>Exemplo comum: porta 465 com SMTP_SECURE=true, ou porta 587 com SMTP_SECURE=false.</small></div>
+      <div class="form-section"><div class="form-section-head"><div><h3>Teste de envio</h3><p>Depois do deploy, envie um e-mail de teste usando a função <code>testEmailServer</code>.</p></div></div><label class="field"><span>Enviar teste para</span><input id="emailServerTestTo" type="email" value="${attr(testTo)}" placeholder="seu@email.com"></label><button class="btn btn-primary" id="emailServerTestBtn" type="button">Enviar teste SMTP</button><div class="notice" style="margin-top:12px"><strong>Região:</strong> ${escapeHtml(region)} · <strong>Funções usadas:</strong> sendEmail, testEmailServer e deletePlatformUser.</div></div></div>
+      <div class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>E-mails por etapa do projeto</h3><p>As regras são criadas na tela de automações e disparam quando o Kanban/obra muda de etapa.</p></div></div><button class="btn btn-secondary" data-view-jump="automations" type="button">Abrir E-mails das etapas</button></div>`;
   }
 
   function permissionRoleLabel(role){return ({admin:'Administrador',manager:'Gerente',seller:'Vendedor',technical:'Técnico',finance:'Financeiro'})[role]||role||'Vendedor';}
@@ -5434,7 +5463,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     const reviewed=permissionRequests.filter(item=>item.status!=='Pendente').slice(0,20);
     const pendingRows=pending.length?pending.map(item=>{const role=item.requestedRole||'seller';return `<tr><td><strong>${escapeHtml(item.name||'Novo usuário')}</strong><br><small>${escapeHtml(item.provider||'password')}</small></td><td>${escapeHtml(item.email||'')}</td><td>${firebaseDateLabel(item.createdAt)}</td><td><select class="compact-select" data-request-role="${item.id}">${permissionRoleOptions(role)}</select></td><td>${permissionSummaryButton('request',item,role)}</td><td><div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" data-approve-access="${item.id}" type="button">Aprovar</button><button class="btn btn-danger btn-sm" data-reject-access="${item.id}" type="button">Rejeitar</button></div></td></tr>`;}).join(''):`<tr><td colspan="6"><div class="empty-state"><strong>Nenhuma solicitação pendente</strong><span>Novos logins por Google ou e-mail aparecerão aqui automaticamente.</span></div></td></tr>`;
     const currentUid=window.FirebaseCRM?.auth?.currentUser?.uid||'';
-    const userRows=permissionUsers.length?permissionUsers.map(item=>{const self=item.id===currentUid;const role=item.role||'seller';return `<tr><td><strong>${escapeHtml(item.name||'Usuário')}</strong>${self?' <span class="status blue">Você</span>':''}</td><td>${escapeHtml(item.email||'')}</td><td><select class="compact-select" data-user-role="${item.id}" ${self?'disabled':''}>${permissionRoleOptions(role)}</select></td><td>${self?'<span class="permission-chip">Acesso administrativo total</span>':permissionSummaryButton('user',item,role)}</td><td><select class="compact-select" data-user-status="${item.id}" ${self?'disabled':''}><option value="Ativo" ${item.status==='Ativo'?'selected':''}>Ativo</option><option value="Inativo" ${item.status==='Inativo'?'selected':''}>Inativo</option></select></td><td>${escapeHtml((item.companyIds||[]).join(', ')||item.companyId||'')}</td><td>${self?'—':`<button class="btn btn-primary btn-sm" data-save-user-access="${item.id}" type="button">Salvar acesso</button>`}</td></tr>`;}).join(''):`<tr><td colspan="7"><div class="empty-state"><strong>Nenhum usuário aprovado</strong><span>O primeiro administrador aparecerá após a inicialização.</span></div></td></tr>`;
+    const userRows=permissionUsers.length?permissionUsers.map(item=>{const self=item.id===currentUid;const role=item.role||'seller';return `<tr><td><strong>${escapeHtml(item.name||'Usuário')}</strong>${self?' <span class="status blue">Você</span>':''}</td><td>${escapeHtml(item.email||'')}</td><td><select class="compact-select" data-user-role="${item.id}" ${self?'disabled':''}>${permissionRoleOptions(role)}</select></td><td>${self?'<span class="permission-chip">Acesso administrativo total</span>':permissionSummaryButton('user',item,role)}</td><td><select class="compact-select" data-user-status="${item.id}" ${self?'disabled':''}><option value="Ativo" ${item.status==='Ativo'?'selected':''}>Ativo</option><option value="Inativo" ${item.status==='Inativo'?'selected':''}>Inativo</option></select></td><td>${escapeHtml((item.companyIds||[]).join(', ')||item.companyId||'')}</td><td>${self?'—':`<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" data-save-user-access="${item.id}" type="button">Salvar acesso</button><button class="btn btn-danger btn-sm" data-delete-platform-user="${item.id}" type="button">Excluir usuário</button></div>`}</td></tr>`;}).join(''):`<tr><td colspan="7"><div class="empty-state"><strong>Nenhum usuário aprovado</strong><span>O primeiro administrador aparecerá após a inicialização.</span></div></td></tr>`;
     const reviewedHtml=reviewed.length?`<div class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Histórico recente</h3><p>Solicitações já analisadas.</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Usuário</th><th>E-mail</th><th>Status</th><th>Perfil</th></tr></thead><tbody>${reviewed.map(item=>`<tr><td>${escapeHtml(item.name||'')}</td><td>${escapeHtml(item.email||'')}</td><td><span class="status ${item.status==='Aprovado'?'green':'red'}">${escapeHtml(item.status||'')}</span></td><td>${escapeHtml(permissionRoleLabel(item.approvedRole||item.requestedRole))}</td></tr>`).join('')}</tbody></table></div></div>`:'';
     return `<div class="notice"><strong>Liberação detalhada</strong><br>Escolha o perfil-base e clique em “Acessos” para definir exatamente os módulos e ações disponíveis ao usuário.</div><div style="display:flex;justify-content:flex-end;margin:12px 0"><button class="btn btn-ghost" id="refreshUserPermissions" type="button">↻ Atualizar lista</button></div><div class="form-section"><div class="form-section-head"><div><h3>Solicitações pendentes</h3><p>Defina perfil e acessos antes de aprovar.</p></div><span class="status yellow">${pending.length} pendente(s)</span></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Usuário</th><th>E-mail</th><th>Solicitado em</th><th>Perfil-base</th><th>Acessos</th><th>Ações</th></tr></thead><tbody>${pendingRows}</tbody></table></div></div><div class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Usuários aprovados</h3><p>Altere o perfil, selecione módulos e determine o que cada pessoa pode fazer.</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Nome</th><th>E-mail</th><th>Perfil-base</th><th>Acessos liberados</th><th>Status</th><th>Empresa</th><th>Ações</th></tr></thead><tbody>${userRows}</tbody></table></div></div>${reviewedHtml}`;
   }
@@ -5466,6 +5495,31 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     const status=document.querySelector(`[data-user-status="${CSS.escape(uid)}"]`)?.value||'Ativo';
     const permissions=permissionDrafts[permissionDraftKey('user',uid)]?.permissions||normalizePermissionMatrix(item.permissions,role,item);
     try{await window.FirebaseCRM.updateUserPermissions(uid,{role,status,permissions,permissionArrays:permissionArraysFromMatrix(permissions),companyId:state.currentCompanyId});delete permissionDrafts[permissionDraftKey('user',uid)];toast('Acessos atualizados',`${permissionRoleLabel(role)} · ${permissionSummary(permissions)} · ${status}`,'success');permissionUsersLoaded=false;await loadUserPermissionData(true);}catch(error){toast('Alteração não concluída',error.message||String(error),'error');}
+  }
+
+  async function deletePlatformUserFromSettings(uid){
+    const item=permissionUsers.find(row=>row.id===uid);if(!item)return;
+    const currentUid=window.FirebaseCRM?.auth?.currentUser?.uid||'';
+    if(uid===currentUid){toast('Ação bloqueada','Você não pode excluir o próprio usuário conectado.','error');return;}
+    const label=item.email||item.name||uid;
+    if(!confirm(`Excluir definitivamente o usuário ${label}?\n\nIsso remove o acesso no SolarCRM e também a conta no Firebase Authentication.`))return;
+    try{
+      await window.FirebaseCRM.callFunction('deletePlatformUser',{uid,companyId:state.currentCompanyId});
+      permissionUsers=permissionUsers.filter(row=>row.id!==uid);delete permissionDrafts[permissionDraftKey('user',uid)];
+      toast('Usuário excluído',label,'success');permissionUsersLoaded=false;await loadUserPermissionData(true);
+    }catch(error){toast('Exclusão não concluída',error.message||String(error),'error');}
+  }
+
+  async function testEmailServerFromSettings(){
+    const to=document.getElementById('emailServerTestTo')?.value.trim()||state.currentUser.email||state.company.email||'';
+    if(!to){toast('Informe um e-mail para teste','','error');return;}
+    if(!window.FirebaseCRM?.syncReady){toast('Backend não conectado','Conecte o Banco de dados com um administrador aprovado.','error');return;}
+    const btn=document.getElementById('emailServerTestBtn');if(btn){btn.disabled=true;btn.textContent='Enviando...';}
+    try{
+      await window.FirebaseCRM.callFunction('testEmailServer',{companyId:state.currentCompanyId,to});
+      toast('E-mail de teste enviado',to,'success');
+    }catch(error){toast('Falha no teste SMTP',error.message||String(error),'error');}
+    finally{if(btn){btn.disabled=false;btn.textContent='Enviar teste SMTP';}}
   }
 
   const firebaseLabels={apiKey:'Chave de acesso',authDomain:'Domínio de autenticação',databaseURL:'URL do banco em tempo real',projectId:'ID do projeto',storageBucket:'Bucket de arquivos',messagingSenderId:'ID de mensagens',appId:'ID do aplicativo',functionsRegion:'Região do backend'};
@@ -5532,6 +5586,9 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     document.querySelectorAll('[data-approve-access]').forEach(button=>button.addEventListener('click',()=>approveAccessFromSettings(button.dataset.approveAccess)));
     document.querySelectorAll('[data-reject-access]').forEach(button=>button.addEventListener('click',()=>rejectAccessFromSettings(button.dataset.rejectAccess)));
     document.querySelectorAll('[data-save-user-access]').forEach(button=>button.addEventListener('click',()=>saveUserAccessFromSettings(button.dataset.saveUserAccess)));
+    document.querySelectorAll('[data-delete-platform-user]').forEach(button=>button.addEventListener('click',()=>deletePlatformUserFromSettings(button.dataset.deletePlatformUser)));
+    document.getElementById('emailServerTestBtn')?.addEventListener('click',testEmailServerFromSettings);
+    document.querySelectorAll('#settingsBody [data-view-jump]').forEach(btn=>btn.addEventListener('click',()=>{closeModal('settingsModal');navigate(btn.dataset.viewJump);}));
     document.querySelectorAll('[data-configure-request-access]').forEach(button=>button.addEventListener('click',()=>openPermissionMatrix('request',button.dataset.configureRequestAccess)));
     document.querySelectorAll('[data-configure-user-access]').forEach(button=>button.addEventListener('click',()=>openPermissionMatrix('user',button.dataset.configureUserAccess)));
     document.getElementById('settingsExportBackup')?.addEventListener('click',exportBackup);
