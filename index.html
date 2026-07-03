@@ -985,6 +985,16 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
 .vp-final-line{width:160px!important;height:2px!important;margin-top:22px!important;}
 .vp-final-small{bottom:44px!important;font-size:12px!important;letter-spacing:.08em!important;}
 
+
+/* Ajustes v12 — logos realmente diferentes e sem caixa */
+.vp-cover .vp-logo-box{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;align-items:flex-start!important;}
+.vp-cover .vp-logo-box img{max-width:440px!important;max-height:150px!important;width:auto!important;height:auto!important;object-fit:contain!important;background:transparent!important;border:0!important;box-shadow:none!important;filter:drop-shadow(0 16px 38px rgba(0,0,0,.34))!important;}
+.vp-final-logo{min-height:78px!important;margin-bottom:18px!important;}
+.vp-final-logo img{max-width:220px!important;max-height:72px!important;width:auto!important;height:auto!important;object-fit:contain!important;background:transparent!important;border:0!important;box-shadow:none!important;filter:drop-shadow(0 10px 24px rgba(0,0,0,.28))!important;}
+.vp-final-site{font-size:22px!important;line-height:1.25!important;font-weight:800!important;letter-spacing:0!important;}
+.vp-final-line{width:150px!important;margin-top:20px!important;}
+.vp-final-small{font-size:12px!important;bottom:46px!important;}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -993,6 +1003,13 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   <script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.2.0/dist/signature_pad.umd.min.js"></script>
+
+<style id="sem-storage-v13-css">
+.vp-cover .vp-logo-box{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;min-width:0!important}
+.vp-cover .vp-logo-box img{max-width:300px!important;max-height:112px!important;width:auto!important;height:auto!important;object-fit:contain!important;filter:none!important}
+.vp-final-logo{width:auto!important;height:auto!important;background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important}
+.vp-final-logo img{max-width:190px!important;max-height:82px!important;width:auto!important;height:auto!important;object-fit:contain!important}.vp-final-site{font-size:20px!important}.vp-final-small{font-size:13px!important}
+</style>
 </head>
 <body data-theme="dark" class="auth-locked">
 
@@ -1250,7 +1267,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     companies: 'companies', users: 'users', teams: 'team_members', accessRequests: 'access_requests', clients: 'clients', leads: 'leads', proposals: 'proposals', contracts: 'contracts',
     projects: 'projects', works: 'projects', installations: 'installations', aftersales: 'installations', homologations: 'homologations',
     tickets: 'tickets', financial: 'financial', commissions: 'commissions', products: 'products', inventory: 'products',
-    suppliers: 'suppliers', notifications: 'notifications', projectDocuments: 'project_documents', automationRules: 'automation_rules', automationQueue: 'automation_queue', automationLogs: 'automation_logs', stockMovements: 'stock_movements', tasks: 'tasks', clientProjectStatus: 'client_project_status', client_project_status: 'client_project_status'
+    suppliers: 'suppliers', notifications: 'notifications', projectDocuments: 'project_documents', automationRules: 'automation_rules', automationQueue: 'automation_queue', automationLogs: 'automation_logs', stockMovements: 'stock_movements', tasks: 'tasks', clientProjectStatus: 'client_project_status', client_project_status: 'client_project_status', publicProposals: 'public_proposals', public_proposals: 'public_proposals'
   };
 
   const firebaseErrorMessages = {
@@ -3300,9 +3317,37 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     if(proposal?.id)params.set('id',proposal.id);
     const cpf=normalizeCpfCnpj(proposal?.client?.document||'');
     if(cpf)params.set('cpf',cpf);
+    if(proposal?.number)params.set('num',proposal.number);
+    if(proposal?.client?.name)params.set('name',proposal.client.name);
+    const calc=proposal?calculateProposal(proposal):null;
+    if(calc?.actualPower)params.set('power',number(calc.actualPower,2));
+    if(proposal?.client?.city)params.set('city',proposal.client.city);
     const finalPdf=pdfUrl||proposal?.publicPdfUrl||'';
     if(finalPdf)params.set('pdf',finalPdf);
     return `${base}proposta.html${params.toString()?`?${params.toString()}`:''}`;
+  }
+  function publicProposalRecord(proposal=activeProposal,pdfUrl=''){
+    const c=calculateProposal(proposal);const company=state.company||{};const client=proposal.client||{};
+    const logoUrl=company.logo&&!String(company.logo).startsWith('data:')?company.logo:'';
+    const shortCurrency=v=>currency(v,0).replace(',00','');
+    const presentation={
+      clientName:client.name||'', city:client.city||'', document:normalizeCpfCnpj(client.document||''), number:proposal.number||'', validUntil:proposal.validUntil||'',
+      actualPower:Number(c.actualPower||0), acPower:Number((c.inverterQty*c.inverter.power)||0), moduleQty:Number(c.moduleQty||0), modulePower:Number(c.moduleItem?.power||0), moduleBrand:c.moduleItem?.brand||'',
+      inverterQty:Number(c.inverterQty||0), inverterPower:Number(c.inverter?.power||0), inverterBrand:c.inverter?.brand||'', structureType:proposal.technical?.structureType||'', orientation:proposal.technical?.orientation||'',
+      annualGeneration:Number(c.annualGeneration||0), monthlyGeneration:Number(c.monthlyGeneration||0), avgConsumption:Number(c.avgConsumption||0), currentTariff:Number(proposal.currentTariff||0),
+      investment:Number(proposal.commercial?.price||0), monthlySaving:Number(c.monthlySaving||0), annualSaving:Number(c.annualSaving||0), payback:Number(c.payback||0), roi:Number(c.roi||0), paymentMethod:proposal.commercial?.paymentMethod||'',
+      coverTitle:/solo/i.test(proposal.technical?.structureType||'')?'Projeto Solar de Solo':'Projeto Solar Fotovoltaico',
+      summaryText:'Solução fotovoltaica com alta performance, economia e previsibilidade energética.',
+      investmentFormatted:shortCurrency(proposal.commercial?.price||0), monthlySavingFormatted:shortCurrency(c.monthlySaving||0), annualSavingFormatted:shortCurrency(c.annualSaving||0)
+    };
+    return {
+      id:proposal.id, companyId:state.currentCompanyId, proposalId:proposal.id, number:proposal.number||'', status:proposal.status||'Enviada',
+      clientName:client.name||'', clientDocument:normalizeCpfCnpj(client.document||''), clientPhone:client.phone||'', clientEmail:client.email||'', city:client.city||'',
+      companyName:company.tradeName||company.name||'Empresa', companyWebsite:company.website||'', companyEmail:company.email||'', companyPhone:company.phone||'', companyLogo:logoUrl,
+      actualPower:Number(c.actualPower||0), annualGeneration:Number(c.annualGeneration||0), monthlyGeneration:Number(c.monthlyGeneration||0), monthlySaving:Number(c.monthlySaving||0), annualSaving:Number(c.annualSaving||0), investment:Number(proposal.commercial?.price||0), payback:Number(c.payback||0),
+      publicPdfUrl:pdfUrl||proposal.publicPdfUrl||'', publicUrl:proposalPublicUrl(proposal,pdfUrl||proposal.publicPdfUrl||''), clientPortalUrl:clientPortalUrl(client.document||''), presentation,
+      noStorage:true, publishedAt:proposal.publishedAt||new Date().toISOString(), updatedAt:new Date().toISOString()
+    };
   }
   function buildClientPortalRecord(work){
     const cpf=clientDocumentForWork(work);if(!cpf)return null;
@@ -5207,7 +5252,7 @@ Sua proposta de energia solar está pronta e eu já deixei tudo organizado para 
 💼 Investimento: ${investimento}
 ⏱️ Retorno previsto: ${payback}
 
-O link abaixo abre sua proposta em uma página exclusiva, com o PDF completo e o botão de aceite digital:
+O link abaixo abre sua proposta em uma página exclusiva, com todos os dados comerciais e o botão de aceite digital:
 ${link}
 
 Com a aprovação, nosso time já inicia o próximo passo e você será direcionado para a página de acompanhamento do projeto.
@@ -5218,29 +5263,31 @@ ${company.tradeName||company.name}`:''}`;
   }
 
   async function publishProposalForClient(proposal,{silent=false,onProgress=null}={}){
-    proposal.companyId=state.currentCompanyId;proposal.publicUrl=proposalPublicUrl(proposal);proposal.clientPortalUrl=clientPortalUrl(proposal.client?.document||'');proposal.publishedAt=proposal.publishedAt||new Date().toISOString();
+    proposal.companyId=state.currentCompanyId;
+    proposal.status=proposal.status||'Enviada';
+    proposal.publicPdfUrl='';
+    proposal.publicUrl=proposalPublicUrl(proposal,'');
+    proposal.clientPortalUrl=clientPortalUrl(proposal.client?.document||'');
+    proposal.publishedAt=proposal.publishedAt||new Date().toISOString();
     if(!window.FirebaseCRM?.syncReady){
-      if(!silent)toast('Banco de dados necessário','Para hospedar o PDF e registrar aceite público, conecte o Firebase em Configurações > Banco de dados. O link da página pública foi gerado, mas o PDF não será publicado na nuvem.','error');
+      if(!silent)toast('Firebase necessário','Para o link público registrar aceite e aparecer no portal, entre no Firebase e publique somente as regras do Firestore. Não precisa Storage.','error');
       await saveProposalRecord(proposal,{silent:true});
-      return {link:proposal.publicUrl,pdfUrl:proposal.publicPdfUrl||'',published:false};
+      return {link:proposal.publicUrl,pdfUrl:'',published:false,requiresFirebase:true,noStorage:true};
     }
     try{
-      if(!proposal.publicPdfUrl&&window.jspdf?.jsPDF&&window.html2canvas){
-        onProgress?.('Gerando PDF hospedado...');
-        const {blob}=await buildProposalPdfBlob({onProgress});
-        const filename=`${slugify(proposal.number+'-'+proposal.client.name)}.pdf`;
-        const file=new File([blob],filename,{type:'application/pdf'});
-        onProgress?.('Enviando PDF para hospedagem...');
-        proposal.publicPdfUrl=await window.FirebaseCRM.uploadFile(state.currentCompanyId,'propostas',file,filename);
-      }
-      proposal.publicUrl=proposalPublicUrl(proposal,proposal.publicPdfUrl||'');proposal.clientPortalUrl=clientPortalUrl(proposal.client?.document||'');proposal.updatedAt=new Date().toISOString();
+      onProgress?.('Publicando proposta online...');
+      proposal.publicUrl=proposalPublicUrl(proposal,'');
+      proposal.clientPortalUrl=clientPortalUrl(proposal.client?.document||'');
+      proposal.updatedAt=new Date().toISOString();
+      const publicRecord=publicProposalRecord(proposal,'');
+      await window.FirebaseCRM.saveRecord('public_proposals',publicRecord);
       await window.FirebaseCRM.saveRecord('proposals',proposal);
-      return {link:proposal.publicUrl,pdfUrl:proposal.publicPdfUrl||'',published:true};
+      return {link:proposal.publicUrl,pdfUrl:'',published:true,noStorage:true};
     }catch(error){
       console.error(error);
-      if(!silent)toast('Não foi possível hospedar o PDF',error.message||'Verifique Firebase Storage, regras e login.','error');
+      if(!silent)toast('Proposta não publicada',error.message||'Verifique as regras públicas do Firestore. Storage não é necessário.','error');
       await saveProposalRecord(proposal,{silent:true});
-      return {link:proposal.publicUrl,pdfUrl:proposal.publicPdfUrl||'',published:false,error};
+      return {link:proposal.publicUrl,pdfUrl:'',published:false,error,noStorage:true};
     }
   }
 
@@ -5251,42 +5298,36 @@ ${company.tradeName||company.name}`:''}`;
     if(!await saveProposalRecord(activeProposal,{silent:true}))return;
     activeProposal.status='Enviada';activeProposal.sentAt=new Date().toISOString();activeProposal.updatedAt=activeProposal.sentAt;
     const phone=activeProposal.client?.phone?normalizePhone(activeProposal.client.phone):'';
-    let whatsappPopup=null;
-    if(phone){
-      try{
-        whatsappPopup=window.open('about:blank','_blank');
-        if(whatsappPopup){
-          try{whatsappPopup.opener=null;whatsappPopup.document.write('<!doctype html><title>Preparando WhatsApp</title><body style="font-family:Arial,sans-serif;padding:28px;color:#102033"><h2>Preparando WhatsApp...</h2><p>A proposta está sendo publicada. O WhatsApp abrirá automaticamente nesta aba.</p></body>');whatsappPopup.document.close();}catch(_){/* alguns navegadores bloqueiam escrita */}
-        }
-      }catch(_){whatsappPopup=null;}
-    }
     const sendBtns=[document.getElementById('proposalSendBtn'),document.getElementById('sendProposalPreviewBtn')].filter(Boolean);const oldLabels=sendBtns.map(btn=>btn.textContent);
     sendBtns.forEach(btn=>{btn.disabled=true;btn.textContent='Publicando proposta...';});
+    let whatsappPopup=null;
+    if(phone){try{whatsappPopup=window.open('about:blank','_blank');if(whatsappPopup){whatsappPopup.document.write('<!doctype html><title>Preparando WhatsApp</title><body style="font-family:Arial,sans-serif;padding:28px;color:#102033"><h2>Preparando proposta...</h2><p>Estamos publicando a proposta online e abriremos o WhatsApp em seguida.</p></body>');whatsappPopup.document.close();}}catch(_){whatsappPopup=null;}}
     try{
       const publish=await publishProposalForClient(activeProposal,{onProgress:text=>sendBtns.forEach(btn=>btn.textContent=text)});
+      if(!publish.published){
+        if(whatsappPopup&&!whatsappPopup.closed){try{whatsappPopup.close();}catch(_){}}
+        const msg=publish.requiresFirebase?'Conecte o Firebase e publique as regras públicas do Firestore antes de enviar o link ao cliente.':'Não foi possível publicar a proposta online. Verifique as regras do Firestore e tente novamente.';
+        toast('Envio não concluído',msg,'error');
+        return;
+      }
       const message=buildCommercialProposalWhatsapp(activeProposal,publish.link);
       let queued=0;
       if(phone){
         queueAutomation({type:'proposal',channel:'whatsapp',recipient:phone,message,recordId:activeProposal.id,dedupeKey:`proposal-whatsapp-${activeProposal.id}-${activeProposal.updatedAt}`});queued++;
         const whatsappUrl=`https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
-        if(whatsappPopup&&!whatsappPopup.closed){
-          try{whatsappPopup.location.href=whatsappUrl;}catch(_){safeOpen(whatsappUrl);}
-        }else{
-          safeOpen(whatsappUrl);
-        }
+        if(whatsappPopup&&!whatsappPopup.closed){try{whatsappPopup.location.replace(whatsappUrl);}catch(_){safeOpen(whatsappUrl);}}
+        else safeOpen(whatsappUrl);
       }else if(navigator.clipboard){
         navigator.clipboard.writeText(publish.link).catch(()=>null);
       }
-      if(activeProposal.client.email&&state.automations.emailProposal){queueAutomation({type:'proposal',channel:'email',recipient:activeProposal.client.email,subject:`Proposta de energia solar ${activeProposal.number}`,message:`${message}
-
-Acesse: ${publish.link}`,recordId:activeProposal.id,dedupeKey:`proposal-email-${activeProposal.id}-${activeProposal.updatedAt}`});queued++;}
+      if(activeProposal.client.email&&state.automations.emailProposal){queueAutomation({type:'proposal',channel:'email',recipient:activeProposal.client.email,subject:`Proposta de energia solar ${activeProposal.number}`,message:`${message}\n\nAcesse: ${publish.link}`,recordId:activeProposal.id,dedupeKey:`proposal-email-${activeProposal.id}-${activeProposal.updatedAt}`});queued++;}
       upsertLeadFromProposal(activeProposal,'Proposta Enviada');upsertClientFromProposal(activeProposal,'Em negociação');
       const idx=state.proposals.findIndex(item=>item.id===activeProposal.id);if(idx>=0)state.proposals[idx]=deepClone(activeProposal);else state.proposals.unshift(deepClone(activeProposal));
-      addActivity('PV','Proposta enviada',`${activeProposal.client.name} · ${currency(activeProposal.commercial.price)}`);addNotification('Proposta enviada pelo WhatsApp',`${activeProposal.number} · página pública com aceite digital.`,'success');
-      recordAutomation({type:'proposal',channel:'internal',title:'Proposta pública preparada',text:`${activeProposal.number} · ${publish.link}`,status:'Concluído',recordId:activeProposal.id,dedupeKey:`proposal-public-${activeProposal.id}-${activeProposal.updatedAt}`});
+      addActivity('PV','Proposta enviada',`${activeProposal.client.name} · ${currency(activeProposal.commercial.price)}`);addNotification('Proposta enviada pelo WhatsApp',`${activeProposal.number} · Proposta online sem Storage e aceite digital.`,'success');
+      recordAutomation({type:'proposal',channel:'internal',title:'Proposta pública criada',text:`${activeProposal.number} · ${publish.link}`,status:'Concluído',recordId:activeProposal.id,dedupeKey:`proposal-public-${activeProposal.id}-${activeProposal.updatedAt}`});
       persist();syncRecordToFirebase('proposals',activeProposal);renderSidebar();if(activeView==='proposals')renderView('proposals');
-      if(!phone)toast('WhatsApp não informado',`Link público copiado/gerado: ${publish.link}`,'error');
-      else toast(whatsappPopup?'WhatsApp aberto':'Permita pop-ups','A mensagem comercial já está pronta para enviar ao cliente.','success');
+      if(!phone)toast('WhatsApp não informado',`Link público copiado: ${publish.link}`,'success');
+      else toast('WhatsApp aberto','A mensagem comercial contém o link da proposta online com aceite digital.','success');
       document.getElementById('proposalPages')&&(document.getElementById('proposalPages').innerHTML=renderProposalDocument(activeProposal));setTimeout(initProposalPDFElements,80);
     }catch(error){
       console.error(error);
@@ -5403,7 +5444,7 @@ Acesse: ${publish.link}`,recordId:activeProposal.id,dedupeKey:`proposal-email-${
 
   function initProposalPDFElements(){
     if(window.QRCode){
-      const qr=document.getElementById('proposalQr');if(qr){qr.innerHTML='';const proposalLink=proposalPublicUrl(activeProposal);new QRCode(qr,{text:proposalLink,width:92,height:92,colorDark:'#122033',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}
+      const qr=document.getElementById('proposalQr');if(qr){qr.innerHTML='';const proposalLink=proposalPublicUrl(activeProposal,activeProposal?.publicPdfUrl||'');new QRCode(qr,{text:proposalLink,width:92,height:92,colorDark:'#122033',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}
     }
     initProposalCharts();
   }
