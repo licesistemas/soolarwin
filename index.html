@@ -2008,7 +2008,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   const EMAIL_SCRIPT_URL_KEY = 'solarcrm-email-script-url-v1';
   const EMAIL_SCRIPT_TOKEN_KEY = 'solarcrm-email-script-token-v1';
   const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-2';
-  const SYSTEM_VERSION = '3.1.0-proposta-publica-aceite';
+  const SYSTEM_VERSION = '3.1.1-firestore-sem-array-aninhado';
   let storageWarningShown = false;
   let draftSaveTimer = null;
   let firebaseLastDiagnostic = null;
@@ -2501,6 +2501,29 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   function average(arr){ return arr.length ? sum(arr)/arr.length : 0; }
   function slugify(value='arquivo'){ return value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,''); }
   function deepClone(obj){ return JSON.parse(JSON.stringify(obj)); }
+
+  function firestoreSafeValue(value, insideArray=false){
+    if(value === undefined) return null;
+    if(value === null) return null;
+    if(typeof value === 'number') return Number.isFinite(value) ? value : null;
+    if(typeof value === 'string' || typeof value === 'boolean') return value;
+    if(value instanceof Date) return value.toISOString();
+    if(Array.isArray(value)){
+      const cleanItems = value.map(item => firestoreSafeValue(item, true));
+      return insideArray ? { items: cleanItems } : cleanItems;
+    }
+    if(typeof value === 'object'){
+      const clean = {};
+      Object.entries(value).forEach(([key,val])=>{
+        if(val !== undefined) clean[key] = firestoreSafeValue(val, false);
+      });
+      return clean;
+    }
+    return String(value);
+  }
+  function firestoreSafeRecord(record){
+    return firestoreSafeValue(record || {}, false);
+  }
   function normalizePhone(value=''){ const digits=String(value||'').replace(/\D/g,''); return digits.startsWith('55')?digits:`55${digits}`; }
   function initials(value='Usuário'){ return String(value||'Usuário').split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase(); }
 
@@ -2547,7 +2570,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   }
   function syncRecordToFirebase(collection,record){
     if(!window.FirebaseCRM?.syncReady)return;
-    window.FirebaseCRM.saveRecord(collection,record).catch(error=>console.warn(`Falha ao sincronizar ${collection}:`,error));
+    window.FirebaseCRM.saveRecord(collection,firestoreSafeRecord(record)).catch(error=>console.warn(`Falha ao sincronizar ${collection}:`,error));
   }
   function recordAutomation({type='manual',channel='internal',title,text='',status='Concluído',recipient='',recordId='',dedupeKey=''}){
     const existing=dedupeKey&&companyRows('automationLogs').find(log=>log.dedupeKey===dedupeKey);
@@ -5229,7 +5252,7 @@ ${historyText}`.trim(),historyText);
     upsertClientFromProposal(proposal,proposal.status==='Aceita'?'Ativo':'Em negociação');
     persist();renderSidebar();safeStorageRemove(ACTIVE_DRAFT_KEY);
     if(activeView==='proposals')renderView('proposals');
-    if(window.FirebaseCRM?.syncReady){try{await window.FirebaseCRM.saveRecord('proposals',proposal);}catch(error){console.warn(error);if(!silent)toast('Salva localmente',error?.message||'A sincronização com o banco de dados falhou.','error');}}
+    if(window.FirebaseCRM?.syncReady){try{await window.FirebaseCRM.saveRecord('proposals',firestoreSafeRecord(proposal));}catch(error){console.warn(error);if(!silent)toast('Salva localmente',error?.message||'A sincronização com o banco de dados falhou.','error');}}
     if(!silent)toast('Proposta salva',`${proposal.number} · ${proposal.client.name}`);
     return true;
   }
@@ -5280,8 +5303,8 @@ ${company.tradeName||company.name}`:''}`;
       proposal.clientPortalUrl=clientPortalUrl(proposal.client?.document||'');
       proposal.updatedAt=new Date().toISOString();
       const publicRecord=publicProposalRecord(proposal,'');
-      await window.FirebaseCRM.saveRecord('public_proposals',publicRecord);
-      await window.FirebaseCRM.saveRecord('proposals',proposal);
+      await window.FirebaseCRM.saveRecord('public_proposals',firestoreSafeRecord(publicRecord));
+      await window.FirebaseCRM.saveRecord('proposals',firestoreSafeRecord(proposal));
       return {link:proposal.publicUrl,pdfUrl:'',published:true,noStorage:true};
     }catch(error){
       console.error(error);
@@ -5385,6 +5408,17 @@ ${company.tradeName||company.name}`:''}`;
     const metric=(label,value,caption,accent='#ffb703')=>`<div class="vp-metric" style="--accent:${accent}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong><p>${escapeHtml(caption)}</p></div>`;
     const dataRow=(label,value)=>`<div class="vp-data-row"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`;
     const shortCurrency=v=>currency(v,0).replace(',00','');
+    const consumptionValues=(Array.isArray(p.consumption)?p.consumption:[]).map(value=>Number(value||0));
+    const maxConsumption=Math.max(...consumptionValues,1);
+    const minConsumption=Math.min(...consumptionValues.filter(value=>value>0),maxConsumption);
+    const peakMonthIndex=consumptionValues.findIndex(value=>value===maxConsumption);
+    const lowMonthIndex=consumptionValues.findIndex(value=>value===minConsumption);
+    const monthlyBars=months.map((month,index)=>{const value=Number(consumptionValues[index]||0);const height=Math.max(10,Math.round(value/maxConsumption*100));return `<div style="display:flex;flex-direction:column;align-items:center;gap:8px;min-width:34px"><div style="height:178px;width:100%;display:flex;align-items:flex-end;justify-content:center;background:#eef4f9;border-radius:16px;padding:5px"><div style="width:100%;height:${height}%;border-radius:12px;background:${index===peakMonthIndex?'#ffb703':'#174f80'}"></div></div><strong style="font-size:10px;color:#10273d">${month}</strong><span style="font-size:10px;color:#65768a">${number(value,0)}</span></div>`;}).join('');
+    const diagnosticNotes=[
+      ['Perfil de consumo','O histórico mensal identifica o tamanho real da necessidade energética da unidade.'],
+      ['Base econômica','A tarifa e a fatura atual servem como referência para calcular economia, payback e retorno.'],
+      ['Potencial solar','A solução proposta busca compensar parte relevante do consumo com geração própria e previsibilidade.']
+    ].map((item,index)=>`<div class="vp-reason"><div class="vp-reason-number" style="background:${index===0?'#ffb703':index===1?'#25a5bd':'#168a56'};color:${index===0?'#10273d':'#fff'}">${index+1}</div><h4>${item[0]}</h4><p>${item[1]}</p></div>`).join('');
     const schedule=(p.schedule||[]).slice(0,6);
     return `
       <section class="proposal-page vp-cover">
@@ -5401,9 +5435,10 @@ ${company.tradeName||company.name}`:''}`;
         <div class="vp-metric-grid">${metric('Geração anual',`${number(annualMwh,0)} MWh`,'Energia estimada no primeiro ano de operação.','#ffb703')}${metric('Investimento',shortCurrency(p.commercial.price),'Valor de referência do projeto.','#25a5bd')}${metric('Economia anual',shortCurrency(c.annualSaving),'Redução projetada no gasto anual com energia.','#168a56')}</div>
         <div class="vp-reasons"><h3>Por que avançar com o projeto</h3><div class="vp-reason-grid"><div class="vp-reason"><div class="vp-reason-number">1</div><h4>Previsibilidade</h4><p>Reduz exposição a reajustes e melhora o planejamento financeiro.</p></div><div class="vp-reason"><div class="vp-reason-number" style="background:#25a5bd;color:#fff">2</div><h4>Ativo de longo prazo</h4><p>A usina gera benefício por décadas, com monitoramento e suporte.</p></div><div class="vp-reason"><div class="vp-reason-number" style="background:#168a56;color:#fff">3</div><h4>Proposta objetiva</h4><p>Mostra técnica, economia, escopo e garantias com clareza.</p></div></div></div>
         ${footer(2)}</div></section>
-      <section class="proposal-page vp-page">${header(3,'Diagnóstico energético','Leitura visual do perfil de consumo, tarifa e cenário atual antes da energia solar.')}
-        <div class="vp-metric-grid">${metric('Consumo médio',`${number(c.avgConsumption,0)} kWh/mês`,'Base mensal usada no dimensionamento.','#ffb703')}${metric('Tarifa',`${currency(p.currentTariff,2)}/kWh`,'Referência econômica considerada.','#25a5bd')}${metric('Fatura atual',`${shortCurrency(c.billBefore)}/mês`,'Cenário aproximado sem a usina.','#ff8f33')}</div>
-        <div class="vp-grid-2"><div class="vp-card"><h3>Histórico de consumo</h3><div class="vp-chart"><canvas id="pdfConsumptionChart"></canvas></div><p style="color:#65768a;font-size:15px;margin:8px 0 0">Perfil de consumo usado para estimar o sistema.</p></div><div class="vp-dark-list"><h3>Dados da unidade</h3>${dataRow('Cliente',p.client.name)}${dataRow('Local',p.client.city)}${dataRow('Classe',p.client.className)}${dataRow('Grupo',p.client.tariffGroup)}${dataRow('Distribuidora',p.client.distributor)}${dataRow('Consumo anual',`${number(c.annualConsumption,0)} kWh`)}</div></div>
+      <section class="proposal-page vp-page">${header(3,'Diagnóstico energético','Análise do consumo atual, custo mensal e potencial de compensação antes da implantação.')}
+        <div class="vp-metric-grid">${metric('Consumo médio',`${number(c.avgConsumption,0)} kWh/mês`,'Média apurada no histórico informado.','#ffb703')}${metric('Custo mensal atual',`${shortCurrency(c.billBefore)}`,'Estimativa da fatura sem o sistema solar.','#25a5bd')}${metric('Consumo anual',`${number(c.annualConsumption,0)} kWh/ano`,'Demanda anual usada para dimensionar a usina.','#168a56')}</div>
+        <div class="vp-card" style="padding:24px 26px 22px;margin-bottom:24px"><div style="display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:18px"><div><h3 style="margin-bottom:6px">Histórico mensal de consumo</h3><p style="margin:0;color:#65768a;font-size:15px">Valores em kWh usados como base técnica e comercial do projeto.</p></div><div style="text-align:right;color:#65768a;font-size:13px"><strong style="display:block;color:#10273d;font-size:18px">Pico: ${months[Math.max(peakMonthIndex,0)]||'—'}</strong>${number(maxConsumption,0)} kWh</div></div><div style="display:grid;grid-template-columns:repeat(12,1fr);gap:10px;align-items:end">${monthlyBars}</div></div>
+        <div class="vp-grid-2" style="grid-template-columns:.95fr 1.05fr;gap:22px"><div class="vp-dark-list" style="padding:28px"><h3>Dados da unidade</h3>${dataRow('Cliente',p.client.name)}${dataRow('Cidade',p.client.city)}${dataRow('Unidade consumidora',p.client.consumerUnit)}${dataRow('Distribuidora',p.client.distributor)}${dataRow('Classe / grupo',`${safe(p.client.className)} · ${safe(p.client.tariffGroup)}`)}${dataRow('Tarifa considerada',`${currency(p.currentTariff,2)}/kWh`)}</div><div class="vp-reasons" style="padding:28px"><h3>Leitura do diagnóstico</h3><div class="vp-reason-grid" style="gap:20px">${diagnosticNotes}</div></div></div>
         ${footer(3)}</div></section>
       <section class="proposal-page vp-page">${header(4,'Solução técnica','A composição da usina, equipamentos principais e premissas de implantação.')}
         <div class="vp-metric-grid">${metric('Potência DC',`${number(c.actualPower,2)} kWp`,'Potência total instalada em módulos.','#ffb703')}${metric('Potência AC',`${number(acPower,0)} kW`,'Capacidade nominal dos inversores.','#25a5bd')}${metric('Área estimada',`${number(c.occupiedArea,0)} m²`,'Área estimada para instalação dos módulos.','#168a56')}</div>
