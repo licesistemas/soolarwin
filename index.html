@@ -5297,7 +5297,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
 
   function initProposalPDFElements(){
     if(window.QRCode){
-      const qr=document.getElementById('proposalQr');if(qr){qr.innerHTML='';new QRCode(qr,{text:`${location.href.split('#')[0]}#proposta/${activeProposal.id}`,width:92,height:92,colorDark:'#122033',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}
+      const qr=document.getElementById('proposalQr');if(qr){qr.innerHTML='';const clientDoc=normalizeCpfCnpj(activeProposal?.client?.document||'');const portalLink=clientPortalUrl(clientDoc);new QRCode(qr,{text:portalLink,width:92,height:92,colorDark:'#122033',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}
     }
     initProposalCharts();
   }
