@@ -974,6 +974,17 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
 }
 
 .vp-logo-box{background:transparent!important;border:0!important;box-shadow:none!important}.vp-logo-box img{background:transparent!important}.pdf-logo{background:transparent!important}
+
+/* Ajustes v11 — logo e exportação pública */
+.pdf-export-source{position:fixed!important;left:-12000px!important;top:0!important;width:794px!important;min-height:1123px!important;background:#fff!important;z-index:-1!important;opacity:1!important;pointer-events:none!important;}
+.vp-cover .vp-logo-box{background:transparent!important;border:0!important;box-shadow:none!important;padding:0!important;min-width:0!important;min-height:0!important;}
+.vp-cover .vp-logo-box img{max-width:340px!important;max-height:118px!important;width:auto!important;height:auto!important;object-fit:contain!important;background:transparent!important;filter:drop-shadow(0 14px 32px rgba(0,0,0,.32));}
+.vp-final-logo{min-height:92px!important;margin-bottom:22px!important;}
+.vp-final-logo img{max-width:270px!important;max-height:88px!important;width:auto!important;height:auto!important;object-fit:contain!important;background:transparent!important;filter:drop-shadow(0 12px 28px rgba(0,0,0,.30))!important;}
+.vp-final-site{font-size:23px!important;line-height:1.15!important;font-weight:850!important;letter-spacing:-.01em!important;}
+.vp-final-line{width:160px!important;height:2px!important;margin-top:22px!important;}
+.vp-final-small{bottom:44px!important;font-size:12px!important;letter-spacing:.08em!important;}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -3289,7 +3300,8 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     if(proposal?.id)params.set('id',proposal.id);
     const cpf=normalizeCpfCnpj(proposal?.client?.document||'');
     if(cpf)params.set('cpf',cpf);
-    if(pdfUrl)params.set('pdf',pdfUrl);
+    const finalPdf=pdfUrl||proposal?.publicPdfUrl||'';
+    if(finalPdf)params.set('pdf',finalPdf);
     return `${base}proposta.html${params.toString()?`?${params.toString()}`:''}`;
   }
   function buildClientPortalRecord(work){
@@ -5221,7 +5233,7 @@ ${company.tradeName||company.name}`:''}`;
         onProgress?.('Enviando PDF para hospedagem...');
         proposal.publicPdfUrl=await window.FirebaseCRM.uploadFile(state.currentCompanyId,'propostas',file,filename);
       }
-      proposal.publicUrl=proposalPublicUrl(proposal);proposal.clientPortalUrl=clientPortalUrl(proposal.client?.document||'');proposal.updatedAt=new Date().toISOString();
+      proposal.publicUrl=proposalPublicUrl(proposal,proposal.publicPdfUrl||'');proposal.clientPortalUrl=clientPortalUrl(proposal.client?.document||'');proposal.updatedAt=new Date().toISOString();
       await window.FirebaseCRM.saveRecord('proposals',proposal);
       return {link:proposal.publicUrl,pdfUrl:proposal.publicPdfUrl||'',published:true};
     }catch(error){
@@ -5238,16 +5250,32 @@ ${company.tradeName||company.name}`:''}`;
     activeProposal=deepClone(proposal);
     if(!await saveProposalRecord(activeProposal,{silent:true}))return;
     activeProposal.status='Enviada';activeProposal.sentAt=new Date().toISOString();activeProposal.updatedAt=activeProposal.sentAt;
+    const phone=activeProposal.client?.phone?normalizePhone(activeProposal.client.phone):'';
+    let whatsappPopup=null;
+    if(phone){
+      try{
+        whatsappPopup=window.open('about:blank','_blank');
+        if(whatsappPopup){
+          try{whatsappPopup.opener=null;whatsappPopup.document.write('<!doctype html><title>Preparando WhatsApp</title><body style="font-family:Arial,sans-serif;padding:28px;color:#102033"><h2>Preparando WhatsApp...</h2><p>A proposta está sendo publicada. O WhatsApp abrirá automaticamente nesta aba.</p></body>');whatsappPopup.document.close();}catch(_){/* alguns navegadores bloqueiam escrita */}
+        }
+      }catch(_){whatsappPopup=null;}
+    }
     const sendBtns=[document.getElementById('proposalSendBtn'),document.getElementById('sendProposalPreviewBtn')].filter(Boolean);const oldLabels=sendBtns.map(btn=>btn.textContent);
     sendBtns.forEach(btn=>{btn.disabled=true;btn.textContent='Publicando proposta...';});
     try{
       const publish=await publishProposalForClient(activeProposal,{onProgress:text=>sendBtns.forEach(btn=>btn.textContent=text)});
       const message=buildCommercialProposalWhatsapp(activeProposal,publish.link);
       let queued=0;
-      if(activeProposal.client.phone){
-        const phone=normalizePhone(activeProposal.client.phone);
+      if(phone){
         queueAutomation({type:'proposal',channel:'whatsapp',recipient:phone,message,recordId:activeProposal.id,dedupeKey:`proposal-whatsapp-${activeProposal.id}-${activeProposal.updatedAt}`});queued++;
-        safeOpen(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`);
+        const whatsappUrl=`https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+        if(whatsappPopup&&!whatsappPopup.closed){
+          try{whatsappPopup.location.href=whatsappUrl;}catch(_){safeOpen(whatsappUrl);}
+        }else{
+          safeOpen(whatsappUrl);
+        }
+      }else if(navigator.clipboard){
+        navigator.clipboard.writeText(publish.link).catch(()=>null);
       }
       if(activeProposal.client.email&&state.automations.emailProposal){queueAutomation({type:'proposal',channel:'email',recipient:activeProposal.client.email,subject:`Proposta de energia solar ${activeProposal.number}`,message:`${message}
 
@@ -5257,8 +5285,13 @@ Acesse: ${publish.link}`,recordId:activeProposal.id,dedupeKey:`proposal-email-${
       addActivity('PV','Proposta enviada',`${activeProposal.client.name} · ${currency(activeProposal.commercial.price)}`);addNotification('Proposta enviada pelo WhatsApp',`${activeProposal.number} · página pública com aceite digital.`,'success');
       recordAutomation({type:'proposal',channel:'internal',title:'Proposta pública preparada',text:`${activeProposal.number} · ${publish.link}`,status:'Concluído',recordId:activeProposal.id,dedupeKey:`proposal-public-${activeProposal.id}-${activeProposal.updatedAt}`});
       persist();syncRecordToFirebase('proposals',activeProposal);renderSidebar();if(activeView==='proposals')renderView('proposals');
-      if(!activeProposal.client.phone)toast('WhatsApp não informado',`Link público copiado/gerado: ${publish.link}`,'error');else toast('WhatsApp aberto','A mensagem comercial já está pronta para enviar ao cliente.','success');
+      if(!phone)toast('WhatsApp não informado',`Link público copiado/gerado: ${publish.link}`,'error');
+      else toast(whatsappPopup?'WhatsApp aberto':'Permita pop-ups','A mensagem comercial já está pronta para enviar ao cliente.','success');
       document.getElementById('proposalPages')&&(document.getElementById('proposalPages').innerHTML=renderProposalDocument(activeProposal));setTimeout(initProposalPDFElements,80);
+    }catch(error){
+      console.error(error);
+      if(whatsappPopup&&!whatsappPopup.closed){try{whatsappPopup.close();}catch(_){}}
+      toast('Erro ao enviar proposta',error.message||'Não foi possível abrir o WhatsApp.','error');
     }finally{
       sendBtns.forEach((btn,i)=>{btn.disabled=false;btn.textContent=oldLabels[i]||'Enviar proposta';});
     }
