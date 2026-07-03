@@ -961,6 +961,7 @@ body[data-theme="light"] .login-benefit {
 @page { size: A4 portrait; margin: 0; }
 body.exporting-proposal { overflow: hidden !important; }
 .pdf-export-root { position: fixed; left: 0; top: 0; width: 794px; height: 1123px; overflow: hidden; background: #fff; z-index: 2147483647; }
+.pdf-export-source { position: fixed; left: -12000px; top: 0; width: 794px; background:#fff; z-index: -1; pointer-events:none; }
 body.exporting-proposal .proposal-page {
   width: 794px !important; height: 1123px !important; min-width: 794px !important; min-height: 1123px !important;
   max-width: 794px !important; max-height: 1123px !important; transform: none !important; margin: 0 !important;
@@ -1979,7 +1980,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   const EMAIL_SCRIPT_URL_KEY = 'solarcrm-email-script-url-v1';
   const EMAIL_SCRIPT_TOKEN_KEY = 'solarcrm-email-script-token-v1';
   const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-2';
-  const SYSTEM_VERSION = '3.0.4-uc-linha-acima-cliente';
+  const SYSTEM_VERSION = '3.1.0-proposta-publica-aceite';
   let storageWarningShown = false;
   let draftSaveTimer = null;
   let firebaseLastDiagnostic = null;
@@ -3281,6 +3282,15 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   function clientPortalUrl(cpf=''){
     const base=(location.origin&&location.origin!=='null')?`${location.origin}${location.pathname.replace(/[^/]*$/,'')}`:location.href.replace(/[^/]*$/,'');
     return `${base}cliente.html${cpf?`?cpf=${encodeURIComponent(normalizeCpfCnpj(cpf))}`:''}`;
+  }
+  function proposalPublicUrl(proposal=activeProposal, pdfUrl=''){
+    const base=(location.origin&&location.origin!=='null')?`${location.origin}${location.pathname.replace(/[^/]*$/,'')}`:location.href.replace(/[^/]*$/,'');
+    const params=new URLSearchParams();
+    if(proposal?.id)params.set('id',proposal.id);
+    const cpf=normalizeCpfCnpj(proposal?.client?.document||'');
+    if(cpf)params.set('cpf',cpf);
+    if(pdfUrl)params.set('pdf',pdfUrl);
+    return `${base}proposta.html${params.toString()?`?${params.toString()}`:''}`;
   }
   function buildClientPortalRecord(work){
     const cpf=clientDocumentForWork(work);if(!cpf)return null;
@@ -5169,26 +5179,89 @@ ${historyText}`.trim(),historyText);
 
   async function saveActiveProposal(){return saveProposalRecord(activeProposal);}
 
+  function buildCommercialProposalWhatsapp(proposal,link){
+    const c=calculateProposal(proposal);const company=state.company||{};const name=proposal.client?.name||'tudo bem';
+    const economia=currency(c.monthlySaving,0);const anual=currency(c.annualSaving,0);const geracao=number(c.monthlyGeneration,0);
+    const investimento=currency(proposal.commercial?.price||0,0);const payback=Number.isFinite(c.payback)?`${number(c.payback,1)} anos`:'sob análise';
+    return `Olá, ${name}! ☀️
+
+Sua proposta de energia solar está pronta e eu já deixei tudo organizado para você analisar com calma.
+
+📌 Proposta: ${proposal.number}
+⚡ Potência do sistema: ${number(c.actualPower,2)} kWp
+🔋 Geração estimada: ${geracao} kWh/mês
+💰 Economia estimada: ${economia}/mês
+📈 Economia anual estimada: ${anual}
+💼 Investimento: ${investimento}
+⏱️ Retorno previsto: ${payback}
+
+O link abaixo abre sua proposta em uma página exclusiva, com o PDF completo e o botão de aceite digital:
+${link}
+
+Com a aprovação, nosso time já inicia o próximo passo e você será direcionado para a página de acompanhamento do projeto.
+
+Qualquer dúvida, me chama por aqui. ${company.tradeName||company.name?`
+
+${company.tradeName||company.name}`:''}`;
+  }
+
+  async function publishProposalForClient(proposal,{silent=false,onProgress=null}={}){
+    proposal.companyId=state.currentCompanyId;proposal.publicUrl=proposalPublicUrl(proposal);proposal.clientPortalUrl=clientPortalUrl(proposal.client?.document||'');proposal.publishedAt=proposal.publishedAt||new Date().toISOString();
+    if(!window.FirebaseCRM?.syncReady){
+      if(!silent)toast('Banco de dados necessário','Para hospedar o PDF e registrar aceite público, conecte o Firebase em Configurações > Banco de dados. O link da página pública foi gerado, mas o PDF não será publicado na nuvem.','error');
+      await saveProposalRecord(proposal,{silent:true});
+      return {link:proposal.publicUrl,pdfUrl:proposal.publicPdfUrl||'',published:false};
+    }
+    try{
+      if(!proposal.publicPdfUrl&&window.jspdf?.jsPDF&&window.html2canvas){
+        onProgress?.('Gerando PDF hospedado...');
+        const {blob}=await buildProposalPdfBlob({onProgress});
+        const filename=`${slugify(proposal.number+'-'+proposal.client.name)}.pdf`;
+        const file=new File([blob],filename,{type:'application/pdf'});
+        onProgress?.('Enviando PDF para hospedagem...');
+        proposal.publicPdfUrl=await window.FirebaseCRM.uploadFile(state.currentCompanyId,'propostas',file,filename);
+      }
+      proposal.publicUrl=proposalPublicUrl(proposal);proposal.clientPortalUrl=clientPortalUrl(proposal.client?.document||'');proposal.updatedAt=new Date().toISOString();
+      await window.FirebaseCRM.saveRecord('proposals',proposal);
+      return {link:proposal.publicUrl,pdfUrl:proposal.publicPdfUrl||'',published:true};
+    }catch(error){
+      console.error(error);
+      if(!silent)toast('Não foi possível hospedar o PDF',error.message||'Verifique Firebase Storage, regras e login.','error');
+      await saveProposalRecord(proposal,{silent:true});
+      return {link:proposal.publicUrl,pdfUrl:proposal.publicPdfUrl||'',published:false,error};
+    }
+  }
+
   async function sendProposal(proposal){
     if(!hasPermission('proposals','approve')){denyPermission('proposals','approve');return;}
     if(!proposal){toast('Proposta indisponível','','error');return;}
     activeProposal=deepClone(proposal);
     if(!await saveProposalRecord(activeProposal,{silent:true}))return;
     activeProposal.status='Enviada';activeProposal.sentAt=new Date().toISOString();activeProposal.updatedAt=activeProposal.sentAt;
-    const calc=calculateProposal(activeProposal);
-    const message=templateText(state.company.proposalMessage,{cliente:activeProposal.client.name,proposta:activeProposal.number,valor:currency(activeProposal.commercial.price),potencia:number(calc.actualPower,2)});
-    let queued=0;
-    if(activeProposal.client.phone){queueAutomation({type:'proposal',channel:'whatsapp',recipient:normalizePhone(activeProposal.client.phone),message,recordId:activeProposal.id,dedupeKey:`proposal-whatsapp-${activeProposal.id}-${activeProposal.updatedAt}`});queued++;}
-    if(activeProposal.client.email&&state.automations.emailProposal){queueAutomation({type:'proposal',channel:'email',recipient:activeProposal.client.email,subject:`Proposta de energia solar ${activeProposal.number}`,message:`${message}
+    const sendBtns=[document.getElementById('proposalSendBtn'),document.getElementById('sendProposalPreviewBtn')].filter(Boolean);const oldLabels=sendBtns.map(btn=>btn.textContent);
+    sendBtns.forEach(btn=>{btn.disabled=true;btn.textContent='Publicando proposta...';});
+    try{
+      const publish=await publishProposalForClient(activeProposal,{onProgress:text=>sendBtns.forEach(btn=>btn.textContent=text)});
+      const message=buildCommercialProposalWhatsapp(activeProposal,publish.link);
+      let queued=0;
+      if(activeProposal.client.phone){
+        const phone=normalizePhone(activeProposal.client.phone);
+        queueAutomation({type:'proposal',channel:'whatsapp',recipient:phone,message,recordId:activeProposal.id,dedupeKey:`proposal-whatsapp-${activeProposal.id}-${activeProposal.updatedAt}`});queued++;
+        safeOpen(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`);
+      }
+      if(activeProposal.client.email&&state.automations.emailProposal){queueAutomation({type:'proposal',channel:'email',recipient:activeProposal.client.email,subject:`Proposta de energia solar ${activeProposal.number}`,message:`${message}
 
-A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:activeProposal.id,dedupeKey:`proposal-email-${activeProposal.id}-${activeProposal.updatedAt}`});queued++;}
-    upsertLeadFromProposal(activeProposal,'Proposta Enviada');upsertClientFromProposal(activeProposal,'Em negociação');
-    const idx=state.proposals.findIndex(item=>item.id===activeProposal.id);if(idx>=0)state.proposals[idx]=deepClone(activeProposal);
-    addActivity('PV','Proposta enviada',`${activeProposal.client.name} · ${currency(activeProposal.commercial.price)}`);addNotification('Proposta preparada para envio',`${activeProposal.number} · ${queued} canal(is) na fila.`,'info');
-    recordAutomation({type:'proposal',channel:'internal',title:'Proposta preparada',text:`${activeProposal.number} · ${activeProposal.client.name}`,status:'Concluído',recordId:activeProposal.id,dedupeKey:`proposal-prepared-${activeProposal.id}-${activeProposal.updatedAt}`});
-    persist();syncRecordToFirebase('proposals',activeProposal);renderSidebar();if(activeView==='proposals')renderView('proposals');
-    if(!queued){toast('Contato não informado','Cadastre WhatsApp ou e-mail do cliente para enviar a proposta.','error');return;}
-    toast('Proposta adicionada à fila',`${queued} comunicação(ões) pronta(s) para envio.`);showAutomationOutbox(activeProposal.id);
+Acesse: ${publish.link}`,recordId:activeProposal.id,dedupeKey:`proposal-email-${activeProposal.id}-${activeProposal.updatedAt}`});queued++;}
+      upsertLeadFromProposal(activeProposal,'Proposta Enviada');upsertClientFromProposal(activeProposal,'Em negociação');
+      const idx=state.proposals.findIndex(item=>item.id===activeProposal.id);if(idx>=0)state.proposals[idx]=deepClone(activeProposal);else state.proposals.unshift(deepClone(activeProposal));
+      addActivity('PV','Proposta enviada',`${activeProposal.client.name} · ${currency(activeProposal.commercial.price)}`);addNotification('Proposta enviada pelo WhatsApp',`${activeProposal.number} · página pública com aceite digital.`,'success');
+      recordAutomation({type:'proposal',channel:'internal',title:'Proposta pública preparada',text:`${activeProposal.number} · ${publish.link}`,status:'Concluído',recordId:activeProposal.id,dedupeKey:`proposal-public-${activeProposal.id}-${activeProposal.updatedAt}`});
+      persist();syncRecordToFirebase('proposals',activeProposal);renderSidebar();if(activeView==='proposals')renderView('proposals');
+      if(!activeProposal.client.phone)toast('WhatsApp não informado',`Link público copiado/gerado: ${publish.link}`,'error');else toast('WhatsApp aberto','A mensagem comercial já está pronta para enviar ao cliente.','success');
+      document.getElementById('proposalPages')&&(document.getElementById('proposalPages').innerHTML=renderProposalDocument(activeProposal));setTimeout(initProposalPDFElements,80);
+    }finally{
+      sendBtns.forEach((btn,i)=>{btn.disabled=false;btn.textContent=oldLabels[i]||'Enviar proposta';});
+    }
   }
 
   function finalizeAcceptedProposalWorkflow(proposal){
@@ -5297,7 +5370,7 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
 
   function initProposalPDFElements(){
     if(window.QRCode){
-      const qr=document.getElementById('proposalQr');if(qr){qr.innerHTML='';const clientDoc=normalizeCpfCnpj(activeProposal?.client?.document||'');const portalLink=clientPortalUrl(clientDoc);new QRCode(qr,{text:portalLink,width:92,height:92,colorDark:'#122033',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}
+      const qr=document.getElementById('proposalQr');if(qr){qr.innerHTML='';const proposalLink=proposalPublicUrl(activeProposal);new QRCode(qr,{text:proposalLink,width:92,height:92,colorDark:'#122033',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}
     }
     initProposalCharts();
   }
@@ -5312,81 +5385,54 @@ A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:ac
     const finance=document.getElementById('pdfFinanceChart');if(finance)proposalCharts.push(new Chart(finance,{type:'bar',data:{labels:['Economia mensal','Parcela','Saldo líquido'],datasets:[{data:[c.monthlySaving,c.installment,c.netMonthlyEconomy],backgroundColor:['#168a56','#174f80',c.netMonthlyEconomy>=0?'#e39a00':'#e35353'],borderRadius:7}]},options:{...common,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#7d8998',font:{size:8}}},y:{grid:{color:'#e9edf2'},ticks:{color:'#7d8998',font:{size:8},callback:v=>`R$ ${v}`}}}}}));
   }
 
-  async function generateProposalPDF(){
-    if(!activeProposal)return;
-    const btn=document.getElementById('downloadProposalPdfBtn');const old=btn?.textContent||'Baixar PDF';
-    if(btn)btn.disabled=true;
-    const pages=[...document.querySelectorAll('.proposal-page')];
-    const totalPages=6;
-    let exportRoot=null;
-    const restore=[];
+  async function buildProposalPdfBlob({onProgress=null}={}){
+    if(!activeProposal)throw new Error('Proposta indisponível.');
+    const {jsPDF}=window.jspdf||{};if(!jsPDF||!window.html2canvas)throw new Error('Bibliotecas de PDF indisponíveis.');
+    const totalPages=6;let sourceRoot=null;let pages=[];
+    const previewOpen=document.getElementById('proposalPreviewModal')?.classList.contains('open');
+    const previewPages=[...document.querySelectorAll('#proposalPages .proposal-page')];
+    if(previewOpen&&previewPages.length===totalPages)pages=previewPages;
+    else{
+      sourceRoot=document.createElement('div');sourceRoot.className='pdf-export-source';sourceRoot.innerHTML=renderProposalDocument(activeProposal);document.body.appendChild(sourceRoot);
+      await new Promise(r=>setTimeout(r,80));
+      initProposalPDFElements();
+      await new Promise(r=>setTimeout(r,220));
+      pages=[...sourceRoot.querySelectorAll('.proposal-page')];
+    }
+    if(pages.length!==totalPages){sourceRoot?.remove();throw new Error(`As ${totalPages} páginas não foram renderizadas.`);}
+    if(document.fonts?.ready)await document.fonts.ready;
+    await Promise.all([...pages.flatMap(page=>[...page.querySelectorAll('img')])].map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.addEventListener('load',resolve,{once:true});img.addEventListener('error',resolve,{once:true});setTimeout(resolve,3000);}))); 
+    await new Promise(r=>setTimeout(r,160));
+    let exportRoot=null;const restore=[];
     try{
-      const {jsPDF}=window.jspdf||{};
-      if(pages.length!==totalPages)throw new Error(`As ${totalPages} páginas não foram renderizadas.`);
-      if(!jsPDF||!window.html2canvas){
-        document.body.classList.add('printing-proposal');
-        const cleanup=()=>document.body.classList.remove('printing-proposal');
-        window.addEventListener('afterprint',cleanup,{once:true});
-        window.print();
-        setTimeout(cleanup,1500);
-        toast('Use “Salvar como PDF”','O navegador abriu a impressão porque as bibliotecas de download não estavam disponíveis.','info');
-        return;
-      }
-      if(document.fonts?.ready)await document.fonts.ready;
-      await Promise.all([...document.querySelectorAll('.proposal-page img')].map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.addEventListener('load',resolve,{once:true});img.addEventListener('error',resolve,{once:true});setTimeout(resolve,3000);}))); 
-      await new Promise(r=>setTimeout(r,250));
-
-      document.body.classList.add('exporting-proposal');
-      exportRoot=document.createElement('div');
-      exportRoot.className='pdf-export-root';
-      document.body.appendChild(exportRoot);
-
+      document.body.classList.add('exporting-proposal');exportRoot=document.createElement('div');exportRoot.className='pdf-export-root';document.body.appendChild(exportRoot);
       const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
       for(let i=0;i<pages.length;i++){
-        const page=pages[i];
-        restore.push({page,parent:page.parentNode,next:page.nextSibling,style:page.getAttribute('style')||''});
-        exportRoot.innerHTML='';
-        exportRoot.appendChild(page);
+        const page=pages[i];restore.push({page,parent:page.parentNode,next:page.nextSibling,style:page.getAttribute('style')||''});exportRoot.innerHTML='';exportRoot.appendChild(page);
         Object.assign(page.style,{width:'794px',height:'1123px',minWidth:'794px',minHeight:'1123px',maxWidth:'794px',maxHeight:'1123px',transform:'none',margin:'0',boxShadow:'none',position:'relative',left:'0',top:'0'});
-        if(btn)btn.textContent=`Gerando página ${i+1}/${totalPages}...`;
-        await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
-        const canvas=await html2canvas(page,{
-          scale:2,
-          useCORS:true,
-          allowTaint:true,
-          backgroundColor:'#ffffff',
-          logging:false,
-          imageTimeout:15000,
-          windowWidth:794,
-          windowHeight:1123,
-          width:794,
-          height:1123,
-          scrollX:0,
-          scrollY:0,
-          x:0,
-          y:0
-        });
-        const img=canvas.toDataURL('image/jpeg',.94);
-        if(i>0)pdf.addPage();
-        pdf.addImage(img,'JPEG',0,0,210,297,undefined,'FAST');
+        onProgress?.(`Gerando página ${i+1}/${totalPages}...`);await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+        const canvas=await html2canvas(page,{scale:2,useCORS:true,allowTaint:true,backgroundColor:'#ffffff',logging:false,imageTimeout:15000,windowWidth:794,windowHeight:1123,width:794,height:1123,scrollX:0,scrollY:0,x:0,y:0});
+        const img=canvas.toDataURL('image/jpeg',.94);if(i>0)pdf.addPage();pdf.addImage(img,'JPEG',0,0,210,297,undefined,'FAST');
       }
+      return {blob:pdf.output('blob'),pdf};
+    }finally{
+      for(let i=restore.length-1;i>=0;i--){const item=restore[i];if(item.next&&item.next.parentNode===item.parent)item.parent.insertBefore(item.page,item.next);else item.parent?.appendChild(item.page);item.page.setAttribute('style',item.style);}
+      exportRoot?.remove();sourceRoot?.remove();document.body.classList.remove('exporting-proposal');setTimeout(()=>{initProposalPDFElements();fitProposalPages();},80);
+    }
+  }
+
+  async function generateProposalPDF(){
+    if(!activeProposal)return;
+    const btn=document.getElementById('downloadProposalPdfBtn');const old=btn?.textContent||'Baixar PDF';if(btn)btn.disabled=true;
+    try{
+      const {pdf}=await buildProposalPdfBlob({onProgress:text=>{if(btn)btn.textContent=text;}});
       pdf.save(`${slugify(activeProposal.number+'-'+activeProposal.client.name)}.pdf`);
       toast('PDF gerado','A proposta premium foi exportada em A4 sem redimensionamento.');
     }catch(error){
       console.error(error);
-      toast('Erro ao gerar PDF',error.message||'Não foi possível criar o arquivo.','error');
-    }finally{
-      for(let i=restore.length-1;i>=0;i--){
-        const item=restore[i];
-        if(item.next&&item.next.parentNode===item.parent)item.parent.insertBefore(item.page,item.next);
-        else item.parent?.appendChild(item.page);
-        item.page.setAttribute('style',item.style);
-      }
-      exportRoot?.remove();
-      document.body.classList.remove('exporting-proposal');
-      if(btn){btn.disabled=false;btn.textContent=old;}
-      setTimeout(()=>{initProposalPDFElements();fitProposalPages();},80);
-    }
+      if(!window.jspdf?.jsPDF||!window.html2canvas){document.body.classList.add('printing-proposal');const cleanup=()=>document.body.classList.remove('printing-proposal');window.addEventListener('afterprint',cleanup,{once:true});window.print();setTimeout(cleanup,1500);toast('Use “Salvar como PDF”','O navegador abriu a impressão porque as bibliotecas de download não estavam disponíveis.','info');}
+      else toast('Erro ao gerar PDF',error.message||'Não foi possível criar o arquivo.','error');
+    }finally{if(btn){btn.disabled=false;btn.textContent=old;}fitProposalPages();}
   }
 
   function createSimpleSignaturePad(canvas){
