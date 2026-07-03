@@ -2008,7 +2008,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   const EMAIL_SCRIPT_URL_KEY = 'solarcrm-email-script-url-v1';
   const EMAIL_SCRIPT_TOKEN_KEY = 'solarcrm-email-script-token-v1';
   const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-2';
-  const SYSTEM_VERSION = '3.1.1-firestore-sem-array-aninhado';
+  const SYSTEM_VERSION = '3.2.0-fechamento-contrato-homologacao';
   let storageWarningShown = false;
   let draftSaveTimer = null;
   let firebaseLastDiagnostic = null;
@@ -3189,12 +3189,13 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     const module=permissionModuleForCollection(collection);
     const paid=collection==='financial'&&row.status!=='Pago'&&row.status!=='Cancelado'&&hasPermission('financial','approve')?`<button class="btn btn-secondary btn-sm" data-action="mark-paid" data-id="${row.id}" title="Confirmar pagamento">Pago</button>`:'';
     const project=collection==='works'&&hasPermission('works','view')?`<button class="btn btn-primary btn-sm" data-action="open-project" data-id="${row.id}" title="Abrir Kanban e documentos">Projeto</button>${hasPermission('projectDocuments','view')?`<button class="btn btn-secondary btn-sm btn-icon" data-action="project-documents" data-id="${row.id}" title="Documentos do projeto">▤</button>`:''}`:'';
+    const contract=collection==='contracts'&&hasPermission('contracts','view')?`<button class="btn btn-primary btn-sm" data-action="generate-contract" data-id="${row.id}" title="Gerar contrato completo">Contrato</button>`:'';
     const view=hasPermission(module,'view')?`<button class="btn btn-ghost btn-sm btn-icon" data-action="view-entity" data-collection="${collection}" data-id="${row.id}" title="Detalhes">⌕</button>`:'';
     const edit=hasPermission(module,'edit')?`<button class="btn btn-ghost btn-sm btn-icon" data-action="edit-entity" data-collection="${collection}" data-id="${row.id}" title="Editar">✎</button>`:'';
     const remove=collection==='works'
       ? (canDeleteProject()?`<button class="btn btn-danger btn-sm btn-icon" data-action="delete-entity" data-collection="${collection}" data-id="${row.id}" title="Excluir projeto">×</button>`:'')
       : (hasPermission(module,'delete')?`<button class="btn btn-danger btn-sm btn-icon" data-action="delete-entity" data-collection="${collection}" data-id="${row.id}" title="Excluir">×</button>`:'');
-    return `${paid}${project}${view}${edit}${remove}`;
+    return `${paid}${project}${contract}${view}${edit}${remove}`;
   }
 
   function renderEntityTable(collection) {
@@ -3246,14 +3247,69 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     if(!hasPermission('leads','edit')){denyPermission('leads','edit');renderView('kanban');return;}
     const lead=getCompanyRecord('leads',leadId);if(!lead||!pipelineStages.some(item=>item.id===stage))return;
     const previous=lead.stage;lead.stage=stage;lead.updatedAt=new Date().toISOString();
-    if(stage==='Fechado')upsertClientFromLead(lead);
-    addActivity('◎','Lead avançou no funil',`${lead.name}: ${previous} → ${stage}`);persist();syncRecordToFirebase('leads',lead);renderView('kanban');renderSidebar();toast('Etapa atualizada',`${lead.name} → ${stage}`);
+    let closure=null;
+    if(stage==='Fechado') closure=ensureLeadClosedWorkflows(lead,previous);
+    addActivity('◎','Lead avançou no funil',`${lead.name}: ${previous} → ${stage}`);persist();syncRecordToFirebase('leads',lead);renderView('kanban');renderSidebar();
+    toast('Etapa atualizada',closure?`${lead.name} → ${stage}. Contrato e homologação criados automaticamente.`:`${lead.name} → ${stage}`);
   }
 
   function upsertClientFromLead(lead){
     const existing=companyRows('clients').find(client=>client.email&&lead.email&&client.email.toLowerCase()===lead.email.toLowerCase()||client.name.toLowerCase()===lead.name.toLowerCase());
     const data={id:existing?.id||newId('client'),companyId:state.currentCompanyId,name:lead.name,phone:lead.phone||existing?.phone||'',email:lead.email||existing?.email||'',city:lead.city||existing?.city||'',status:'Ativo',updatedAt:new Date().toISOString(),createdAt:existing?.createdAt||todayISO()};
     if(existing)Object.assign(existing,data);else state.clients.unshift(data);syncRecordToFirebase('clients',data);return data;
+  }
+
+  function proposalForClosedLead(lead){
+    const name=String(lead.name||'').trim().toLowerCase();
+    return companyRows('proposals').find(p=>
+      (lead.proposalId&&p.id===lead.proposalId)
+      || (lead.email&&p.client?.email&&p.client.email.toLowerCase()===lead.email.toLowerCase())
+      || (lead.phone&&p.client?.phone&&normalizePhone(p.client.phone)===normalizePhone(lead.phone))
+      || (p.client?.name&&p.client.name.trim().toLowerCase()===name)
+    );
+  }
+
+  function ensureLeadClosedWorkflows(lead,previousStage=''){
+    if(!lead||lead.stage!=='Fechado')return null;
+    const client=upsertClientFromLead(lead);
+    const proposal=proposalForClosedLead(lead);
+    const calc=proposal?calculateProposal(proposal):null;
+    const now=new Date().toISOString();
+    const proposalId=proposal?.id||lead.proposalId||'';
+    const value=Number(proposal?.commercial?.price||lead.estimatedValue||0);
+    const paymentMethod=proposal?.commercial?.paymentMethod||'';
+    const distributor=proposal?.client?.distributor||client.distributor||'';
+    const documentNo=proposal?.client?.document||client.document||'';
+    const city=proposal?.client?.city||client.city||lead.city||'';
+    let createdContract=false,createdHomologation=false;
+
+    let contract=companyRows('contracts').find(row=>(proposalId&&row.proposalId===proposalId)||row.leadId===lead.id||(row.clientName||'').toLowerCase()===String(lead.name||'').toLowerCase());
+    if(!contract){
+      contract={id:newId('contract'),companyId:state.currentCompanyId,leadId:lead.id,proposalId,clientId:client.id,clientName:lead.name,value,signedAt:'',status:'Aguardando assinatura',paymentMethod,notes:`Contrato gerado automaticamente ao mover o card para Fechado. Cliente: ${lead.name}${documentNo?` · Documento: ${documentNo}`:''}${city?` · Cidade: ${city}`:''}.`,createdAt:todayISO(),updatedAt:now};
+      state.contracts.unshift(contract);createdContract=true;
+    }else{
+      Object.assign(contract,{leadId:contract.leadId||lead.id,proposalId:contract.proposalId||proposalId,clientId:contract.clientId||client.id,value:contract.value||value,paymentMethod:contract.paymentMethod||paymentMethod,updatedAt:now});
+    }
+
+    let homologation=companyRows('homologations').find(row=>(proposalId&&row.proposalId===proposalId)||row.leadId===lead.id||(row.clientName||'').toLowerCase()===String(lead.name||'').toLowerCase());
+    if(!homologation){
+      homologation={id:newId('hom'),companyId:state.currentCompanyId,leadId:lead.id,proposalId,clientId:client.id,clientName:lead.name,distributor,protocol:'',engineer:'A definir',submittedAt:'',deadline:addDaysISO(30),status:'Documentação',notes:`Homologação aberta automaticamente após fechamento comercial.${calc?` Sistema previsto: ${number(calc.actualPower,2)} kWp.`:''}`,createdAt:todayISO(),updatedAt:now};
+      state.homologations.unshift(homologation);createdHomologation=true;
+    }else{
+      Object.assign(homologation,{leadId:homologation.leadId||lead.id,proposalId:homologation.proposalId||proposalId,clientId:homologation.clientId||client.id,distributor:homologation.distributor||distributor,updatedAt:now});
+    }
+
+    if(proposal){
+      proposal.status=proposal.status==='Rascunho'?'Enviada':proposal.status;
+      proposal.updatedAt=now;
+      syncRecordToFirebase('proposals',proposal);
+    }
+    syncRecordToFirebase('contracts',contract);syncRecordToFirebase('homologations',homologation);
+    if(createdContract||createdHomologation){
+      addActivity('✓','Fechamento comercial automático',`${lead.name} · contrato e homologação preparados`);
+      addNotification('Contrato e homologação criados',`${lead.name} foi enviado automaticamente para Contratos e Homologação.`,'success');
+    }
+    return {client,contract,homologation,createdContract,createdHomologation};
   }
 
   function ensureAllProjectStructures(){companyRows('works').forEach(work=>ensureProjectStructure(work));persist();}
@@ -3704,6 +3760,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
       'view-entity':()=>viewEntity(data.collection,data.id),
       'delete-entity':()=>deleteEntity(data.collection,data.id),
       'mark-paid':()=>markFinancialPaid(data.id),
+      'generate-contract':()=>generateContractDocument(data.id),
       'open-project':()=>openProjectWorkspace(data.id,'overview'),
       'project-documents':()=>openProjectWorkspace(data.id,'documents'),
       'edit-proposal':()=>openProposalBuilder(data.id),
@@ -3771,6 +3828,9 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     if(id){const idx=state[collection].findIndex(r=>r.id===id);state[collection][idx]={...state[collection][idx],...record};record.id=id;}else state[collection].unshift(record);
     if(collection==='inventory'&&previous&&Number(previous.quantity)!==Number(record.quantity)){
       state.stockMovements.unshift({id:newId('mov'),companyId:state.currentCompanyId,productId:record.id,productName:record.name,previousQuantity:Number(previous.quantity||0),newQuantity:Number(record.quantity||0),difference:Number(record.quantity||0)-Number(previous.quantity||0),createdAt:new Date().toISOString(),user:state.currentUser.name});
+    }
+    if(collection==='leads'&&record.stage==='Fechado'){
+      ensureLeadClosedWorkflows(state.leads.find(item=>item.id===record.id)||record,previous?.stage||'');
     }
     if(collection==='works'){
       const saved=state.works.find(item=>item.id===record.id);
@@ -3856,6 +3916,53 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     const details=schema.fields.map(([key,label])=>`<div class="detail-item"><span>${escapeHtml(label)}</span><strong>${formatCell(collection,key,row[key],row)}</strong></div>`).join('');
     openDrawer(title,schema.title,`<div class="detail-hero"><h3>${escapeHtml(title)}</h3><p>ID: ${escapeHtml(row.id)} · Atualizado em ${dateTimeBR(row.updatedAt||row.createdAt)}</p></div><div class="detail-grid">${details}</div><div class="timeline"><div class="timeline-item"><i class="timeline-dot"></i><strong>Registro criado</strong><span>${dateBR(row.createdAt||todayISO())} · ${escapeHtml(state.currentUser.name)}</span></div><div class="timeline-item"><i class="timeline-dot"></i><strong>Última atualização</strong><span>${dateTimeBR(row.updatedAt||new Date().toISOString())}</span></div></div><button class="btn btn-primary" style="width:100%;margin-top:12px" data-drawer-edit>Editar registro</button>`);
     document.querySelector('[data-drawer-edit]')?.addEventListener('click',()=>{closeDrawer();openEntityModal(collection,id);});
+  }
+
+  function contractRelatedData(contract){
+    const client=companyRows('clients').find(c=>(contract.clientId&&c.id===contract.clientId)||(c.name||'').toLowerCase()===String(contract.clientName||'').toLowerCase())||{};
+    const proposal=companyRows('proposals').find(p=>(contract.proposalId&&p.id===contract.proposalId)||(p.client?.name||'').toLowerCase()===String(contract.clientName||'').toLowerCase())||{};
+    const work=companyRows('works').find(w=>(contract.proposalId&&w.proposalId===contract.proposalId)||(w.clientName||'').toLowerCase()===String(contract.clientName||'').toLowerCase())||{};
+    const homologation=companyRows('homologations').find(h=>(contract.proposalId&&h.proposalId===contract.proposalId)||(h.clientName||'').toLowerCase()===String(contract.clientName||'').toLowerCase())||{};
+    return {client,proposal,work,homologation};
+  }
+
+  function renderContractHtml(contract){
+    const company=state.company||{};const {client,proposal,work,homologation}=contractRelatedData(contract);
+    const calc=proposal?.id?calculateProposal(proposal):null;
+    const companyName=company.tradeName||company.name||'Empresa contratada';
+    const clientName=contract.clientName||client.name||proposal.client?.name||'Cliente';
+    const documentNo=client.document||proposal.client?.document||work.clientDocument||'';
+    const city=client.city||proposal.client?.city||work.city||'';
+    const address=client.address||proposal.client?.address||'';
+    const consumerUnit=client.consumerUnit||proposal.client?.consumerUnit||'';
+    const distributor=client.distributor||proposal.client?.distributor||homologation.distributor||'';
+    const systemPower=Number(work.systemPower||calc?.actualPower||proposal.actualPower||0);
+    const investment=Number(contract.value||proposal.commercial?.price||0);
+    const paymentMethod=contract.paymentMethod||proposal.commercial?.paymentMethod||'Conforme proposta comercial aprovada';
+    const logo=company.logo||'';
+    const clauses=[
+      ['1. Objeto do contrato',`O presente contrato tem por objeto o fornecimento, projeto, implantação e acompanhamento de um sistema solar fotovoltaico para a CONTRATANTE, conforme proposta comercial vinculada ${contract.proposalId?`ao ID ${contract.proposalId}`:'ao fechamento comercial'}, incluindo dimensionamento, orientação técnica e suporte nas etapas previstas.`],
+      ['2. Dados técnicos do sistema',`O sistema previsto possui potência estimada de ${number(systemPower,2)} kWp${consumerUnit?`, vinculado à unidade consumidora ${consumerUnit}`:''}${distributor?`, junto à distribuidora ${distributor}`:''}. A configuração final poderá ser ajustada em projeto executivo conforme vistoria técnica, disponibilidade de equipamentos e normas da concessionária.`],
+      ['3. Valor e forma de pagamento',`O valor comercial do contrato é de ${currency(investment)}, com forma de pagamento: ${paymentMethod}. Valores, prazos e condições comerciais respeitam a proposta aprovada e eventuais anexos comerciais assinados pelas partes.`],
+      ['4. Responsabilidades da contratada',`A CONTRATADA deverá conduzir a engenharia, orientação documental, aquisição e/ou separação dos equipamentos contratados, instalação, acompanhamento da homologação e suporte inicial de ativação, observando boas práticas técnicas e normas aplicáveis.`],
+      ['5. Responsabilidades da contratante',`A CONTRATANTE deverá disponibilizar documentos, acesso ao local, informações da unidade consumidora, autorizações necessárias e condições adequadas para execução das atividades, bem como cumprir os pagamentos pactuados.`],
+      ['6. Homologação e prazos',`O processo de homologação será iniciado após a reunião documental e técnica. Prazos de concessionária, vistoria, aprovação e troca de medidor podem variar conforme exigências externas, disponibilidade de agenda, clima e eventuais adequações técnicas.`],
+      ['7. Garantias',`As garantias de módulos, inversores, estrutura e instalação seguirão as condições dos fabricantes e da proposta comercial. Itens fora do escopo, mau uso, alterações por terceiros ou eventos externos podem não estar cobertos.`],
+      ['8. Aceite digital',`A assinatura física, aceite digital, confirmação por canal oficial ou aprovação expressa da proposta caracteriza autorização para avanço das próximas etapas comerciais, técnicas e operacionais.`]
+    ];
+    return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Contrato - ${escapeHtml(clientName)}</title><style>
+      @page{size:A4;margin:16mm}*{box-sizing:border-box}body{margin:0;background:#eef3f8;color:#122033;font-family:Inter,Arial,sans-serif;line-height:1.55}.contract-sheet{width:210mm;min-height:297mm;margin:24px auto;background:#fff;border-radius:18px;box-shadow:0 24px 70px rgba(18,32,51,.18);overflow:hidden}.contract-cover{padding:38px 44px;background:linear-gradient(135deg,#102a43,#071626);color:#fff;position:relative}.contract-cover:after{content:"";position:absolute;right:-90px;top:-90px;width:260px;height:260px;border-radius:999px;background:rgba(255,183,3,.22)}.contract-logo{height:72px;max-width:270px;object-fit:contain;margin-bottom:42px}.contract-kicker{letter-spacing:.16em;text-transform:uppercase;color:#ffd166;font-weight:900;font-size:11px}.contract-cover h1{font-size:42px;line-height:1.05;margin:10px 0 14px}.contract-cover p{max-width:560px;color:#d9e5f3;font-size:16px}.contract-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:32px}.contract-pill{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:16px;padding:14px}.contract-pill span{display:block;color:#aebed0;font-size:10px;text-transform:uppercase;font-weight:900}.contract-pill strong{display:block;margin-top:4px;font-size:15px}.contract-body{padding:34px 44px}.party-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:22px}.party-card{border:1px solid #dde5ef;border-radius:18px;padding:18px;background:#fbfdff}.party-card h2{font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:#64748b;margin:0 0 12px}.party-card p{margin:5px 0;font-size:13px}.clause{padding:18px 0;border-top:1px solid #e7edf5}.clause h3{margin:0 0 8px;font-size:18px}.clause p{margin:0;color:#394b5f;font-size:14px}.signature-grid{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:44px}.signature{padding-top:42px;border-top:1px solid #122033;text-align:center;font-size:13px}.contract-actions{position:sticky;top:0;z-index:9;display:flex;gap:10px;justify-content:flex-end;padding:12px;background:#071626}.contract-actions button{border:0;border-radius:12px;padding:12px 16px;font-weight:900;cursor:pointer}.primary{background:#ffb703;color:#102033}.secondary{background:#1d3550;color:#fff}@media print{body{background:#fff}.contract-actions{display:none}.contract-sheet{width:auto;min-height:auto;margin:0;box-shadow:none;border-radius:0}.contract-cover{border-radius:0}}
+      </style></head><body><div class="contract-actions"><button class="secondary" onclick="window.close()">Fechar</button><button class="primary" onclick="window.print()">Imprimir / salvar PDF</button></div><main class="contract-sheet"><section class="contract-cover">${logo?`<img class="contract-logo" src="${attr(logo)}" alt="Logo">`:''}<div class="contract-kicker">Contrato de fornecimento e implantação</div><h1>Contrato de Energia Solar Fotovoltaica</h1><p>Documento comercial gerado automaticamente com os dados do cliente, da empresa, da proposta e do fluxo de homologação.</p><div class="contract-meta"><div class="contract-pill"><span>Cliente</span><strong>${escapeHtml(clientName)}</strong></div><div class="contract-pill"><span>Investimento</span><strong>${currency(investment)}</strong></div><div class="contract-pill"><span>Sistema</span><strong>${number(systemPower,2)} kWp</strong></div></div></section><section class="contract-body"><div class="party-grid"><div class="party-card"><h2>Contratada</h2><p><strong>${escapeHtml(companyName)}</strong></p><p>${escapeHtml(company.document||'CNPJ não informado')}</p><p>${escapeHtml(company.city||'Cidade não informada')}</p><p>${escapeHtml(company.email||'')} ${company.phone?` · ${escapeHtml(company.phone)}`:''}</p></div><div class="party-card"><h2>Contratante</h2><p><strong>${escapeHtml(clientName)}</strong></p><p>${escapeHtml(documentNo||'CPF/CNPJ não informado')}</p><p>${escapeHtml(address||city||'Endereço/Cidade não informado')}</p><p>${escapeHtml(client.email||proposal.client?.email||'')} ${(client.phone||proposal.client?.phone)?` · ${escapeHtml(client.phone||proposal.client?.phone)}`:''}</p></div></div>${clauses.map(([title,text])=>`<article class="clause"><h3>${escapeHtml(title)}</h3><p>${escapeHtml(text)}</p></article>`).join('')}<div class="signature-grid"><div class="signature"><strong>${escapeHtml(companyName)}</strong><br>CONTRATADA</div><div class="signature"><strong>${escapeHtml(clientName)}</strong><br>CONTRATANTE</div></div><p style="margin-top:26px;color:#64748b;font-size:12px">Gerado em ${dateTimeBR(new Date().toISOString())}. Recomenda-se revisar cláusulas jurídicas, escopo final, condições de pagamento e garantias antes da assinatura definitiva.</p></section></main></body></html>`;
+  }
+
+  function generateContractDocument(id){
+    if(!hasPermission('contracts','view')){denyPermission('contracts','view');return;}
+    const contract=getCompanyRecord('contracts',id);if(!contract){toast('Contrato não encontrado','','error');return;}
+    const html=renderContractHtml(contract);
+    const popup=safeOpen('about:blank');
+    if(popup){popup.document.open();popup.document.write(html);popup.document.close();}
+    downloadBlob(new Blob([html],{type:'text/html;charset=utf-8'}),`contrato-${slugify(contract.clientName||contract.id)}.html`);
+    toast('Contrato gerado','Abra o arquivo ou use Imprimir / salvar PDF na nova aba.','success');
   }
 
   function exportCSV(collection){
