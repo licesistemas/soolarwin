@@ -815,7 +815,7 @@ body.auth-ready #loginScreen { display:none !important; }
 </head>
 <body data-theme="dark" class="auth-locked">
 
-  <section id="loginScreen" class="login-screen" aria-label="Autenticação do SolarCRM Pro">
+  <section id="loginScreen" class="login-screen" aria-label="Autenticação do SOOLARWIN ENERGIA SOLAR">
     <div class="login-hero">
       <div class="login-brand">
         <div class="login-brand-mark">☀</div>
@@ -885,7 +885,7 @@ body.auth-ready #loginScreen { display:none !important; }
         <div class="topbar-left">
           <button id="mobileMenuBtn" class="icon-btn mobile-only" type="button" aria-label="Abrir menu">☰</button>
           <div>
-            <p class="eyebrow" id="companyBreadcrumb">SolarCRM Pro</p>
+            <p class="eyebrow" id="companyBreadcrumb">SOOLARWIN ENERGIA SOLAR</p>
             <h1 id="viewTitle">Dashboard</h1>
           </div>
         </div>
@@ -1054,7 +1054,7 @@ body.auth-ready #loginScreen { display:none !important; }
   <input id="backupImportInput" type="file" accept="application/json" hidden />
 
   <script>
-/* Adaptador Firebase modular — SolarCRM Pro v2.9.9. */
+/* Adaptador Firebase modular — SOOLARWIN ENERGIA SOLAR v2.9.9. */
 (() => {
   'use strict';
   const SDK_VERSION = '11.10.0';
@@ -1795,7 +1795,7 @@ body.auth-ready #loginScreen { display:none !important; }
 
 </script>
   <script>
-/* SolarCRM Pro — aplicação front-end completa em JavaScript puro.
+/* SOOLARWIN ENERGIA SOLAR — aplicação front-end completa em JavaScript puro.
  * Funciona em modo local (localStorage) e pode sincronizar com Firebase via firebase-adapter.js.
  */
 (() => {
@@ -2371,7 +2371,7 @@ body.auth-ready #loginScreen { display:none !important; }
 
   async function scheduleAutomationJobInBackend(job){
     if(!job||!window.FirebaseCRM?.syncReady)return false;
-    const payload=job.channel==='email'?{companyId:state.currentCompanyId,to:job.recipient,subject:job.subject||'SolarCRM Pro',html:`<div style="font-family:Arial,sans-serif;line-height:1.6">${escapeHtml(job.message).replace(/\n/g,'<br>')}</div>`,metadata:{recordId:job.recordId,ruleId:job.ruleId}}:{companyId:state.currentCompanyId,to:job.recipient,message:job.message,metadata:{recordId:job.recordId,ruleId:job.ruleId}};
+    const payload=job.channel==='email'?{companyId:state.currentCompanyId,to:job.recipient,subject:job.subject||'SOOLARWIN ENERGIA SOLAR',html:`<div style="font-family:Arial,sans-serif;line-height:1.6">${escapeHtml(job.message).replace(/\n/g,'<br>')}</div>`,metadata:{recordId:job.recordId,ruleId:job.ruleId}}:{companyId:state.currentCompanyId,to:job.recipient,message:job.message,metadata:{recordId:job.recordId,ruleId:job.ruleId}};
     try{
       await window.FirebaseCRM.saveRecord('automationQueue',{...job,status:'pending',payload});
       job.status='Agendada no backend';job.updatedAt=new Date().toISOString();persist();if(activeView==='automations')renderView('automations');return true;
@@ -2577,7 +2577,7 @@ body.auth-ready #loginScreen { display:none !important; }
 
   function testAutomation(){
     const recipient=state.currentUser?.email||state.company.email||'';
-    queueAutomation({type:'test',channel:recipient?'email':'internal',recipient,subject:'Teste do SolarCRM Pro',message:`Teste de automação executado em ${dateTimeBR(new Date().toISOString())}.`,dedupeKey:`test-${Date.now()}`});
+    queueAutomation({type:'test',channel:recipient?'email':'internal',recipient,subject:'Teste do SOOLARWIN ENERGIA SOLAR',message:`Teste de automação executado em ${dateTimeBR(new Date().toISOString())}.`,dedupeKey:`test-${Date.now()}`});
     persist();showAutomationOutbox();toast('Teste criado','Use o botão Enviar na fila para concluir o teste.','info');
   }
 
@@ -2593,12 +2593,12 @@ body.auth-ready #loginScreen { display:none !important; }
         addNotification(job.subject||'Lembrete interno',job.message,'info');
       }else if(window.FirebaseCRM?.syncReady){
         if(job.channel==='whatsapp') await window.FirebaseCRM.callFunction('sendWhatsApp',{companyId:state.currentCompanyId,to:job.recipient,message:job.message,metadata:{recordId:job.recordId,ruleId:job.ruleId}});
-        else if(job.channel==='email') await window.FirebaseCRM.callFunction('sendEmail',{companyId:state.currentCompanyId,to:job.recipient,subject:job.subject||'SolarCRM Pro',html:`<div style="font-family:Arial,sans-serif;line-height:1.6">${escapeHtml(job.message).replace(/\n/g,'<br>')}</div>`,metadata:{recordId:job.recordId,ruleId:job.ruleId}});
+        else if(job.channel==='email') await window.FirebaseCRM.callFunction('sendEmail',{companyId:state.currentCompanyId,to:job.recipient,subject:job.subject||'SOOLARWIN ENERGIA SOLAR',html:`<div style="font-family:Arial,sans-serif;line-height:1.6">${escapeHtml(job.message).replace(/\n/g,'<br>')}</div>`,metadata:{recordId:job.recordId,ruleId:job.ruleId}});
       }else if(job.channel==='whatsapp'){
         safeOpen(`https://wa.me/${normalizePhone(job.recipient)}?text=${encodeURIComponent(job.message)}`);
         job.status='Aberto no WhatsApp';
       }else if(job.channel==='email'){
-        safeOpen(`mailto:${encodeURIComponent(job.recipient)}?subject=${encodeURIComponent(job.subject||'SolarCRM Pro')}&body=${encodeURIComponent(job.message)}`);
+        safeOpen(`mailto:${encodeURIComponent(job.recipient)}?subject=${encodeURIComponent(job.subject||'SOOLARWIN ENERGIA SOLAR')}&body=${encodeURIComponent(job.message)}`);
         job.status='Aberto no e-mail';
       }
       if(job.status==='Processando')job.status='Enviado';
@@ -2753,7 +2753,7 @@ body.auth-ready #loginScreen { display:none !important; }
     sidebar.innerHTML = `
       <div class="sidebar-brand">
         <div class="brand-mark">☀</div>
-        <div class="brand-copy"><strong>SolarCRM Pro</strong><span>Gestão de energia solar · v${SYSTEM_VERSION}</span></div>
+        <div class="brand-copy"><strong>SOOLARWIN ENERGIA SOLAR</strong><span>Gestão de energia solar · v${SYSTEM_VERSION}</span></div>
       </div>
       <div class="sidebar-company">
         <div><strong>${escapeHtml(state.company.tradeName||state.company.name)}</strong><span>Empresa ativa · ${escapeHtml(state.company.city)}</span></div>
@@ -2802,7 +2802,7 @@ body.auth-ready #loginScreen { display:none !important; }
     setTimeout(()=>initViewCharts(view),0);
   }
 
-  function renderDashboardPlaceholder(text){ return `<div class="empty-state card"><strong>SolarCRM Pro</strong>${escapeHtml(text)}</div>`; }
+  function renderDashboardPlaceholder(text){ return `<div class="empty-state card"><strong>SOOLARWIN ENERGIA SOLAR</strong>${escapeHtml(text)}</div>`; }
 
   function pageHead(title, subtitle, actions='') {
     return `<div class="page-head"><div><h2>${escapeHtml(title)}</h2><p>${escapeHtml(subtitle)}</p></div><div class="page-actions">${actions}</div></div>`;
@@ -4266,7 +4266,7 @@ ${ocrText}`.trim();activeProposal.billText=text.slice(0,100000);source='ocr';loc
     if(activeProposal.client.phone){queueAutomation({type:'proposal',channel:'whatsapp',recipient:normalizePhone(activeProposal.client.phone),message,recordId:activeProposal.id,dedupeKey:`proposal-whatsapp-${activeProposal.id}-${activeProposal.updatedAt}`});queued++;}
     if(activeProposal.client.email&&state.automations.emailProposal){queueAutomation({type:'proposal',channel:'email',recipient:activeProposal.client.email,subject:`Proposta de energia solar ${activeProposal.number}`,message:`${message}
 
-A proposta completa pode ser visualizada e baixada no SolarCRM Pro.`,recordId:activeProposal.id,dedupeKey:`proposal-email-${activeProposal.id}-${activeProposal.updatedAt}`});queued++;}
+A proposta completa pode ser visualizada e baixada no SOOLARWIN ENERGIA SOLAR.`,recordId:activeProposal.id,dedupeKey:`proposal-email-${activeProposal.id}-${activeProposal.updatedAt}`});queued++;}
     upsertLeadFromProposal(activeProposal,'Proposta Enviada');upsertClientFromProposal(activeProposal,'Em negociação');
     const idx=state.proposals.findIndex(item=>item.id===activeProposal.id);if(idx>=0)state.proposals[idx]=deepClone(activeProposal);
     addActivity('PV','Proposta enviada',`${activeProposal.client.name} · ${currency(activeProposal.commercial.price)}`);addNotification('Proposta preparada para envio',`${activeProposal.number} · ${queued} canal(is) na fila.`,'info');
