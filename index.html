@@ -2761,7 +2761,7 @@ body.auth-ready #loginScreen { display:none !important; }
       </div>
       <nav class="sidebar-nav">${navHtml}</nav>
       <div class="sidebar-footer">
-        <div class="sync-card"><div class="sync-row"><i class="sync-dot"></i><strong>${window.FirebaseCRM?.syncReady?'Firebase sincronizado':window.FirebaseCRM?.connected?'Firebase aguardando login':'Modo local ativo'}</strong></div><p>${window.FirebaseCRM?.syncReady?'Dados autorizados para sincronização.':window.FirebaseCRM?.connected?'Entre e valide o perfil para sincronizar.':'Seus dados ficam neste navegador. Configure o Firebase para multiusuário.'}</p></div>
+        <div class="sync-card"><div class="sync-row"><i class="sync-dot"></i><strong>${window.FirebaseCRM?.syncReady?'Banco de dados sincronizado':window.FirebaseCRM?.connected?'Firebase aguardando login':'Modo local ativo'}</strong></div><p>${window.FirebaseCRM?.syncReady?'Dados autorizados para sincronização.':window.FirebaseCRM?.connected?'Entre e valide o perfil para sincronizar.':'Seus dados ficam neste navegador. Configure o Firebase para multiusuário.'}</p></div>
         ${window.FirebaseCRM?.auth?.currentUser?'<button id="sidebarLogoutBtn" class="btn btn-ghost btn-sm sidebar-logout" type="button">Sair do sistema</button>':''}
       </div>`;
     sidebar.querySelectorAll('[data-view]').forEach(btn=>btn.addEventListener('click',()=>navigate(btn.dataset.view)));
