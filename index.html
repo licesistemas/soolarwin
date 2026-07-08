@@ -1297,7 +1297,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     companies: 'companies', users: 'users', teams: 'team_members', accessRequests: 'access_requests', clients: 'clients', leads: 'leads', proposals: 'proposals', contracts: 'contracts',
     projects: 'projects', works: 'projects', installations: 'installations', aftersales: 'installations', homologations: 'homologations',
     tickets: 'tickets', financial: 'financial', commissions: 'commissions', products: 'products', inventory: 'products',
-    suppliers: 'suppliers', notifications: 'notifications', projectDocuments: 'project_documents', automationRules: 'automation_rules', automationQueue: 'automation_queue', automationLogs: 'automation_logs', stockMovements: 'stock_movements', tasks: 'tasks', clientProjectStatus: 'client_project_status', client_project_status: 'client_project_status', publicProposals: 'public_proposals', public_proposals: 'public_proposals'
+    suppliers: 'suppliers', notifications: 'notifications', projectDocuments: 'project_documents', automationRules: 'automation_rules', automationQueue: 'automation_queue', automationLogs: 'automation_logs', stockMovements: 'stock_movements', tasks: 'tasks', clientProjectStatus: 'client_project_status', client_project_status: 'client_project_status', clientProjectNps: 'client_project_nps', client_project_nps: 'client_project_nps', publicProposals: 'public_proposals', public_proposals: 'public_proposals'
   };
 
   const firebaseErrorMessages = {
@@ -2080,7 +2080,8 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     { id:'Instalação', color:'blue', progress:65, workStatus:'Em instalação', defaultTask:'Executar instalação mecânica e elétrica' },
     { id:'Vistoria', color:'purple', progress:78, workStatus:'Vistoria', defaultTask:'Solicitar e acompanhar a vistoria da distribuidora' },
     { id:'Troca do medidor', color:'yellow', progress:90, workStatus:'Vistoria', defaultTask:'Acompanhar a troca pelo medidor bidirecional' },
-    { id:'Operação', color:'green', progress:100, workStatus:'Concluída', defaultTask:'Ativar monitoramento, treinar cliente e entregar o sistema' }
+    { id:'Operação', color:'green', progress:96, workStatus:'Concluída', defaultTask:'Ativar monitoramento, treinar cliente e entregar o sistema' },
+    { id:'Finalizado', color:'green', progress:100, workStatus:'Concluída', defaultTask:'Coletar NPS do cliente e encerrar oficialmente o projeto' }
   ];
 
   const projectDocumentCategories = [
@@ -2378,7 +2379,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
       users: [], accessRequests: [], notifications: [], leads: [], clients: [], proposals: [], contracts: [], works: [],
       homologations: [], financial: [], aftersales: [], tickets: [], commissions: [], inventory: [], teams: [], products: [], suppliers: [],
       automations: { whatsappLead:true, emailProposal:true, followup:true, reminders:true, collections:false, nps:true, lastRunAt:'' },
-      automationRules: [], automationQueue: [], automationLogs: [], stockMovements: [], projectDocuments: [], tasks: [], activity: []
+      automationRules: [], automationQueue: [], automationLogs: [], stockMovements: [], projectDocuments: [], tasks: [], client_project_nps: [], activity: []
     };
   }
 
@@ -2450,7 +2451,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     const current = data.companies.find(c => c.id === data.currentCompanyId) || data.companies[0];
     data.currentCompanyId = current.id;
     data.company = { ...defaultCompany, ...current };
-    const recordCollections = ['clients','leads','proposals','contracts','works','homologations','tickets','financial','commissions','inventory','teams','aftersales','notifications','projectDocuments','automationRules','automationQueue','automationLogs','stockMovements','tasks','products','suppliers','public_proposals'];
+    const recordCollections = ['clients','leads','proposals','contracts','works','homologations','tickets','financial','commissions','inventory','teams','aftersales','notifications','projectDocuments','automationRules','automationQueue','automationLogs','stockMovements','tasks','products','suppliers','client_project_nps','public_proposals'];
     recordCollections.forEach(collection => {
       data[collection] = (Array.isArray(data[collection]) ? data[collection] : []).map(record => ({ ...record, companyId: record.companyId || data.currentCompanyId }));
     });
@@ -2563,7 +2564,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
 
   function normalizeProjectStage(value=''){
     const direct=projectStages.find(stage=>stage.id===value)?.id;if(direct)return direct;
-    const map={'Planejamento':'Projeto','Documentação':'Homologação','Em análise':'Homologação','Pendência':'Homologação','Aprovada':'Compras','Compras':'Compras','Em instalação':'Instalação','Vistoria':'Vistoria','Troca do medidor':'Troca do medidor','Concluída':'Operação','Concluido':'Operação'};
+    const map={'Planejamento':'Projeto','Documentação':'Homologação','Em análise':'Homologação','Pendência':'Homologação','Aprovada':'Compras','Compras':'Compras','Em instalação':'Instalação','Vistoria':'Vistoria','Troca do medidor':'Troca do medidor','Finalizado':'Finalizado','Concluída':'Finalizado','Concluido':'Finalizado'};
     return map[value]||'Projeto';
   }
   function projectStageDefinition(stage){return projectStages.find(item=>item.id===normalizeProjectStage(stage))||projectStages[0];}
@@ -3362,10 +3363,10 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
 
   function recalculateProject(work,recordHistory=true){
     if(!work)return;const tasks=projectTasksFor(work.id);const completed=tasks.filter(task=>task.status==='Concluída').length;const taskProgress=tasks.length?completed/tasks.length*100:0;
-    const firstOpenStage=projectStages.find(stage=>tasks.some(task=>task.stage===stage.id&&task.status!=='Concluída'))?.id||'Operação';
-    const stage=projectStageDefinition(work.projectStage||firstOpenStage);work.progress=Math.max(Number(taskProgress.toFixed(0)),stage.progress===100?100:Math.min(stage.progress,95));work.status=stage.workStatus;work.updatedAt=new Date().toISOString();
+    const firstOpenStage=projectStages.find(stage=>tasks.some(task=>task.stage===stage.id&&task.status!=='Concluída'))?.id||'Finalizado';
+    const stage=projectStageDefinition(work.projectStage||firstOpenStage);work.progress=Math.max(Number(taskProgress.toFixed(0)),stage.id==='Finalizado'?100:Math.min(stage.progress,99));work.status=stage.workStatus;work.updatedAt=new Date().toISOString();
     if(recordHistory&&!work.stageHistory?.some(item=>item.stage===stage.id&&item.at===work.updatedAt)){work.stageHistory=work.stageHistory||[];}
-    if(stage.id==='Operação'&&tasks.every(task=>task.status==='Concluída')){work.progress=100;work.status='Concluída';ensureAfterSalesFromWork(work);}
+    if(stage.id==='Finalizado'&&tasks.every(task=>task.status==='Concluída')){work.progress=100;work.status='Concluída';ensureAfterSalesFromWork(work);}
   }
 
   function updateProjectStage(projectId,stageId,{render=true,notify=true}={}){
@@ -3376,7 +3377,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     projectTasksFor(projectId).forEach(task=>{const index=projectStages.findIndex(stage=>stage.id===task.stage);if(index<targetIndex)task.status='Concluída';else if(index===targetIndex&&task.status==='Pendente')task.status='Em andamento';else if(index>targetIndex&&task.isMilestone&&task.status==='Concluída')task.status='Pendente';task.updatedAt=new Date().toISOString();syncRecordToFirebase('tasks',task);});
     const stage=projectStageDefinition(stageId);work.progress=stage.progress;work.status=stage.workStatus;work.updatedAt=new Date().toISOString();
     const hom=companyRows('homologations').find(item=>item.proposalId===work.proposalId||item.clientName===work.clientName);if(hom){if(stageId==='Homologação'&&hom.status==='Documentação')hom.status='Em análise';if(targetIndex>1&&!['Aprovada','Reprovada'].includes(hom.status))hom.status='Aprovada';hom.updatedAt=new Date().toISOString();syncRecordToFirebase('homologations',hom);}
-    if(stageId==='Operação'){projectTasksFor(projectId).forEach(task=>{task.status='Concluída';task.updatedAt=new Date().toISOString();syncRecordToFirebase('tasks',task);});work.progress=100;work.status='Concluída';ensureAfterSalesFromWork(work);}
+    if(stageId==='Finalizado'){projectTasksFor(projectId).forEach(task=>{task.status='Concluída';task.updatedAt=new Date().toISOString();syncRecordToFirebase('tasks',task);});work.progress=100;work.status='Concluída';ensureAfterSalesFromWork(work);}
     if(previous!==stageId&&work.portalPublishedAt)publishClientPortalStatus(work,{silent:true});
     if(previous!==stageId)executeAutomationRules('project_stage_enter',work,{stage:stageId,previous,eventKey:`project-stage-${projectId}-${stageId}-${Date.now()}`});
     addActivity('⌁','Projeto avançou',`${work.clientName}: ${previous} → ${stageId}`);persist();syncRecordToFirebase('works',work);if(notify)toast('Etapa do projeto atualizada',`${work.clientName} → ${stageId}`);if(render){renderSidebar();if(activeView==='kanban')renderView('kanban');if(activeProjectId===projectId)renderProjectWorkspace();}
@@ -3480,6 +3481,10 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
       stageHistory:(work.stageHistory||[]).slice(0,12).map(item=>({stage:item.stage||'',previous:item.previous||'',at:item.at||'',user:item.user||'Equipe'})),
       tasks:tasks.map(task=>({title:task.title||'',stage:task.stage||'',status:task.status||'',assignee:task.assignee||'',dueDate:task.dueDate||'',isMilestone:Boolean(task.isMilestone)})),
       documents:{total:docs.length, categories:[...new Set(docs.map(doc=>doc.category).filter(Boolean))]},
+      npsEnabled:stage.id==='Finalizado', npsScale:{min:1,max:5}, npsCollection:'client_project_nps',
+      npsTitle:'Avaliação final do projeto',
+      npsDescription:'Agora que o projeto foi finalizado, avalie cada etapa de 1 a 5 e deixe um comentário opcional.',
+      npsStages:projectStages.map(item=>({id:item.id,label:item.id,description:item.defaultTask})),
       updatedAt:new Date().toISOString(), updatedBy:state.currentUser.name||state.currentUser.email||'Sistema'
     };
   }
@@ -3503,8 +3508,10 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
 
   function renderProjectOverview(work){
     const stage=projectStageDefinition(work.projectStage);const docs=projectDocumentsFor(work.id);const tasks=projectTasksFor(work.id);const completed=tasks.filter(task=>task.status==='Concluída').length;const currentIndex=projectStages.findIndex(item=>item.id===stage.id);
+    const npsRows=Array.isArray(state.client_project_nps)?state.client_project_nps:[];const nps=npsRows.find(row=>row.projectId===work.id||row.cpf===clientDocumentForWork(work));
+    const npsHtml=nps?`<section class="card" style="margin-top:16px"><div class="card-head"><div><h3>NPS do cliente</h3><p>Avaliação enviada pelo portal do cliente em ${dateTimeBR(nps.submittedAt||nps.updatedAt||nps.createdAt)}.</p></div><span class="status green">Respondido</span></div><div class="card-body"><div class="detail-grid">${Object.entries(nps.scores||{}).map(([key,value])=>`<div class="detail-item"><span>${escapeHtml(key)}</span><strong>${escapeHtml(value)}/5</strong></div>`).join('')}</div>${nps.comment?`<div class="notice" style="margin-top:12px"><strong>Comentário:</strong> ${escapeHtml(nps.comment)}</div>`:''}</div></section>`:(stage.id==='Finalizado'?`<div class="notice warning" style="margin-top:16px"><strong>NPS liberado no portal do cliente.</strong> O cliente poderá avaliar cada etapa de 1 a 5 e deixar um comentário opcional em cliente.html.</div>`:'');
     return `<div class="pipeline-summary"><div class="pipeline-pill"><span>Etapa atual</span><strong>${escapeHtml(stage.id)}</strong></div><div class="pipeline-pill"><span>Progresso</span><strong>${number(work.progress)}%</strong></div><div class="pipeline-pill"><span>Tarefas concluídas</span><strong>${completed}/${tasks.length}</strong></div><div class="pipeline-pill"><span>Documentos</span><strong>${docs.length}</strong></div></div>
-      <div class="project-stage-track">${projectStages.map((item,index)=>`<div class="project-stage-step ${index<currentIndex?'done':index===currentIndex?'current':''}"><strong>${index<currentIndex?'✓ ':index===currentIndex?'● ':''}${escapeHtml(item.id)}</strong><span>${escapeHtml(item.defaultTask)}</span></div>`).join('')}</div>
+      <div class="project-stage-track">${projectStages.map((item,index)=>`<div class="project-stage-step ${index<currentIndex?'done':index===currentIndex?'current':''}"><strong>${index<currentIndex?'✓ ':index===currentIndex?'● ':''}${escapeHtml(item.id)}</strong><span>${escapeHtml(item.defaultTask)}</span></div>`).join('')}</div>${npsHtml}
       <div class="project-overview-grid" style="margin-top:16px"><section class="card"><div class="card-head"><div><h3>Dados do projeto</h3><p>Informações operacionais da venda.</p></div><button class="btn btn-ghost btn-sm" data-project-edit type="button">Editar cadastro</button></div><div class="card-body"><div class="detail-grid"><div class="detail-item"><span>Cliente</span><strong>${escapeHtml(work.clientName)}</strong></div><div class="detail-item"><span>CPF/CNPJ</span><strong>${escapeHtml(maskCpfCnpj(clientDocumentForWork(work))||'—')}</strong></div><div class="detail-item"><span>Cidade</span><strong>${escapeHtml(work.city||'—')}</strong></div><div class="detail-item"><span>Potência</span><strong>${number(work.systemPower,2)} kWp</strong></div><div class="detail-item"><span>Equipe</span><strong>${escapeHtml(work.team||'A definir')}</strong></div><div class="detail-item"><span>Início</span><strong>${dateBR(work.startDate)}</strong></div><div class="detail-item"><span>Prazo</span><strong>${dateBR(work.deadline)}</strong></div></div><div class="notice" style="margin-top:12px">${escapeHtml(work.notes||'Sem observações.')}</div></div></section>
       <section class="card"><div class="card-head"><div><h3>Ações rápidas</h3><p>Continue o fluxo pós-venda.</p></div></div><div class="card-body" style="display:grid;gap:9px"><button class="btn btn-primary" data-project-go="kanban" type="button">Abrir Kanban do projeto</button><button class="btn btn-secondary" data-client-portal-publish type="button">Publicar status no portal</button><button class="btn btn-ghost" data-client-portal-copy type="button">Copiar link do cliente</button><button class="btn btn-secondary" data-project-go="documents" type="button">Adicionar documentação</button>${canDeleteProject()?`<button class="btn btn-danger" data-project-delete type="button">Excluir projeto</button>`:''}<label class="field"><span>Avançar etapa</span><select id="workspaceStageSelect">${projectStages.map(item=>`<option value="${attr(item.id)}" ${item.id===stage.id?'selected':''}>${escapeHtml(item.id)}</option>`).join('')}</select></label></div></section></div>`;
   }
@@ -3996,7 +4003,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
         taskRows.forEach(row=>deletions.push(window.FirebaseCRM.deleteRecord('tasks',row.id)));
         docRows.forEach(row=>deletions.push(window.FirebaseCRM.deleteRecord('projectDocuments',row.id)));
         afterRows.forEach(row=>deletions.push(window.FirebaseCRM.deleteRecord('aftersales',row.id)));
-        if(portalWasPublished)deletions.push(window.FirebaseCRM.deleteRecord('client_project_status',cpf));
+        if(portalWasPublished){deletions.push(window.FirebaseCRM.deleteRecord('client_project_status',cpf));deletions.push(window.FirebaseCRM.deleteRecord('client_project_nps',`${cpf}_${projectId}`));}
         const results=await Promise.allSettled(deletions);
         const failed=results.filter(result=>result.status==='rejected');
         if(failed.length)toast('Exclusão local concluída',`${failed.length} item(ns) não foram removidos da nuvem. Verifique as regras do Banco de dados.`,'error');
@@ -6537,7 +6544,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
 
   async function syncLocalToFirebase(){
     if(!ensureFirebaseSyncReady())return;
-    const collections=['teams','clients','leads','proposals','contracts','works','homologations','tickets','financial','commissions','inventory','aftersales','suppliers','notifications','projectDocuments','tasks','automationRules','automationQueue','public_proposals'];
+    const collections=['teams','clients','leads','proposals','contracts','works','homologations','tickets','financial','commissions','inventory','aftersales','suppliers','notifications','projectDocuments','tasks','automationRules','automationQueue','client_project_nps','public_proposals'];
     try{
       await window.FirebaseCRM.saveRecord('companies',{...state.company,id:state.currentCompanyId,companyId:state.currentCompanyId});
       await window.FirebaseCRM.saveRecord('users',{...state.currentUser,...permissionArraysFromMatrix(normalizePermissionMatrix(state.currentUser.permissions,state.role,state.currentUser)),id:window.FirebaseCRM.auth.currentUser.uid,role:state.role,companyId:state.currentCompanyId,companyIds:state.currentUser.companyIds||[state.currentCompanyId],status:'Ativo'});
@@ -6549,7 +6556,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
 
   async function syncFirebaseToLocal(){
     if(!ensureFirebaseSyncReady())return;
-    const collections=['teams','clients','leads','proposals','contracts','works','homologations','tickets','financial','commissions','inventory','aftersales','suppliers','notifications','projectDocuments','tasks','automationRules','automationQueue','public_proposals'];
+    const collections=['teams','clients','leads','proposals','contracts','works','homologations','tickets','financial','commissions','inventory','aftersales','suppliers','notifications','projectDocuments','tasks','automationRules','automationQueue','client_project_nps','public_proposals'];
     try{
       const cloudCompanies=await window.FirebaseCRM.listRecords('companies',state.currentCompanyId);
       if(cloudCompanies.length){state.company={...defaultCompany,...cloudCompanies[0]};syncCurrentCompanyRecord();}
