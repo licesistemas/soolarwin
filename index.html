@@ -3451,7 +3451,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
       inverterQty:Number(c.inverterQty||0), inverterPower:Number(c.inverter?.power||0), inverterBrand:c.inverter?.brand||'', structureType:proposal.technical?.structureType||'', orientation:proposal.technical?.orientation||'',
       annualGeneration:Number(c.annualGeneration||0), monthlyGeneration:Number(c.monthlyGeneration||0), avgConsumption:Number(c.avgConsumption||0), currentTariff:Number(proposal.currentTariff||0),
       investment:Number(proposal.commercial?.price||0), monthlySaving:Number(c.monthlySaving||0), annualSaving:Number(c.annualSaving||0), payback:Number(c.payback||0), roi:Number(c.roi||0), paymentMethod:proposal.commercial?.paymentMethod||'',
-      coverTitle:/solo/i.test(proposal.technical?.structureType||'')?'Projeto Solar de Solo':'Projeto Solar Fotovoltaico',
+      coverTitle:/solo/i.test(proposal.technical?.structureType||'')?'Projeto Solar Fotovoltaico':'Projeto Solar Fotovoltaico',
       summaryText:'Solução fotovoltaica com alta performance, economia e previsibilidade energética.',
       investmentFormatted:shortCurrency(proposal.commercial?.price||0), monthlySavingFormatted:shortCurrency(c.monthlySaving||0), annualSavingFormatted:shortCurrency(c.annualSaving||0)
     };
