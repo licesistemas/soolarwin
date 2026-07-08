@@ -2037,9 +2037,6 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   const DEFAULT_APPS_SCRIPT_EMAIL_URL = 'https://script.google.com/macros/s/AKfycbzfrrrlpheo2KbRytwH-LAovNmBK5ojUESl1z3sfbROto69Bd4iV0_NXrR0GSmQFn0xQQ/exec';
   const EMAIL_SCRIPT_URL_KEY = 'solarcrm-email-script-url-v1';
   const EMAIL_SCRIPT_TOKEN_KEY = 'solarcrm-email-script-token-v1';
-  const DRIVE_SCRIPT_URL_KEY = 'solarcrm-drive-script-url-v1';
-  const DRIVE_SCRIPT_TOKEN_KEY = 'solarcrm-drive-script-token-v1';
-  const DRIVE_ROOT_FOLDER_KEY = 'solarcrm-drive-root-folder-v1';
   const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-2';
   const SYSTEM_VERSION = '3.2.0-fechamento-contrato-homologacao';
   let storageWarningShown = false;
@@ -2080,8 +2077,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     { id:'Instalação', color:'blue', progress:65, workStatus:'Em instalação', defaultTask:'Executar instalação mecânica e elétrica' },
     { id:'Vistoria', color:'purple', progress:78, workStatus:'Vistoria', defaultTask:'Solicitar e acompanhar a vistoria da distribuidora' },
     { id:'Troca do medidor', color:'yellow', progress:90, workStatus:'Vistoria', defaultTask:'Acompanhar a troca pelo medidor bidirecional' },
-    { id:'Operação', color:'green', progress:96, workStatus:'Concluída', defaultTask:'Ativar monitoramento, treinar cliente e entregar o sistema' },
-    { id:'Finalizado', color:'green', progress:100, workStatus:'Concluída', defaultTask:'Coletar NPS do cliente e encerrar oficialmente o projeto' }
+    { id:'Operação', color:'green', progress:100, workStatus:'Concluída', defaultTask:'Ativar monitoramento, treinar cliente e entregar o sistema' }
   ];
 
   const projectDocumentCategories = [
@@ -2122,10 +2118,10 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   ];
 
   const rolePermissions = {
-    admin: ['dashboard','leads','kanban','clients','proposals','contracts','works','homologations','financial','aftersales','tickets','commissions','inventory','teams','reports','projectDocuments','settings'],
-    manager: ['dashboard','leads','kanban','clients','proposals','contracts','works','homologations','financial','aftersales','tickets','commissions','inventory','teams','reports','projectDocuments'],
+    admin: ['dashboard','leads','kanban','clients','proposals','contracts','works','homologations','financial','aftersales','clientNps','tickets','commissions','inventory','teams','reports','projectDocuments','settings'],
+    manager: ['dashboard','leads','kanban','clients','proposals','contracts','works','homologations','financial','aftersales','clientNps','tickets','commissions','inventory','teams','reports','projectDocuments'],
     seller: ['dashboard','leads','kanban','clients','proposals','contracts','commissions'],
-    technical: ['dashboard','clients','works','homologations','aftersales','tickets','inventory','teams','projectDocuments'],
+    technical: ['dashboard','clients','works','homologations','aftersales','clientNps','tickets','inventory','teams','projectDocuments'],
     finance: ['dashboard','clients','contracts','financial','commissions','reports']
   };
 
@@ -2150,6 +2146,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     { id:'homologations', label:'Homologação', description:'Protocolos, vistoria e distribuidora', actions:['view','create','edit','delete','export','approve'] },
     { id:'financial', label:'Financeiro', description:'Contas, cobranças e pagamentos', actions:['view','create','edit','delete','export','approve'] },
     { id:'aftersales', label:'Pós-venda', description:'Usinas, performance e NPS', actions:['view','create','edit','delete','export','approve'] },
+    { id:'clientNps', label:'Avaliações dos Clientes', description:'Notas enviadas pelo portal do cliente', actions:['view','delete','export'] },
     { id:'tickets', label:'Chamados', description:'Atendimento técnico e suporte', actions:['view','create','edit','delete','export','approve'] },
     { id:'commissions', label:'Comissões', description:'Valores previstos, liberados e pagos', actions:['view','create','edit','delete','export','approve'] },
     { id:'inventory', label:'Estoque', description:'Produtos, fornecedores e movimentações', actions:['view','create','edit','delete','export','approve'] },
@@ -2164,7 +2161,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     commissions:'commissions', inventory:'inventory', products:'inventory', suppliers:'inventory', teams:'teams', team_members:'teams',
     projectDocuments:'projectDocuments', project_documents:'projectDocuments', tasks:'works',
     automationRules:'settings', automation_rules:'settings', automationQueue:'settings', automation_queue:'settings', automationLogs:'settings', automation_logs:'settings',
-    stockMovements:'inventory', notifications:'dashboard'
+    stockMovements:'inventory', notifications:'dashboard', clientProjectNps:'clientNps', client_project_nps:'clientNps'
   };
 
   function emptyPermissionMatrix(){
@@ -2280,6 +2277,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     { section: 'Operação', id: 'homologations', label: 'Homologação', icon: '✓' },
     { section: 'Gestão', id: 'financial', label: 'Financeiro', icon: 'R$' },
     { section: 'Gestão', id: 'aftersales', label: 'Pós-venda', icon: '♡' },
+    { section: 'Gestão', id: 'clientNps', label: 'Avaliações', icon: '★', badge: () => companyRows('client_project_nps').length },
     { section: 'Gestão', id: 'tickets', label: 'Chamados', icon: '!' , badge: () => companyRows('tickets').filter(t => t.status !== 'Concluído').length },
     { section: 'Gestão', id: 'commissions', label: 'Comissões', icon: '%' },
     { section: 'Recursos', id: 'inventory', label: 'Estoque', icon: '▦' },
@@ -2355,7 +2353,6 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     history: '', clientsCount: 0, installedPowerMW: 0, certifications: '', partners: '',
     logo: '', workPhotos: [], primaryColor: '#ffb703', proposalValidityDays: 10, sellerSignature: '',
     bankData: '', defaultCommissionPercent: 2,
-    documentStorageMode: 'google-drive', driveScriptUrl: '', driveScriptToken: '', driveRootFolderName: 'Soolarwin CRM',
     emailGatewayMode: 'apps-script', emailScriptUrl: DEFAULT_APPS_SCRIPT_EMAIL_URL, emailScriptToken: '', emailFromName: 'SolarCRM',
     proposalMessage: 'Olá, {cliente}! Sua proposta de energia solar {proposta} está pronta. Investimento: {valor}. Potência: {potencia} kWp.',
     npsMessage: 'Olá, {cliente}! De 0 a 10, quanto você recomendaria nossa empresa? Sua opinião é muito importante.',
@@ -2436,6 +2433,9 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   let projectDocumentFilter = 'Todos';
   let automationRuleEditor = null;
   let firebaseAuthUnsubscribe = null;
+  let publicAcceptanceSyncTimer = null;
+  let publicAcceptanceSyncBusy = false;
+  let lastPublicAcceptanceSyncAt = 0;
   let authFlowBusy = false;
   let pendingAuthDiagnostic = null;
   let permissionUsers = [];
@@ -2564,7 +2564,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
 
   function normalizeProjectStage(value=''){
     const direct=projectStages.find(stage=>stage.id===value)?.id;if(direct)return direct;
-    const map={'Planejamento':'Projeto','Documentação':'Homologação','Em análise':'Homologação','Pendência':'Homologação','Aprovada':'Compras','Compras':'Compras','Em instalação':'Instalação','Vistoria':'Vistoria','Troca do medidor':'Troca do medidor','Finalizado':'Finalizado','Concluída':'Finalizado','Concluido':'Finalizado'};
+    const map={'Planejamento':'Projeto','Documentação':'Homologação','Em análise':'Homologação','Pendência':'Homologação','Aprovada':'Compras','Compras':'Compras','Em instalação':'Instalação','Vistoria':'Vistoria','Troca do medidor':'Troca do medidor','Concluída':'Operação','Concluido':'Operação'};
     return map[value]||'Projeto';
   }
   function projectStageDefinition(stage){return projectStages.find(item=>item.id===normalizeProjectStage(stage))||projectStages[0];}
@@ -2973,6 +2973,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     ensureAllProjectStructures();
     processLocalAutomations(false);
     bindGlobalEvents();
+    startPublicAcceptanceMonitor();
     renderSidebar();
     if (!canAccess(activeView)) activeView = 'dashboard';
     renderView(activeView);
@@ -3085,7 +3086,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     const renderers={
       dashboard:renderDashboard, leads:()=>renderEntityTable('leads'), kanban:renderKanban, clients:()=>renderEntityTable('clients'), proposals:renderProposals,
       contracts:()=>renderEntityTable('contracts'), works:()=>renderEntityTable('works'), homologations:()=>renderEntityTable('homologations'),
-      financial:renderFinancial, aftersales:renderAfterSales, tickets:()=>renderEntityTable('tickets'), commissions:()=>renderEntityTable('commissions'),
+      financial:renderFinancial, aftersales:renderAfterSales, clientNps:renderClientNps, tickets:()=>renderEntityTable('tickets'), commissions:()=>renderEntityTable('commissions'),
       inventory:()=>renderEntityTable('inventory'), teams:()=>renderEntityTable('teams'), reports:renderReports, automations:renderAutomations, settings:()=>openSettings('company')
     };
     if (view==='settings') { root.innerHTML=renderDashboardPlaceholder('Configurações abertas em uma janela de administração.'); renderers.settings(); return; }
@@ -3363,10 +3364,10 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
 
   function recalculateProject(work,recordHistory=true){
     if(!work)return;const tasks=projectTasksFor(work.id);const completed=tasks.filter(task=>task.status==='Concluída').length;const taskProgress=tasks.length?completed/tasks.length*100:0;
-    const firstOpenStage=projectStages.find(stage=>tasks.some(task=>task.stage===stage.id&&task.status!=='Concluída'))?.id||'Finalizado';
-    const stage=projectStageDefinition(work.projectStage||firstOpenStage);work.progress=Math.max(Number(taskProgress.toFixed(0)),stage.id==='Finalizado'?100:Math.min(stage.progress,99));work.status=stage.workStatus;work.updatedAt=new Date().toISOString();
+    const firstOpenStage=projectStages.find(stage=>tasks.some(task=>task.stage===stage.id&&task.status!=='Concluída'))?.id||'Operação';
+    const stage=projectStageDefinition(work.projectStage||firstOpenStage);work.progress=Math.max(Number(taskProgress.toFixed(0)),stage.progress===100?100:Math.min(stage.progress,95));work.status=stage.workStatus;work.updatedAt=new Date().toISOString();
     if(recordHistory&&!work.stageHistory?.some(item=>item.stage===stage.id&&item.at===work.updatedAt)){work.stageHistory=work.stageHistory||[];}
-    if(stage.id==='Finalizado'&&tasks.every(task=>task.status==='Concluída')){work.progress=100;work.status='Concluída';ensureAfterSalesFromWork(work);}
+    if(stage.id==='Operação'&&tasks.every(task=>task.status==='Concluída')){work.progress=100;work.status='Concluída';ensureAfterSalesFromWork(work);}
   }
 
   function updateProjectStage(projectId,stageId,{render=true,notify=true}={}){
@@ -3377,7 +3378,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     projectTasksFor(projectId).forEach(task=>{const index=projectStages.findIndex(stage=>stage.id===task.stage);if(index<targetIndex)task.status='Concluída';else if(index===targetIndex&&task.status==='Pendente')task.status='Em andamento';else if(index>targetIndex&&task.isMilestone&&task.status==='Concluída')task.status='Pendente';task.updatedAt=new Date().toISOString();syncRecordToFirebase('tasks',task);});
     const stage=projectStageDefinition(stageId);work.progress=stage.progress;work.status=stage.workStatus;work.updatedAt=new Date().toISOString();
     const hom=companyRows('homologations').find(item=>item.proposalId===work.proposalId||item.clientName===work.clientName);if(hom){if(stageId==='Homologação'&&hom.status==='Documentação')hom.status='Em análise';if(targetIndex>1&&!['Aprovada','Reprovada'].includes(hom.status))hom.status='Aprovada';hom.updatedAt=new Date().toISOString();syncRecordToFirebase('homologations',hom);}
-    if(stageId==='Finalizado'){projectTasksFor(projectId).forEach(task=>{task.status='Concluída';task.updatedAt=new Date().toISOString();syncRecordToFirebase('tasks',task);});work.progress=100;work.status='Concluída';ensureAfterSalesFromWork(work);}
+    if(stageId==='Operação'){projectTasksFor(projectId).forEach(task=>{task.status='Concluída';task.updatedAt=new Date().toISOString();syncRecordToFirebase('tasks',task);});work.progress=100;work.status='Concluída';ensureAfterSalesFromWork(work);}
     if(previous!==stageId&&work.portalPublishedAt)publishClientPortalStatus(work,{silent:true});
     if(previous!==stageId)executeAutomationRules('project_stage_enter',work,{stage:stageId,previous,eventKey:`project-stage-${projectId}-${stageId}-${Date.now()}`});
     addActivity('⌁','Projeto avançou',`${work.clientName}: ${previous} → ${stageId}`);persist();syncRecordToFirebase('works',work);if(notify)toast('Etapa do projeto atualizada',`${work.clientName} → ${stageId}`);if(render){renderSidebar();if(activeView==='kanban')renderView('kanban');if(activeProjectId===projectId)renderProjectWorkspace();}
@@ -3456,7 +3457,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
       inverterQty:Number(c.inverterQty||0), inverterPower:Number(c.inverter?.power||0), inverterBrand:c.inverter?.brand||'', structureType:proposal.technical?.structureType||'', orientation:proposal.technical?.orientation||'',
       annualGeneration:Number(c.annualGeneration||0), monthlyGeneration:Number(c.monthlyGeneration||0), avgConsumption:Number(c.avgConsumption||0), currentTariff:Number(proposal.currentTariff||0),
       investment:Number(proposal.commercial?.price||0), monthlySaving:Number(c.monthlySaving||0), annualSaving:Number(c.annualSaving||0), payback:Number(c.payback||0), roi:Number(c.roi||0), paymentMethod:proposal.commercial?.paymentMethod||'',
-      coverTitle:/solo/i.test(proposal.technical?.structureType||'')?'Projeto Solar Fotovolaico':'Projeto Solar Fotovoltaico',
+      coverTitle:'Projeto Solar Fotovoltáico',
       summaryText:'Solução fotovoltaica com alta performance, economia e previsibilidade energética.',
       investmentFormatted:shortCurrency(proposal.commercial?.price||0), monthlySavingFormatted:shortCurrency(c.monthlySaving||0), annualSavingFormatted:shortCurrency(c.annualSaving||0)
     };
@@ -3481,10 +3482,6 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
       stageHistory:(work.stageHistory||[]).slice(0,12).map(item=>({stage:item.stage||'',previous:item.previous||'',at:item.at||'',user:item.user||'Equipe'})),
       tasks:tasks.map(task=>({title:task.title||'',stage:task.stage||'',status:task.status||'',assignee:task.assignee||'',dueDate:task.dueDate||'',isMilestone:Boolean(task.isMilestone)})),
       documents:{total:docs.length, categories:[...new Set(docs.map(doc=>doc.category).filter(Boolean))]},
-      npsEnabled:stage.id==='Finalizado', npsScale:{min:1,max:5}, npsCollection:'client_project_nps',
-      npsTitle:'Avaliação final do projeto',
-      npsDescription:'Agora que o projeto foi finalizado, avalie cada etapa de 1 a 5 e deixe um comentário opcional.',
-      npsStages:projectStages.map(item=>({id:item.id,label:item.id,description:item.defaultTask})),
       updatedAt:new Date().toISOString(), updatedBy:state.currentUser.name||state.currentUser.email||'Sistema'
     };
   }
@@ -3508,10 +3505,8 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
 
   function renderProjectOverview(work){
     const stage=projectStageDefinition(work.projectStage);const docs=projectDocumentsFor(work.id);const tasks=projectTasksFor(work.id);const completed=tasks.filter(task=>task.status==='Concluída').length;const currentIndex=projectStages.findIndex(item=>item.id===stage.id);
-    const npsRows=Array.isArray(state.client_project_nps)?state.client_project_nps:[];const nps=npsRows.find(row=>row.projectId===work.id||row.cpf===clientDocumentForWork(work));
-    const npsHtml=nps?`<section class="card" style="margin-top:16px"><div class="card-head"><div><h3>NPS do cliente</h3><p>Avaliação enviada pelo portal do cliente em ${dateTimeBR(nps.submittedAt||nps.updatedAt||nps.createdAt)}.</p></div><span class="status green">Respondido</span></div><div class="card-body"><div class="detail-grid">${Object.entries(nps.scores||{}).map(([key,value])=>`<div class="detail-item"><span>${escapeHtml(key)}</span><strong>${escapeHtml(value)}/5</strong></div>`).join('')}</div>${nps.comment?`<div class="notice" style="margin-top:12px"><strong>Comentário:</strong> ${escapeHtml(nps.comment)}</div>`:''}</div></section>`:(stage.id==='Finalizado'?`<div class="notice warning" style="margin-top:16px"><strong>NPS liberado no portal do cliente.</strong> O cliente poderá avaliar cada etapa de 1 a 5 e deixar um comentário opcional em cliente.html.</div>`:'');
     return `<div class="pipeline-summary"><div class="pipeline-pill"><span>Etapa atual</span><strong>${escapeHtml(stage.id)}</strong></div><div class="pipeline-pill"><span>Progresso</span><strong>${number(work.progress)}%</strong></div><div class="pipeline-pill"><span>Tarefas concluídas</span><strong>${completed}/${tasks.length}</strong></div><div class="pipeline-pill"><span>Documentos</span><strong>${docs.length}</strong></div></div>
-      <div class="project-stage-track">${projectStages.map((item,index)=>`<div class="project-stage-step ${index<currentIndex?'done':index===currentIndex?'current':''}"><strong>${index<currentIndex?'✓ ':index===currentIndex?'● ':''}${escapeHtml(item.id)}</strong><span>${escapeHtml(item.defaultTask)}</span></div>`).join('')}</div>${npsHtml}
+      <div class="project-stage-track">${projectStages.map((item,index)=>`<div class="project-stage-step ${index<currentIndex?'done':index===currentIndex?'current':''}"><strong>${index<currentIndex?'✓ ':index===currentIndex?'● ':''}${escapeHtml(item.id)}</strong><span>${escapeHtml(item.defaultTask)}</span></div>`).join('')}</div>
       <div class="project-overview-grid" style="margin-top:16px"><section class="card"><div class="card-head"><div><h3>Dados do projeto</h3><p>Informações operacionais da venda.</p></div><button class="btn btn-ghost btn-sm" data-project-edit type="button">Editar cadastro</button></div><div class="card-body"><div class="detail-grid"><div class="detail-item"><span>Cliente</span><strong>${escapeHtml(work.clientName)}</strong></div><div class="detail-item"><span>CPF/CNPJ</span><strong>${escapeHtml(maskCpfCnpj(clientDocumentForWork(work))||'—')}</strong></div><div class="detail-item"><span>Cidade</span><strong>${escapeHtml(work.city||'—')}</strong></div><div class="detail-item"><span>Potência</span><strong>${number(work.systemPower,2)} kWp</strong></div><div class="detail-item"><span>Equipe</span><strong>${escapeHtml(work.team||'A definir')}</strong></div><div class="detail-item"><span>Início</span><strong>${dateBR(work.startDate)}</strong></div><div class="detail-item"><span>Prazo</span><strong>${dateBR(work.deadline)}</strong></div></div><div class="notice" style="margin-top:12px">${escapeHtml(work.notes||'Sem observações.')}</div></div></section>
       <section class="card"><div class="card-head"><div><h3>Ações rápidas</h3><p>Continue o fluxo pós-venda.</p></div></div><div class="card-body" style="display:grid;gap:9px"><button class="btn btn-primary" data-project-go="kanban" type="button">Abrir Kanban do projeto</button><button class="btn btn-secondary" data-client-portal-publish type="button">Publicar status no portal</button><button class="btn btn-ghost" data-client-portal-copy type="button">Copiar link do cliente</button><button class="btn btn-secondary" data-project-go="documents" type="button">Adicionar documentação</button>${canDeleteProject()?`<button class="btn btn-danger" data-project-delete type="button">Excluir projeto</button>`:''}<label class="field"><span>Avançar etapa</span><select id="workspaceStageSelect">${projectStages.map(item=>`<option value="${attr(item.id)}" ${item.id===stage.id?'selected':''}>${escapeHtml(item.id)}</option>`).join('')}</select></label></div></section></div>`;
   }
@@ -3530,19 +3525,13 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     return `<section class="form-section project-editor-card"><div class="form-section-head"><div><h3>${task?'Editar tarefa':'Nova tarefa do projeto'}</h3><p>Cadastre responsável, prazo, etapa e observações.</p></div><button class="btn btn-ghost btn-sm" data-cancel-project-task type="button">Cancelar</button></div><form id="projectTaskForm" class="form-grid"><label class="field full"><span>Título *</span><input name="title" value="${attr(data.title)}" required></label><label class="field"><span>Etapa</span><select name="stage">${projectStages.map(stage=>`<option value="${attr(stage.id)}" ${stage.id===data.stage?'selected':''}>${escapeHtml(stage.id)}</option>`).join('')}</select></label><label class="field"><span>Status</span><select name="status">${['Pendente','Em andamento','Concluída','Bloqueada'].map(status=>`<option ${status===data.status?'selected':''}>${status}</option>`).join('')}</select></label><label class="field"><span>Responsável</span><input name="assignee" value="${attr(data.assignee)}"></label><label class="field"><span>Prazo</span><input name="dueDate" type="date" value="${attr(data.dueDate)}"></label><label class="field full"><span>Observações</span><textarea name="notes">${escapeHtml(data.notes||'')}</textarea></label><div class="full" style="display:flex;justify-content:flex-end"><button class="btn btn-primary" type="submit">Salvar tarefa</button></div></form></section>`;
   }
 
-  function projectDocumentStorageLabel(doc){
-    if(doc.storage==='google-drive'||doc.driveFileId)return 'Google Drive';
-    if(doc.storage==='firebase'||doc.url)return 'Firebase Storage';
-    return 'Armazenamento local do navegador';
-  }
-
   function renderProjectDocuments(work){
-    const all=projectDocumentsFor(work.id);const docs=projectDocumentFilter==='Todos'?all:all.filter(doc=>doc.category===projectDocumentFilter);const local=all.filter(doc=>doc.storage==='indexeddb').length;const drive=all.filter(doc=>doc.storage==='google-drive'||doc.driveFileId).length;const cloud=all.filter(doc=>doc.storage==='firebase'||(doc.url&&doc.storage!=='google-drive')).length;
-    return `<div class="project-doc-summary"><div><span>Total de arquivos</span><strong>${all.length}</strong></div><div><span>Google Drive</span><strong>${drive}</strong></div><div><span>Firebase Storage</span><strong>${cloud}</strong></div><div><span>Local navegador</span><strong>${local}</strong></div></div><div class="document-upload-panel"><section class="form-section"><div class="form-section-head"><div><h3>Adicionar documentação</h3><p>PDF, imagens, planilhas, documentos, DWG/DXF, XML ou ZIP.</p></div></div><form id="projectDocumentForm"><div class="form-grid"><label class="field"><span>Categoria *</span><select name="category" required>${projectDocumentCategories.map(category=>`<option>${escapeHtml(category)}</option>`).join('')}</select></label><label class="field"><span>Etapa relacionada</span><select name="stage">${projectStages.map(stage=>`<option ${stage.id===normalizeProjectStage(work.projectStage)?'selected':''}>${escapeHtml(stage.id)}</option>`).join('')}</select></label><label class="field full"><span>Descrição / observações</span><textarea name="notes" placeholder="Ex.: versão aprovada, protocolo, número da ART..."></textarea></label></div><label class="document-drop" style="display:block;margin-top:12px"><strong>Selecionar um ou vários arquivos</strong><span style="display:block;color:var(--muted);font-size:9px;margin-top:5px">Limite: 20 MB por arquivo. Nesta versão, os documentos do projeto são enviados primeiro para o Google Drive.</span><input name="files" type="file" multiple required accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx,.csv,.xml,.dwg,.dxf,.zip,.txt,application/pdf,image/*"></label><button class="btn btn-primary" type="submit" style="width:100%;margin-top:12px">＋ Incluir no dossiê</button></form></section><section><div class="document-filter-row"><select id="projectDocumentFilter" class="compact-select"><option>Todos</option>${projectDocumentCategories.map(category=>`<option ${category===projectDocumentFilter?'selected':''}>${escapeHtml(category)}</option>`).join('')}</select><button class="btn btn-ghost" data-export-document-index type="button">Exportar índice CSV</button></div><div class="document-list">${docs.length?docs.map(doc=>renderProjectDocumentCard(doc)).join(''):'<div class="empty-state"><strong>Nenhum documento nesta categoria</strong>Adicione os arquivos do projeto usando o formulário ao lado.</div>'}</div></section></div>`;
+    const all=projectDocumentsFor(work.id);const docs=projectDocumentFilter==='Todos'?all:all.filter(doc=>doc.category===projectDocumentFilter);const local=all.filter(doc=>doc.storage==='indexeddb').length;const cloud=all.filter(doc=>doc.url).length;
+    return `<div class="project-doc-summary"><div><span>Total de arquivos</span><strong>${all.length}</strong></div><div><span>Armazenados localmente</span><strong>${local}</strong></div><div><span>Armazenados na nuvem</span><strong>${cloud}</strong></div></div><div class="document-upload-panel"><section class="form-section"><div class="form-section-head"><div><h3>Adicionar documentação</h3><p>PDF, imagens, planilhas, documentos, DWG/DXF, XML ou ZIP.</p></div></div><form id="projectDocumentForm"><div class="form-grid"><label class="field"><span>Categoria *</span><select name="category" required>${projectDocumentCategories.map(category=>`<option>${escapeHtml(category)}</option>`).join('')}</select></label><label class="field"><span>Etapa relacionada</span><select name="stage">${projectStages.map(stage=>`<option ${stage.id===normalizeProjectStage(work.projectStage)?'selected':''}>${escapeHtml(stage.id)}</option>`).join('')}</select></label><label class="field full"><span>Descrição / observações</span><textarea name="notes" placeholder="Ex.: versão aprovada, protocolo, número da ART..."></textarea></label></div><label class="document-drop" style="display:block;margin-top:12px"><strong>Selecionar um ou vários arquivos</strong><span style="display:block;color:var(--muted);font-size:9px;margin-top:5px">Limite local: 20 MB por arquivo. Com Banco de dados conectado, o arquivo é enviado ao armazenamento em nuvem.</span><input name="files" type="file" multiple required accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx,.csv,.xml,.dwg,.dxf,.zip,.txt,application/pdf,image/*"></label><button class="btn btn-primary" type="submit" style="width:100%;margin-top:12px">＋ Incluir no dossiê</button></form></section><section><div class="document-filter-row"><select id="projectDocumentFilter" class="compact-select"><option>Todos</option>${projectDocumentCategories.map(category=>`<option ${category===projectDocumentFilter?'selected':''}>${escapeHtml(category)}</option>`).join('')}</select><button class="btn btn-ghost" data-export-document-index type="button">Exportar índice CSV</button></div><div class="document-list">${docs.length?docs.map(doc=>renderProjectDocumentCard(doc)).join(''):'<div class="empty-state"><strong>Nenhum documento nesta categoria</strong>Adicione os arquivos do projeto usando o formulário ao lado.</div>'}</div></section></div>`;
   }
 
   function renderProjectDocumentCard(doc){
-    return `<article class="document-card"><div class="document-icon">${fileExtension(doc.fileName||doc.name)}</div><div class="document-info"><strong>${escapeHtml(doc.name||doc.fileName)}</strong><span>${escapeHtml(doc.category)} · ${escapeHtml(doc.stage||'Sem etapa')} · ${formatBytes(doc.size)} · ${dateTimeBR(doc.uploadedAt)}</span>${doc.notes?`<span>${escapeHtml(doc.notes)}</span>`:''}<span>Enviado por ${escapeHtml(doc.uploadedBy||'Usuário')} · ${escapeHtml(projectDocumentStorageLabel(doc))}${doc.drivePath?` · ${escapeHtml(doc.drivePath)}`:''}</span></div><div class="document-actions"><button class="btn btn-secondary btn-sm" data-open-project-document="${doc.id}" type="button">Abrir</button><button class="btn btn-ghost btn-sm" data-download-project-document="${doc.id}" type="button">Baixar</button><button class="btn btn-danger btn-sm" data-delete-project-document="${doc.id}" type="button">Excluir</button></div></article>`;
+    return `<article class="document-card"><div class="document-icon">${fileExtension(doc.fileName||doc.name)}</div><div class="document-info"><strong>${escapeHtml(doc.name||doc.fileName)}</strong><span>${escapeHtml(doc.category)} · ${escapeHtml(doc.stage||'Sem etapa')} · ${formatBytes(doc.size)} · ${dateTimeBR(doc.uploadedAt)}</span>${doc.notes?`<span>${escapeHtml(doc.notes)}</span>`:''}<span>Enviado por ${escapeHtml(doc.uploadedBy||'Usuário')} · ${doc.url?'armazenamento em nuvem':'Armazenamento local do navegador'}</span></div><div class="document-actions"><button class="btn btn-secondary btn-sm" data-open-project-document="${doc.id}" type="button">Abrir</button><button class="btn btn-ghost btn-sm" data-download-project-document="${doc.id}" type="button">Baixar</button><button class="btn btn-danger btn-sm" data-delete-project-document="${doc.id}" type="button">Excluir</button></div></article>`;
   }
 
   function renderProjectHistory(work){
@@ -3602,69 +3591,12 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     const task=projectTasksFor(activeProjectId).find(item=>item.id===taskId);if(!task||task.isMilestone)return;if(!confirm(`Excluir a tarefa “${task.title}”?`))return;state.tasks=state.tasks.filter(item=>item.id!==taskId);const work=getCompanyRecord('works',activeProjectId);recalculateProject(work);persist();window.FirebaseCRM?.syncReady&&window.FirebaseCRM.deleteRecord('tasks',taskId).catch(console.warn);if(work.portalPublishedAt)publishClientPortalStatus(work,{silent:true});renderProjectWorkspace();toast('Tarefa excluída','','info');
   }
 
-  function isGoogleDrivePrimary(){
-    return (state.company.documentStorageMode||'google-drive')==='google-drive';
-  }
-
-  function driveGatewayConfig(){
-    return {
-      url:String(state.company.driveScriptUrl||safeStorageGet(DRIVE_SCRIPT_URL_KEY)||'').trim(),
-      token:String(state.company.driveScriptToken||safeStorageGet(DRIVE_SCRIPT_TOKEN_KEY)||'').trim(),
-      rootFolderName:String(state.company.driveRootFolderName||safeStorageGet(DRIVE_ROOT_FOLDER_KEY)||'Soolarwin CRM').trim()||'Soolarwin CRM'
-    };
-  }
-
-  function fileToBase64Payload(file){
-    return new Promise((resolve,reject)=>{
-      const reader=new FileReader();
-      reader.onerror=()=>reject(reader.error||new Error('Não foi possível ler o arquivo.'));
-      reader.onload=()=>resolve(String(reader.result||'').split(',')[1]||'');
-      reader.readAsDataURL(file);
-    });
-  }
-
-  async function postToDriveScript(payload){
-    const cfg=driveGatewayConfig();
-    if(!cfg.url)throw new Error('Configure a URL do Google Drive em Configurações > Google Drive.');
-    const response=await fetch(cfg.url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({...payload,token:cfg.token,rootFolderName:cfg.rootFolderName})});
-    const text=await response.text();
-    let data={};
-    try{data=JSON.parse(text||'{}');}catch(_){data={ok:false,error:text||'Resposta inválida do Apps Script.'};}
-    if(!response.ok||data.ok===false)throw new Error(data.error||data.message||'O Apps Script não confirmou o envio ao Google Drive.');
-    return data;
-  }
-
-  async function uploadProjectDocumentToDrive(work,file,doc){
-    const base64=await fileToBase64Payload(file);
-    const projectFolderName=`${work.clientName||'Cliente'} - ${String(work.id||'projeto').slice(-8)}`;
-    const data=await postToDriveScript({
-      action:'uploadProjectDocument',
-      companyId:state.currentCompanyId,
-      companyName:state.company.tradeName||state.company.name||'',
-      projectId:work.id,
-      proposalId:work.proposalId||'',
-      projectFolderName,
-      clientName:work.clientName||'',
-      stage:doc.stage||work.projectStage||'Projeto',
-      category:doc.category||'Documentos',
-      notes:doc.notes||'',
-      fileName:file.name,
-      mimeType:file.type||'application/octet-stream',
-      size:file.size,
-      uploadedBy:state.currentUser.name||state.currentUser.email||'Usuário',
-      dataBase64:base64
-    });
-    return {storage:'google-drive',url:data.fileUrl||data.url||'',driveFileId:data.fileId||'',driveFolderId:data.folderId||'',drivePath:data.path||''};
-  }
-
   async function uploadProjectDocuments(event,work){
     event.preventDefault();if(!hasPermission('projectDocuments','create')){denyPermission('projectDocuments','create');return;}const form=event.currentTarget;const fd=new FormData(form);const files=[...(form.elements.files.files||[])];if(!files.length){toast('Selecione pelo menos um arquivo','','error');return;}const button=form.querySelector('button[type=submit]');button.disabled=true;const old=button.textContent;let added=0;
-    try{for(const file of files){if(file.size>20*1024*1024){toast('Arquivo ignorado',`${file.name} excede 20 MB.`,'error');continue;}const doc={id:newId('doc'),companyId:state.currentCompanyId,projectId:work.id,proposalId:work.proposalId||'',clientName:work.clientName,name:file.name,fileName:file.name,mimeType:file.type||'application/octet-stream',size:file.size,category:fd.get('category'),stage:fd.get('stage'),notes:fd.get('notes')||'',uploadedBy:state.currentUser.name,uploadedAt:new Date().toISOString(),storage:'google-drive',url:'',driveFileId:'',driveFolderId:'',drivePath:''};button.textContent=`Enviando ${added+1}/${files.length} para o Drive...`;
-      if(isGoogleDrivePrimary()){Object.assign(doc,await uploadProjectDocumentToDrive(work,file,doc));}
-      else if(window.FirebaseCRM?.syncReady){try{doc.url=await window.FirebaseCRM.uploadFile(state.currentCompanyId,`projects/${work.id}/documents`,file,file.name);doc.storage='firebase';}catch(error){console.warn('Upload no banco de dados falhou, usando armazenamento local:',error);doc.storage='indexeddb';await ProjectFileDB.put(doc.id,file);}}
-      else{doc.storage='indexeddb';await ProjectFileDB.put(doc.id,file);}
+    try{for(const file of files){if(file.size>20*1024*1024){toast('Arquivo ignorado',`${file.name} excede 20 MB.`,'error');continue;}const doc={id:newId('doc'),companyId:state.currentCompanyId,projectId:work.id,proposalId:work.proposalId||'',clientName:work.clientName,name:file.name,fileName:file.name,mimeType:file.type||'application/octet-stream',size:file.size,category:fd.get('category'),stage:fd.get('stage'),notes:fd.get('notes')||'',uploadedBy:state.currentUser.name,uploadedAt:new Date().toISOString(),storage:'indexeddb',url:''};button.textContent=`Enviando ${added+1}/${files.length}...`;
+      if(window.FirebaseCRM?.syncReady){try{doc.url=await window.FirebaseCRM.uploadFile(state.currentCompanyId,`projects/${work.id}/documents`,file,file.name);doc.storage='firebase';}catch(error){console.warn('Upload no banco de dados falhou, usando armazenamento local:',error);await ProjectFileDB.put(doc.id,file);}}else await ProjectFileDB.put(doc.id,file);
       state.projectDocuments.unshift(doc);syncRecordToFirebase('projectDocuments',doc);added++;}
-      persist();if(work.portalPublishedAt)publishClientPortalStatus(work,{silent:true});addActivity('▤','Documentação adicionada',`${work.clientName} · ${added} arquivo(s)`);renderProjectWorkspace();toast('Documentação incluída',`${added} arquivo(s) enviado(s) ao projeto.`);
+      persist();if(work.portalPublishedAt)publishClientPortalStatus(work,{silent:true});addActivity('▤','Documentação adicionada',`${work.clientName} · ${added} arquivo(s)`);renderProjectWorkspace();toast('Documentação incluída',`${added} arquivo(s) adicionado(s) ao projeto.`);
     }catch(error){console.error(error);toast('Falha ao armazenar arquivo',error.message||'Não foi possível incluir a documentação.','error');}finally{button.disabled=false;button.textContent=old;}
   }
 
@@ -3722,6 +3654,38 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     return `${pageHead('Pós-venda','Monitore geração, performance, relacionamento e satisfação.',`<button class="btn btn-ghost" data-action="run-nps">Enviar pesquisa NPS</button><button class="btn btn-secondary" data-action="new-ticket">＋ Abrir chamado</button><button class="btn btn-primary" data-action="new-aftersales">＋ Nova usina</button>`)}
       <div class="grid grid-4">${metricCard('☀',`${number(avgPerf,1)}%`,'Performance média','Usinas monitoradas','green')}${metricCard('♡',number(avgNps,1),'NPS médio','Últimas respostas','blue')}${metricCard('!',rows.filter(r=>['Atenção','Sem comunicação'].includes(r.status)).length,'Usinas em atenção','Revisar hoje','yellow')}${metricCard('✓',rows.filter(r=>r.status==='Normal').length,'Usinas normais','Operação estável','green')}</div>
       <section class="card table-card" style="margin-top:16px"><div class="table-toolbar"><div><strong style="font-size:12px">Carteira monitorada</strong><span style="display:block;color:var(--muted);font-size:9px;margin-top:3px">Geração mensal e comparação com a estimativa</span></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Cliente</th><th>Sistema</th><th>Geração</th><th>Previsto</th><th>Performance</th><th>NPS</th><th>Último contato</th><th>Status</th><th>Ações</th></tr></thead><tbody>${rows.length?rows.map(r=>`<tr><td class="primary-cell"><strong>${escapeHtml(r.clientName)}</strong></td><td>${escapeHtml(r.system)}</td><td>${number(r.generationMonth)} kWh</td><td>${number(r.expectedMonth)} kWh</td><td><div style="min-width:120px"><div class="progress"><span style="width:${clamp(r.performance,0,110)}%"></span></div><div class="progress-label"><span>${number(r.performance,1)}%</span><span>Meta 100%</span></div></div></td><td>${number(r.nps,0)}/10</td><td>${dateBR(r.lastContact)}</td><td><span class="status ${colorClass(r.status)}">${escapeHtml(r.status)}</span></td><td><div class="row-actions"><button class="btn btn-ghost btn-sm" data-action="new-ticket" data-client="${attr(r.clientName)}">Chamado</button><button class="btn btn-ghost btn-sm btn-icon" data-action="edit-entity" data-collection="aftersales" data-id="${r.id}">✎</button><button class="btn btn-danger btn-sm btn-icon" data-action="delete-entity" data-collection="aftersales" data-id="${r.id}">×</button></div></td></tr>`).join(''):`<tr><td colspan="9"><div class="empty-state">Nenhuma usina cadastrada.</div></td></tr>`}</tbody></table></div></section>`;
+  }
+
+
+  function npsScoresArray(row){
+    const scores=row?.scores&&typeof row.scores==='object'?row.scores:{};
+    return Object.values(scores).map(value=>Number(value)).filter(value=>Number.isFinite(value)&&value>0);
+  }
+
+  function npsAverage(row){
+    const values=npsScoresArray(row);
+    return values.length?values.reduce((total,value)=>total+value,0)/values.length:0;
+  }
+
+  function npsScoreBadges(row){
+    const scores=row?.scores&&typeof row.scores==='object'?row.scores:{};
+    const entries=Object.entries(scores);
+    if(!entries.length)return '<span class="muted">Sem notas</span>';
+    return `<div style="display:flex;flex-wrap:wrap;gap:6px;max-width:520px">${entries.map(([stage,value])=>`<span class="status blue" title="${attr(stage)}" style="white-space:nowrap">${escapeHtml(stage)}: ${number(value,0)}/5</span>`).join('')}</div>`;
+  }
+
+  function renderClientNps(){
+    const rows=companyRows('client_project_nps')
+      .filter(row=>!searchTerm||JSON.stringify(row).toLowerCase().includes(searchTerm))
+      .sort((a,b)=>String(b.submittedAt||b.updatedAt||'').localeCompare(String(a.submittedAt||a.updatedAt||'')));
+    const averages=rows.map(npsAverage).filter(value=>value>0);
+    const avg=average(averages);
+    const withComment=rows.filter(row=>String(row.comment||'').trim()).length;
+    const monthKey=new Date().toISOString().slice(0,7);
+    const monthCount=rows.filter(row=>String(row.submittedAt||row.updatedAt||'').slice(0,7)===monthKey).length;
+    return `${pageHead('Avaliações dos Clientes','Notas enviadas pelo portal do cliente. Os dados vêm da coleção client_project_nps.',`<button class="btn btn-ghost" data-action="refresh-client-nps" type="button">Carregar avaliações da nuvem</button>`)}
+      <div class="grid grid-4">${metricCard('★',rows.length,'Avaliações recebidas','Portal do cliente','green')}${metricCard('♡',avg?`${number(avg,1)}/5`:'—','Média geral','Todas as etapas','blue')}${metricCard('✎',withComment,'Com comentários','Feedback qualitativo','yellow')}${metricCard('↗',monthCount,'Neste mês','Avaliações recentes','green')}</div>
+      <section class="card table-card" style="margin-top:16px"><div class="table-toolbar"><div><strong style="font-size:12px">Respostas do cliente</strong><span style="display:block;color:var(--muted);font-size:9px;margin-top:3px">Notas por etapa, média e comentário final</span></div><input class="input" data-local-search placeholder="Buscar cliente, etapa ou comentário" style="max-width:310px"></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Cliente</th><th>Projeto</th><th>Média</th><th>Notas por etapa</th><th>Comentário</th><th>Enviado em</th><th>Ações</th></tr></thead><tbody>${rows.length?rows.map(row=>{const avgRow=npsAverage(row);const work=companyRows('works').find(item=>item.id===row.projectId);return `<tr><td class="primary-cell"><strong>${escapeHtml(row.clientName||'Cliente')}</strong><span>${escapeHtml(row.cpf||'')}</span></td><td>${escapeHtml(work?.projectStage||row.projectStage||'—')}<br><small>${escapeHtml(row.projectId||'')}</small></td><td><strong>${avgRow?`${number(avgRow,1)}/5`:'—'}</strong></td><td>${npsScoreBadges(row)}</td><td style="max-width:300px;white-space:normal">${escapeHtml(row.comment||'—')}</td><td>${dateBR(row.submittedAt||row.updatedAt)}</td><td><div class="row-actions">${row.projectId?`<button class="btn btn-ghost btn-sm" data-action="open-project" data-id="${attr(row.projectId)}" type="button">Abrir projeto</button>`:''}</div></td></tr>`}).join(''):`<tr><td colspan="7"><div class="empty-state">Nenhuma avaliação recebida ainda. Quando o cliente enviar pelo portal, ela aparecerá aqui após carregar da nuvem.</div></td></tr>`}</tbody></table></div></section>`;
   }
 
   function renderReports(){
@@ -3851,7 +3815,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
       'mark-paid':['financial','approve'],'open-project':['works','view'],'project-documents':['projectDocuments','view'],
       'edit-proposal':['proposals','edit'],'preview-proposal':['proposals','view'],'send-proposal':['proposals','approve'],'duplicate-proposal':['proposals','create'],'delete-proposal':['proposals','delete'],
       'equipment-bank':['proposals','view'],'export-backup':['settings','export'],'export-csv':[collectionModule,'export'],'send-collections':['financial','approve'],
-      'run-nps':['aftersales','approve'],'automation-log':['view'],'automation-outbox':['view'],'process-automations':['approve'],
+      'run-nps':['aftersales','approve'],'refresh-client-nps':['clientNps','view'],'automation-log':['view'],'automation-outbox':['view'],'process-automations':['approve'],
       'test-automation':['approve'],'run-ai':['approve'],'print-report':['reports','export']
     };
     return map[action]||null;
@@ -3883,6 +3847,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
       'export-csv':()=>exportCSV(data.collection),
       'send-collections':sendCollections,
       'run-nps':runNPS,
+      'refresh-client-nps':loadClientNpsFromFirebase,
       'automation-log':showAutomationLog,
       'automation-outbox':()=>showAutomationOutbox(),
       'process-automations':()=>processLocalAutomations(true),
@@ -4003,7 +3968,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
         taskRows.forEach(row=>deletions.push(window.FirebaseCRM.deleteRecord('tasks',row.id)));
         docRows.forEach(row=>deletions.push(window.FirebaseCRM.deleteRecord('projectDocuments',row.id)));
         afterRows.forEach(row=>deletions.push(window.FirebaseCRM.deleteRecord('aftersales',row.id)));
-        if(portalWasPublished){deletions.push(window.FirebaseCRM.deleteRecord('client_project_status',cpf));deletions.push(window.FirebaseCRM.deleteRecord('client_project_nps',`${cpf}_${projectId}`));}
+        if(portalWasPublished)deletions.push(window.FirebaseCRM.deleteRecord('client_project_status',cpf));
         const results=await Promise.allSettled(deletions);
         const failed=results.filter(result=>result.status==='rejected');
         if(failed.length)toast('Exclusão local concluída',`${failed.length} item(ns) não foram removidos da nuvem. Verifique as regras do Banco de dados.`,'error');
@@ -5663,10 +5628,29 @@ ${company.tradeName||company.name}`:''}`;
       && companyRows('homologations').some(row=>row.proposalId===proposalId);
   }
 
+  function isAcceptedPublicProposal(publicRecord={}){
+    const status=String(publicRecord.status||'').trim().toLowerCase();
+    const acceptance=publicRecord.acceptance||{};
+    return ['aceita','aceito','aprovada','aprovado','accepted','signed','assinado','assinada'].includes(status)
+      || Boolean(publicRecord.acceptedAt||acceptance.acceptedAt||acceptance.signature||acceptance.document);
+  }
+
+  function findProposalFromPublicRecord(publicRecord={}){
+    const proposalId=publicRecord.proposalId||publicRecord.id||'';
+    const publicUrl=publicRecord.publicUrl||'';
+    const number=publicRecord.number||'';
+    const documentNo=normalizeCpfCnpj(publicRecord.clientDocument||publicRecord.acceptance?.document||'');
+    return companyRows('proposals').find(item=>
+      (proposalId && item.id===proposalId)
+      || (publicUrl && item.publicUrl===publicUrl)
+      || (number && item.number===number)
+      || (documentNo && normalizeCpfCnpj(item.client?.document||'')===documentNo && (!number || item.number===number))
+    ) || null;
+  }
+
   function applyAcceptedPublicProposal(publicRecord){
-    if(!publicRecord || String(publicRecord.status||'').toLowerCase()!=='aceita')return false;
-    const proposalId=publicRecord.proposalId||publicRecord.id;
-    const proposal=companyRows('proposals').find(item=>item.id===proposalId||item.publicUrl===publicRecord.publicUrl);
+    if(!publicRecord || !isAcceptedPublicProposal(publicRecord))return false;
+    const proposal=findProposalFromPublicRecord(publicRecord);
     if(!proposal)return false;
     const alreadyComplete=proposal.status==='Aceita'&&proposal.acceptance&&hasAcceptedWorkflowForProposal(proposal.id);
     if(alreadyComplete)return false;
@@ -5699,6 +5683,40 @@ ${company.tradeName||company.name}`:''}`;
     (Array.isArray(publicRows)?publicRows:[]).forEach(record=>{if(applyAcceptedPublicProposal(record))applied++;});
     if(applied){addNotification('Aceites sincronizados',`${applied} proposta(s) aceita(s) foram movidas para contratos, homologação e projetos.`,'success');persist();}
     return applied;
+  }
+
+  async function checkPublicProposalAcceptances({silent=true,force=false}={}){
+    if(!window.FirebaseCRM?.syncReady || publicAcceptanceSyncBusy)return 0;
+    const now=Date.now();
+    if(!force && now-lastPublicAcceptanceSyncAt<12000)return 0;
+    publicAcceptanceSyncBusy=true;
+    lastPublicAcceptanceSyncAt=now;
+    try{
+      const rows=await window.FirebaseCRM.listRecords('public_proposals',state.currentCompanyId);
+      if(rows.length){
+        state.public_proposals=[...(state.public_proposals||[]).filter(r=>(r.companyId||state.currentCompanyId)!==state.currentCompanyId),...rows];
+      }
+      const applied=applyPublicProposalAcceptances(rows);
+      if(applied){
+        persist();
+        renderSidebar();
+        if(['dashboard','kanban','proposals','contracts','works','homologations','financial','commissions','reports'].includes(activeView))renderView(activeView);
+        updateTopbar();
+        if(!silent)toast('Aceite aplicado',`${applied} proposta(s) foram convertidas em projeto, contrato e homologação.`,'success');
+      }
+      return applied;
+    }catch(error){
+      console.warn('Falha ao verificar aceites públicos:',error);
+      if(!silent)toast('Aceites não sincronizados',error.message||'Não foi possível consultar os aceites públicos.','error');
+      return 0;
+    }finally{
+      publicAcceptanceSyncBusy=false;
+    }
+  }
+
+  function startPublicAcceptanceMonitor(){
+    if(publicAcceptanceSyncTimer)return;
+    publicAcceptanceSyncTimer=setInterval(()=>checkPublicProposalAcceptances({silent:true}).catch(console.warn),20000);
   }
 
   function finalizeAcceptedProposalWorkflow(proposal){
@@ -5768,13 +5786,13 @@ ${company.tradeName||company.name}`:''}`;
         <img class="vp-cover-bg" src="${cover}" alt="Projeto solar"><div class="vp-cover-overlay"></div>
         <div class="vp-cover-inner">
           <div class="vp-cover-top"><div class="vp-logo-box"><img src="${logo}" alt="Logo"></div><div class="vp-cover-qr"><div id="proposalQr"></div></div></div>
-          <div class="vp-cover-main"><span class="vp-kicker">Proposta comercial</span><h1>Projeto Solar<br>de Solo</h1><p>Solução fotovoltaica com alta performance, economia e previsibilidade energética.</p></div>
+          <div class="vp-cover-main"><span class="vp-kicker">Proposta comercial</span><h1>Projeto Solar<br>Fotovoltáico</h1><p>Solução fotovoltaica com alta performance, economia e previsibilidade energética.</p></div>
           <div class="vp-cover-cards"><div class="vp-cover-card"><span>Cliente</span><strong>${safe(p.client.name||'Cliente demonstrativo')}</strong><small>${safe(p.client.city||company.city||'')}</small></div><div class="vp-cover-card"><span>Potência do sistema</span><strong>${number(c.actualPower,2)} kWp</strong><small>${number(acPower,0)} kW AC</small></div><div class="vp-cover-card"><span>Investimento</span><strong>${shortCurrency(p.commercial.price)}</strong><small>Cenário projetado</small></div></div>
           <div class="vp-cover-foot"><div><strong>${safe(p.number)}</strong><span>Válida até ${dateBR(p.validUntil)}</span></div><div><strong>${safe(company.phone||p.seller?.email||'Contato comercial')}</strong><span>${safe(company.email||p.seller?.email||'')}</span></div><div><strong>${safe(company.website||companyName)}</strong><span>${safe(company.city||p.client.city||'')}</span></div></div>
         </div>
       </section>
       <section class="proposal-page vp-page">${header(2,'Resumo executivo','Um painel de decisão com os números que realmente importam para aprovar o projeto.')}
-        <div class="vp-hero"><div class="vp-hero-copy"><h3>Projeto Solar ${/solo/i.test(p.technical?.structureType||'')?'de Solo':'Fotovoltaico'}</h3><p>Solução fotovoltaica para transformar custo de energia em previsibilidade financeira, com engenharia aplicada, implantação estruturada e acompanhamento do desempenho.</p></div><div class="vp-hero-kpis"><div class="vp-mini"><span>Potência DC</span><strong>${number(c.actualPower,2)} kWp</strong></div><div class="vp-mini"><span>Potência AC</span><strong>${number(acPower,0)} kW</strong></div><div class="vp-mini"><span>Economia mensal</span><strong>${shortCurrency(c.monthlySaving)}</strong></div><div class="vp-mini"><span>Payback</span><strong>${number(c.payback,1)} anos</strong></div></div></div>
+        <div class="vp-hero"><div class="vp-hero-copy"><h3>Projeto Solar Fotovoltáico</h3><p>Solução fotovoltaica para transformar custo de energia em previsibilidade financeira, com engenharia aplicada, implantação estruturada e acompanhamento do desempenho.</p></div><div class="vp-hero-kpis"><div class="vp-mini"><span>Potência DC</span><strong>${number(c.actualPower,2)} kWp</strong></div><div class="vp-mini"><span>Potência AC</span><strong>${number(acPower,0)} kW</strong></div><div class="vp-mini"><span>Economia mensal</span><strong>${shortCurrency(c.monthlySaving)}</strong></div><div class="vp-mini"><span>Payback</span><strong>${number(c.payback,1)} anos</strong></div></div></div>
         <div class="vp-metric-grid">${metric('Geração anual',`${number(annualMwh,0)} MWh`,'Energia estimada no primeiro ano de operação.','#ffb703')}${metric('Investimento',shortCurrency(p.commercial.price),'Valor de referência do projeto.','#25a5bd')}${metric('Economia anual',shortCurrency(c.annualSaving),'Redução projetada no gasto anual com energia.','#168a56')}</div>
         <div class="vp-reasons"><h3>Por que avançar com o projeto</h3><div class="vp-reason-grid"><div class="vp-reason"><div class="vp-reason-number">1</div><h4>Previsibilidade</h4><p>Reduz exposição a reajustes e melhora o planejamento financeiro.</p></div><div class="vp-reason"><div class="vp-reason-number" style="background:#25a5bd;color:#fff">2</div><h4>Ativo de longo prazo</h4><p>A usina gera benefício por décadas, com monitoramento e suporte.</p></div><div class="vp-reason"><div class="vp-reason-number" style="background:#168a56;color:#fff">3</div><h4>Proposta objetiva</h4><p>Mostra técnica, economia, escopo e garantias com clareza.</p></div></div></div>
         ${footer(2)}</div></section>
@@ -5937,7 +5955,7 @@ ${company.tradeName||company.name}`:''}`;
 
   function renderSettings(){
     const root=document.getElementById('settingsBody');if(!root)return;
-    const tabs=[['profile','Meu usuário'],['company','Empresa'],['branding','Identidade e fotos'],['drive','Google Drive'],['firebase','Banco de dados'],['email','Servidor de e-mail'],['users','Usuários e permissões'],['backup','Backup e dados']];
+    const tabs=[['profile','Meu usuário'],['company','Empresa'],['branding','Identidade e fotos'],['firebase','Banco de dados'],['email','Servidor de e-mail'],['users','Usuários e permissões'],['backup','Backup e dados']];
     root.innerHTML=`<div class="settings-tabs">${tabs.map(([id,label])=>`<button class="settings-tab ${settingsTab===id?'active':''}" data-settings-tab="${id}">${label}</button>`).join('')}</div><div id="settingsPanel">${renderSettingsPanel(settingsTab)}</div>`;
     root.querySelectorAll('[data-settings-tab]').forEach(btn=>btn.addEventListener('click',()=>{settingsTab=btn.dataset.settingsTab;renderSettings();}));
     bindSettingsEvents();
@@ -5980,18 +5998,9 @@ ${company.tradeName||company.name}`:''}`;
       const profileActionLabel=firebaseLastDiagnostic?.code==='bootstrap-owner-profile-missing'?'Reparar meu perfil':firebaseLastDiagnostic?.code==='profile-missing-bootstrap-available'?'Ativar meu perfil administrador':'Ativar ou reparar meu perfil';
       return `<div class="firebase-status"><div><strong>${escapeHtml(status.title)}</strong><span>${escapeHtml(status.detail)}</span></div><span class="status ${status.className}">${escapeHtml(status.badge)}</span></div>${firebaseDiagnosticHtml()}<div class="notice" style="margin-top:14px"><strong>Perfil do banco de dados:</strong> a conta lucas@igenergia.com.br está pré-aprovada como administradora da empresa company-demo. As demais contas continuam dependendo de aprovação em Usuários e permissões.</div><form id="firebaseSettingsForm" style="margin-top:15px"><div class="form-grid">${['apiKey','authDomain','databaseURL','projectId','storageBucket','messagingSenderId','appId','functionsRegion'].map(key=>settingsInput(key,firebaseLabels[key],firebaseConfig[key]||'',key==='apiKey'?'password':'text')).join('')}</div><div class="notice" style="margin-top:12px"><strong>Configuração carregada:</strong> projeto ${escapeHtml(firebaseConfig.projectId||'—')} · chave ${escapeHtml(firebaseKeyPreview(firebaseConfig.apiKey))} · origem ${escapeHtml(location.origin==='null'?location.protocol:location.origin)}.${location.protocol==='file:'?' O arquivo está aberto por file://; se a chave tiver restrição de site, use hospedagem web ou localhost.':''}</div><div style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px"><button class="btn btn-ghost" id="firebaseRestoreConfigBtn" type="button">Restaurar configuração oficial</button><button class="btn btn-ghost" id="firebaseTestBtn" type="button">Testar conexão</button><button class="btn btn-primary" type="submit">Salvar e conectar</button></div></form><div class="form-section" style="margin-top:15px"><div class="form-section-head"><div><h3>Acesso ao banco de dados</h3><p>Use e-mail e senha. No primeiro acesso, o botão de criação prepara automaticamente o administrador inicial e a empresa ativa.</p></div></div><div class="inline-fields"><label class="field"><span>E-mail</span><input id="firebaseLoginEmail" type="email" value="${attr(loggedEmail)}"></label><label class="field"><span>Senha</span><input id="firebaseLoginPassword" type="password" minlength="6"></label><button class="btn btn-secondary" id="firebaseLoginBtn" type="button" style="align-self:end">Entrar</button></div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-primary" id="firebaseRegisterBtn" type="button">Criar conta e primeiro administrador</button><button class="btn btn-ghost" id="firebaseBootstrapBtn" type="button">${escapeHtml(profileActionLabel)}</button><button class="btn btn-ghost" id="firebaseDiagnoseBtn" type="button">Diagnosticar</button><button class="btn btn-ghost" id="firebaseLogoutBtn" type="button">Sair</button></div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost" id="firebasePullBtn" type="button">Carregar dados da nuvem</button><button class="btn btn-primary" id="firebaseSyncBtn" type="button">Enviar dados locais</button></div></div>`;
     }
-    if(tab==='drive')return renderDriveStoragePanel();
     if(tab==='email')return renderEmailServerPanel();
     if(tab==='users')return renderUserPermissionsPanel();
     return `<div class="grid grid-2"><div class="form-section"><div class="form-section-head"><div><h3>Exportar backup</h3><p>Baixe todas as informações cadastradas em JSON.</p></div></div><button class="btn btn-primary" id="settingsExportBackup" type="button">Exportar backup completo</button></div><div class="form-section"><div class="form-section-head"><div><h3>Importar backup</h3><p>Restaure um arquivo exportado anteriormente.</p></div></div><button class="btn btn-ghost" id="settingsImportBackup" type="button">Selecionar arquivo JSON</button></div></div><div class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Apagar dados locais</h3><p>Remove definitivamente os cadastros deste navegador e retorna para uma base vazia. Os dados já enviados ao Banco de dados não são apagados.</p></div></div><button class="btn btn-danger" id="resetCleanData" type="button">Apagar dados locais</button></div>`;
-  }
-
-  function renderDriveStoragePanel(){
-    const cfg=driveGatewayConfig();
-    const ready=Boolean(cfg.url);
-    return `<div class="firebase-status"><div><strong>Google Drive como armazenamento principal</strong><span>Todos os documentos anexados nas etapas do projeto serão enviados para uma pasta do Google Drive.</span></div><span class="status ${ready?'green':'yellow'}">${ready?'Drive configurado':'Configurar Drive'}</span></div>
-      <form id="driveStorageSettingsForm" class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Configuração do Drive</h3><p>Cole a URL do Web App do Apps Script e informe o mesmo token usado no código.</p></div></div><div class="form-grid"><label class="field full"><span>URL do Web App</span><input name="driveScriptUrl" value="${attr(cfg.url)}" placeholder="https://script.google.com/macros/s/.../exec"></label><label class="field"><span>Token do Apps Script</span><input name="driveScriptToken" type="password" value="${attr(cfg.token)}" placeholder="Mesmo valor da constante TOKEN"></label><label class="field"><span>Pasta raiz no Drive</span><input name="driveRootFolderName" value="${attr(cfg.rootFolderName)}" placeholder="Soolarwin CRM"></label><label class="field"><span>Destino dos documentos</span><select name="documentStorageMode"><option value="google-drive" ${(state.company.documentStorageMode||'google-drive')==='google-drive'?'selected':''}>Google Drive principal</option><option value="firebase" ${state.company.documentStorageMode==='firebase'?'selected':''}>Firebase/local técnico</option></select></label></div><div style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px"><button class="btn btn-ghost" id="driveStorageTestBtn" type="button">Testar conexão</button><button class="btn btn-primary" type="submit">Salvar Google Drive</button></div><div class="notice warning" style="margin-top:12px"><strong>Importante:</strong> publique o Apps Script como Web App executando como você. Compartilhe a pasta raiz do Drive com a equipe que precisa abrir os documentos.</div></form>
-      <div class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Estrutura criada automaticamente</h3><p>O sistema organiza por projeto, etapa e categoria.</p></div></div><pre style="white-space:pre-wrap;font-size:10px;line-height:1.6;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px;color:var(--text-soft)">${escapeHtml(`${cfg.rootFolderName}\n└── Projetos\n    └── Cliente - ID do projeto\n        └── Etapa\n            └── Categoria\n                └── arquivo.pdf`)}</pre></div>`;
   }
 
   function renderEmailServerPanel(){
@@ -6126,26 +6135,6 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     }catch(error){toast('Bloqueio não concluído',error.message||String(error),'error');}
   }
 
-  function saveDriveStorageSettings(event){
-    event.preventDefault();
-    const values=Object.fromEntries(new FormData(event.currentTarget).entries());
-    state.company.driveScriptUrl=String(values.driveScriptUrl||'').trim();
-    state.company.driveScriptToken=String(values.driveScriptToken||'').trim();
-    state.company.driveRootFolderName=String(values.driveRootFolderName||'Soolarwin CRM').trim()||'Soolarwin CRM';
-    state.company.documentStorageMode=String(values.documentStorageMode||'google-drive');
-    safeStorageSet(DRIVE_SCRIPT_URL_KEY,state.company.driveScriptUrl);
-    safeStorageSet(DRIVE_SCRIPT_TOKEN_KEY,state.company.driveScriptToken);
-    safeStorageSet(DRIVE_ROOT_FOLDER_KEY,state.company.driveRootFolderName);
-    syncCurrentCompanyRecord();persist();toast('Google Drive salvo','Documentos do projeto serão enviados para o Drive.','success');renderSettings();
-  }
-
-  async function testDriveStorageFromSettings(){
-    const btn=document.getElementById('driveStorageTestBtn');if(btn){btn.disabled=true;btn.textContent='Testando...';}
-    try{const data=await postToDriveScript({action:'ping'});toast('Google Drive conectado',data.rootUrl||'Apps Script respondeu com sucesso.','success');}
-    catch(error){toast('Falha no teste do Drive',error.message||String(error),'error');}
-    finally{if(btn){btn.disabled=false;btn.textContent='Testar conexão';}}
-  }
-
   async function testEmailServerFromSettings(){
     const to=document.getElementById('emailServerTestTo')?.value.trim()||state.currentUser.email||state.company.email||'';
     if(!to){toast('Informe um e-mail para teste','','error');return;}
@@ -6234,8 +6223,6 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     document.querySelectorAll('[data-reject-access]').forEach(button=>button.addEventListener('click',()=>rejectAccessFromSettings(button.dataset.rejectAccess)));
     document.querySelectorAll('[data-save-user-access]').forEach(button=>button.addEventListener('click',()=>saveUserAccessFromSettings(button.dataset.saveUserAccess)));
     document.querySelectorAll('[data-delete-platform-user]').forEach(button=>button.addEventListener('click',()=>deletePlatformUserFromSettings(button.dataset.deletePlatformUser)));
-    document.getElementById('driveStorageSettingsForm')?.addEventListener('submit',saveDriveStorageSettings);
-    document.getElementById('driveStorageTestBtn')?.addEventListener('click',testDriveStorageFromSettings);
     document.getElementById('emailServerSettingsForm')?.addEventListener('submit',saveEmailServerSettings);
     document.getElementById('emailServerTestBtn')?.addEventListener('click',testEmailServerFromSettings);
     document.querySelectorAll('#settingsBody [data-view-jump]').forEach(btn=>btn.addEventListener('click',()=>{closeModal('settingsModal');navigate(btn.dataset.viewJump);}));
@@ -6346,6 +6333,8 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
       if(profile&&window.FirebaseCRM.syncReady){
         applyFirebaseProfile(profile,user);
         unlockSystemAfterAuthentication();
+        startPublicAcceptanceMonitor();
+        checkPublicProposalAcceptances({silent:true,force:true}).catch(console.warn);
         try{
           firebaseLastDiagnostic=await window.FirebaseCRM.diagnose(profile.companyId||state.currentCompanyId);
           if(profile.profileWritePending){
@@ -6375,6 +6364,8 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
         const fallback=window.FirebaseCRM.buildPreapprovedAdminProfile(user,{virtual:true,profileWritePending:true,activationWarning:error.message||''});
         window.FirebaseCRM.profile=fallback;window.FirebaseCRM.syncReady=true;
         applyFirebaseProfile(fallback,user);unlockSystemAfterAuthentication();
+        startPublicAcceptanceMonitor();
+        checkPublicProposalAcceptances({silent:true,force:true}).catch(console.warn);
         toast('Administrador liberado','A sincronização com o banco de dados ficou pendente, mas o acesso ao CRM foi autorizado.','info');
         return true;
       }
@@ -6542,6 +6533,17 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     }catch(error){toast('Não foi possível sair',error.message||String(error),'error');}
   }
 
+
+  async function loadClientNpsFromFirebase(){
+    if(!ensureFirebaseSyncReady())return;
+    try{
+      const rows=await window.FirebaseCRM.listRecords('client_project_nps',state.currentCompanyId);
+      state.client_project_nps=[...(state.client_project_nps||[]).filter(r=>(r.companyId||state.currentCompanyId)!==state.currentCompanyId),...rows];
+      persist();renderSidebar();renderView('clientNps');updateTopbar();
+      toast('Avaliações carregadas',rows.length?`${rows.length} avaliação(ões) encontradas na nuvem.`:'Nenhuma avaliação encontrada ainda.','success');
+    }catch(error){console.error(error);toast('Não foi possível carregar avaliações',error.message||'Verifique as regras para client_project_nps.','error');}
+  }
+
   async function syncLocalToFirebase(){
     if(!ensureFirebaseSyncReady())return;
     const collections=['teams','clients','leads','proposals','contracts','works','homologations','tickets','financial','commissions','inventory','aftersales','suppliers','notifications','projectDocuments','tasks','automationRules','automationQueue','client_project_nps','public_proposals'];
@@ -6641,7 +6643,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     return {passed:tests.every(test=>test.passed),total:tests.length,success:tests.filter(test=>test.passed).length,tests};
   }
 
-  window.SolarCRMDebug={SYSTEM_VERSION,calculateProposal,extractBillFields,normalizeState,renderProposalDocument,projectStages,projectDocumentCategories,defaultAutomationRule,executeAutomationRules,queueAutomationRule,ensureProjectStructure,ensureAllProjectStructures,updateProjectStage,runSystemSelfTests,runWorkflowSelfTests,loadFirebaseConfig,clearFirebaseConfig,firebaseApiKeyLooksValid,finishAuthenticatedSession,loadUserPermissionData,openPermissionMatrix,defaultPermissionMatrix,normalizePermissionMatrix,permissionArraysFromMatrix,hasPermission,lockSystemForAuthentication,unlockSystemAfterAuthentication,buildClientPortalRecord,publishClientPortalStatus,clientPortalUrl,getState:()=>deepClone(state)};
+  window.SolarCRMDebug={SYSTEM_VERSION,calculateProposal,extractBillFields,normalizeState,renderProposalDocument,projectStages,projectDocumentCategories,defaultAutomationRule,executeAutomationRules,queueAutomationRule,ensureProjectStructure,ensureAllProjectStructures,updateProjectStage,runSystemSelfTests,runWorkflowSelfTests,loadFirebaseConfig,clearFirebaseConfig,firebaseApiKeyLooksValid,finishAuthenticatedSession,loadUserPermissionData,openPermissionMatrix,defaultPermissionMatrix,normalizePermissionMatrix,permissionArraysFromMatrix,hasPermission,lockSystemForAuthentication,unlockSystemAfterAuthentication,buildClientPortalRecord,publishClientPortalStatus,clientPortalUrl,checkPublicProposalAcceptances,startPublicAcceptanceMonitor,getState:()=>deepClone(state)};
   document.addEventListener('DOMContentLoaded',()=>{init();autoConnectFirebase();});
 })();
 
