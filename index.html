@@ -2431,6 +2431,9 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   let projectDocumentFilter = 'Todos';
   let automationRuleEditor = null;
   let firebaseAuthUnsubscribe = null;
+  let publicAcceptanceSyncTimer = null;
+  let publicAcceptanceSyncBusy = false;
+  let lastPublicAcceptanceSyncAt = 0;
   let authFlowBusy = false;
   let pendingAuthDiagnostic = null;
   let permissionUsers = [];
@@ -2968,6 +2971,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     ensureAllProjectStructures();
     processLocalAutomations(false);
     bindGlobalEvents();
+    startPublicAcceptanceMonitor();
     renderSidebar();
     if (!canAccess(activeView)) activeView = 'dashboard';
     renderView(activeView);
@@ -5589,10 +5593,29 @@ ${company.tradeName||company.name}`:''}`;
       && companyRows('homologations').some(row=>row.proposalId===proposalId);
   }
 
+  function isAcceptedPublicProposal(publicRecord={}){
+    const status=String(publicRecord.status||'').trim().toLowerCase();
+    const acceptance=publicRecord.acceptance||{};
+    return ['aceita','aceito','aprovada','aprovado','accepted','signed','assinado','assinada'].includes(status)
+      || Boolean(publicRecord.acceptedAt||acceptance.acceptedAt||acceptance.signature||acceptance.document);
+  }
+
+  function findProposalFromPublicRecord(publicRecord={}){
+    const proposalId=publicRecord.proposalId||publicRecord.id||'';
+    const publicUrl=publicRecord.publicUrl||'';
+    const number=publicRecord.number||'';
+    const documentNo=normalizeCpfCnpj(publicRecord.clientDocument||publicRecord.acceptance?.document||'');
+    return companyRows('proposals').find(item=>
+      (proposalId && item.id===proposalId)
+      || (publicUrl && item.publicUrl===publicUrl)
+      || (number && item.number===number)
+      || (documentNo && normalizeCpfCnpj(item.client?.document||'')===documentNo && (!number || item.number===number))
+    ) || null;
+  }
+
   function applyAcceptedPublicProposal(publicRecord){
-    if(!publicRecord || String(publicRecord.status||'').toLowerCase()!=='aceita')return false;
-    const proposalId=publicRecord.proposalId||publicRecord.id;
-    const proposal=companyRows('proposals').find(item=>item.id===proposalId||item.publicUrl===publicRecord.publicUrl);
+    if(!publicRecord || !isAcceptedPublicProposal(publicRecord))return false;
+    const proposal=findProposalFromPublicRecord(publicRecord);
     if(!proposal)return false;
     const alreadyComplete=proposal.status==='Aceita'&&proposal.acceptance&&hasAcceptedWorkflowForProposal(proposal.id);
     if(alreadyComplete)return false;
@@ -5625,6 +5648,40 @@ ${company.tradeName||company.name}`:''}`;
     (Array.isArray(publicRows)?publicRows:[]).forEach(record=>{if(applyAcceptedPublicProposal(record))applied++;});
     if(applied){addNotification('Aceites sincronizados',`${applied} proposta(s) aceita(s) foram movidas para contratos, homologação e projetos.`,'success');persist();}
     return applied;
+  }
+
+  async function checkPublicProposalAcceptances({silent=true,force=false}={}){
+    if(!window.FirebaseCRM?.syncReady || publicAcceptanceSyncBusy)return 0;
+    const now=Date.now();
+    if(!force && now-lastPublicAcceptanceSyncAt<12000)return 0;
+    publicAcceptanceSyncBusy=true;
+    lastPublicAcceptanceSyncAt=now;
+    try{
+      const rows=await window.FirebaseCRM.listRecords('public_proposals',state.currentCompanyId);
+      if(rows.length){
+        state.public_proposals=[...(state.public_proposals||[]).filter(r=>(r.companyId||state.currentCompanyId)!==state.currentCompanyId),...rows];
+      }
+      const applied=applyPublicProposalAcceptances(rows);
+      if(applied){
+        persist();
+        renderSidebar();
+        if(['dashboard','kanban','proposals','contracts','works','homologations','financial','commissions','reports'].includes(activeView))renderView(activeView);
+        updateTopbar();
+        if(!silent)toast('Aceite aplicado',`${applied} proposta(s) foram convertidas em projeto, contrato e homologação.`,'success');
+      }
+      return applied;
+    }catch(error){
+      console.warn('Falha ao verificar aceites públicos:',error);
+      if(!silent)toast('Aceites não sincronizados',error.message||'Não foi possível consultar os aceites públicos.','error');
+      return 0;
+    }finally{
+      publicAcceptanceSyncBusy=false;
+    }
+  }
+
+  function startPublicAcceptanceMonitor(){
+    if(publicAcceptanceSyncTimer)return;
+    publicAcceptanceSyncTimer=setInterval(()=>checkPublicProposalAcceptances({silent:true}).catch(console.warn),20000);
   }
 
   function finalizeAcceptedProposalWorkflow(proposal){
@@ -6241,6 +6298,8 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
       if(profile&&window.FirebaseCRM.syncReady){
         applyFirebaseProfile(profile,user);
         unlockSystemAfterAuthentication();
+        startPublicAcceptanceMonitor();
+        checkPublicProposalAcceptances({silent:true,force:true}).catch(console.warn);
         try{
           firebaseLastDiagnostic=await window.FirebaseCRM.diagnose(profile.companyId||state.currentCompanyId);
           if(profile.profileWritePending){
@@ -6270,6 +6329,8 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
         const fallback=window.FirebaseCRM.buildPreapprovedAdminProfile(user,{virtual:true,profileWritePending:true,activationWarning:error.message||''});
         window.FirebaseCRM.profile=fallback;window.FirebaseCRM.syncReady=true;
         applyFirebaseProfile(fallback,user);unlockSystemAfterAuthentication();
+        startPublicAcceptanceMonitor();
+        checkPublicProposalAcceptances({silent:true,force:true}).catch(console.warn);
         toast('Administrador liberado','A sincronização com o banco de dados ficou pendente, mas o acesso ao CRM foi autorizado.','info');
         return true;
       }
@@ -6536,7 +6597,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     return {passed:tests.every(test=>test.passed),total:tests.length,success:tests.filter(test=>test.passed).length,tests};
   }
 
-  window.SolarCRMDebug={SYSTEM_VERSION,calculateProposal,extractBillFields,normalizeState,renderProposalDocument,projectStages,projectDocumentCategories,defaultAutomationRule,executeAutomationRules,queueAutomationRule,ensureProjectStructure,ensureAllProjectStructures,updateProjectStage,runSystemSelfTests,runWorkflowSelfTests,loadFirebaseConfig,clearFirebaseConfig,firebaseApiKeyLooksValid,finishAuthenticatedSession,loadUserPermissionData,openPermissionMatrix,defaultPermissionMatrix,normalizePermissionMatrix,permissionArraysFromMatrix,hasPermission,lockSystemForAuthentication,unlockSystemAfterAuthentication,buildClientPortalRecord,publishClientPortalStatus,clientPortalUrl,getState:()=>deepClone(state)};
+  window.SolarCRMDebug={SYSTEM_VERSION,calculateProposal,extractBillFields,normalizeState,renderProposalDocument,projectStages,projectDocumentCategories,defaultAutomationRule,executeAutomationRules,queueAutomationRule,ensureProjectStructure,ensureAllProjectStructures,updateProjectStage,runSystemSelfTests,runWorkflowSelfTests,loadFirebaseConfig,clearFirebaseConfig,firebaseApiKeyLooksValid,finishAuthenticatedSession,loadUserPermissionData,openPermissionMatrix,defaultPermissionMatrix,normalizePermissionMatrix,permissionArraysFromMatrix,hasPermission,lockSystemForAuthentication,unlockSystemAfterAuthentication,buildClientPortalRecord,publishClientPortalStatus,clientPortalUrl,checkPublicProposalAcceptances,startPublicAcceptanceMonitor,getState:()=>deepClone(state)};
   document.addEventListener('DOMContentLoaded',()=>{init();autoConnectFirebase();});
 })();
 
