@@ -2992,7 +2992,13 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     document.getElementById('drawerBackdrop')?.addEventListener('click', closeDrawer);
     document.querySelectorAll('[data-close-drawer]').forEach(btn=>btn.addEventListener('click',closeDrawer));
     document.querySelectorAll('[data-close-modal]').forEach(btn=>btn.addEventListener('click',()=>closeModal(btn.dataset.closeModal)));
-    document.querySelectorAll('.modal').forEach(modal=>modal.addEventListener('click',e=>{ if(e.target===modal && !modal.classList.contains('proposal-preview-modal')) closeModal(modal.id); }));
+    // Segurança de cadastro: clicar fora do modal não fecha a tela nem descarta os dados preenchidos.
+    document.querySelectorAll('.modal').forEach(modal=>modal.addEventListener('click',e=>{
+      if(e.target!==modal || modal.classList.contains('proposal-preview-modal'))return;
+      const dialog=modal.querySelector('.modal-dialog');
+      dialog?.animate([{transform:'scale(1)'},{transform:'scale(.992)'},{transform:'scale(1)'}],{duration:160,easing:'ease-out'});
+      toast('Cadastro mantido aberto','Para sair, use Salvar ou Cancelar. Assim as informações não são perdidas.','info');
+    }));
     document.getElementById('globalSearch')?.addEventListener('input', event => {
       searchTerm = event.target.value.trim().toLowerCase();
       renderView(activeView);
@@ -5918,7 +5924,12 @@ function doPost(e) {
     const modal=document.getElementById('permissionMatrixModal');
     const updateSummary=()=>{const temp=collectPermissionMatrix(modal);modal.querySelector('#permissionMatrixSummary').textContent=permissionSummary(temp);};
     modal.querySelectorAll('[data-close-permission-matrix]').forEach(button=>button.addEventListener('click',()=>modal.remove()));
-    modal.addEventListener('click',event=>{if(event.target===modal)modal.remove();});
+    modal.addEventListener('click',event=>{
+      if(event.target!==modal)return;
+      const dialog=modal.querySelector('.modal-dialog');
+      dialog?.animate([{transform:'scale(1)'},{transform:'scale(.992)'},{transform:'scale(1)'}],{duration:160,easing:'ease-out'});
+      toast('Permissões mantidas abertas','Use Cancelar ou Aplicar seleção para fechar esta tela.','info');
+    });
     modal.querySelectorAll('.permission-check').forEach(input=>input.addEventListener('change',event=>{
       const moduleId=event.target.dataset.permissionModule;const action=event.target.dataset.permissionAction;
       if(action==='view'&&!event.target.checked)modal.querySelectorAll(`[data-permission-module="${moduleId}"]`).forEach(box=>{if(!box.disabled)box.checked=false;});
