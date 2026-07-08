@@ -85,7 +85,7 @@
       db=firestore.getFirestore(app);
     }
     async function loadPortal(cpf){
-      currentCpf=normalizeCpfCnpj(cpf);currentRecord=null;npsAlreadySubmitted=false;clearFeedback();
+      currentCpf=normalizeCpfCnpj(cpf);clearFeedback();
       if(!currentCpf){setError('Informe o CPF/CNPJ para consultar.');return;}
       $('cpfInput').value=maskCpfCnpj(currentCpf);
       $('stageBadge').textContent='Carregando...';
@@ -109,69 +109,33 @@
       $('stageTimeline').innerHTML=stages.map((stage,index)=>`<div class="stage ${index<currentIndex?'done':index===currentIndex?'current':''}"><div class="dot">${index<currentIndex?'✓':index+1}</div><div><strong>${escapeHtml(stage.label||stage.id)}</strong><small>${escapeHtml(stage.description||'')}</small></div><span>${index<currentIndex?'Concluída':index===currentIndex?'Atual':'Pendente'}</span></div>`).join('');
       if(record.npsEnabled||record.projectStage==='Finalizado')renderNpsForm(stages);else $('npsCard').style.display='none';
     }
-    function setNpsFormLocked(locked){
-      npsAlreadySubmitted=Boolean(locked);
-      $('npsForm').dataset.locked=locked?'true':'false';
-      $('npsComment').closest('label').style.display=locked?'none':'block';
-      document.querySelector('.nps-actions').style.display=locked?'none':'flex';
-      [...document.querySelectorAll('#npsForm input,#npsForm textarea,#npsForm button')].forEach(el=>{el.disabled=locked;});
-    }
     function renderNpsForm(stages){
       $('npsCard').style.display='block';$('npsTitle').textContent=currentRecord.npsTitle||'Avaliação final do projeto';$('npsDescription').textContent=currentRecord.npsDescription||'Avalie cada etapa de 1 a 5 e deixe um comentário opcional.';
       $('npsRows').innerHTML=stages.map((stage,index)=>`<div class="nps-row"><div><strong>${escapeHtml(stage.label||stage.id)}</strong><p class="sub" style="margin:4px 0 0;font-size:12px">${escapeHtml(stage.description||'')}</p></div><div class="score">${[1,2,3,4,5].map(n=>`<span><input id="score-${index}-${n}" name="score-${index}" value="${n}" type="radio" required><label for="score-${index}-${n}">${n}</label></span>`).join('')}</div></div>`).join('');
-      setNpsFormLocked(false);
-    }
-    function showNpsAlreadyAnswered(row={}){
-      $('npsCard').style.display='block';
-      $('npsTitle').textContent='Avaliação já enviada';
-      $('npsDescription').textContent='Obrigado pelo retorno. Sua avaliação foi registrada e não pode ser enviada novamente por esta página.';
-      const stages=(Array.isArray(currentRecord.npsStages)&&currentRecord.npsStages.length?currentRecord.npsStages:defaultStages);
-      const scores=row.scores||{};
-      $('npsRows').innerHTML=stages.map(stage=>{const key=stage.id||stage.label;const value=scores[key]||'—';return `<div class="nps-row"><div><strong>${escapeHtml(stage.label||stage.id)}</strong><p class="sub" style="margin:4px 0 0;font-size:12px">Nota registrada</p></div><strong>${escapeHtml(String(value))}/5</strong></div>`;}).join('');
-      $('successBox').style.display='block';
-      $('successBox').textContent='Sua avaliação já foi registrada. Para alterar alguma informação, fale com a equipe responsável pelo projeto.';
-      setNpsFormLocked(true);
     }
     async function loadExistingNps(){
-      if(!currentRecord?.projectId)return false;
+      if(!currentRecord?.projectId)return;
       const id=`${currentCpf}_${currentRecord.projectId}`;
-      try{
-        const snap=await firestore.getDoc(firestore.doc(db,'client_project_nps',id));
-        if(!snap.exists())return false;
-        showNpsAlreadyAnswered(snap.data());
-        return true;
-      }catch(error){
-        console.warn('Não foi possível consultar avaliação já enviada:',error);
-        return false;
-      }
+      const snap=await firestore.getDoc(firestore.doc(db,'client_project_nps',id)).catch(()=>null);
+      if(!snap?.exists())return;
+      const row=snap.data();
+      const stages=(Array.isArray(currentRecord.npsStages)&&currentRecord.npsStages.length?currentRecord.npsStages:defaultStages);
+      Object.entries(row.scores||{}).forEach(([stage,value])=>{const index=stages.findIndex(item=>(item.id||item.label)===stage);const input=index>=0?document.querySelector(`input[name="score-${index}"][value="${value}"]`):null;if(input)input.checked=true;});
+      $('npsComment').value=row.comment||'';$('successBox').style.display='block';$('successBox').textContent='Sua avaliação já foi registrada. Você pode ajustar e enviar novamente, se desejar.';
     }
     async function submitNps(event){
       event.preventDefault();clearFeedback();
       if(!currentRecord){setError('Consulte o projeto antes de enviar a avaliação.');return;}
-      if(npsAlreadySubmitted){setError('Sua avaliação já foi registrada e não pode ser enviada novamente por esta página.');return;}
-      const id=`${currentCpf}_${currentRecord.projectId}`;
-      try{const existing=await firestore.getDoc(firestore.doc(db,'client_project_nps',id));if(existing.exists()){showNpsAlreadyAnswered(existing.data());return;}}catch(error){console.warn('Falha ao verificar avaliação existente antes do envio:',error);}
       const stages=(Array.isArray(currentRecord.npsStages)&&currentRecord.npsStages.length?currentRecord.npsStages:defaultStages);
       const scores={};
       for(let index=0;index<stages.length;index++){const stage=stages[index];const key=stage.id||stage.label;const checked=document.querySelector(`input[name="score-${index}"]:checked`);if(!checked){setError(`Informe a nota da etapa ${key}.`);return;}scores[key]=Number(checked.value);}
-      const now=new Date().toISOString();
-      const payload={id,cpf:currentCpf,companyId:currentRecord.companyId||'',projectId:currentRecord.projectId||'',proposalId:currentRecord.proposalId||'',clientName:currentRecord.clientName||'',projectStage:currentRecord.projectStage||'',scores,comment:$('npsComment').value.trim(),submittedAt:now,updatedAt:now,source:'cliente.html'};
-      try{
-        await firestore.setDoc(firestore.doc(db,'client_project_nps',payload.id),payload,{merge:false});
-        showNpsAlreadyAnswered(payload);
-      }catch(error){
-        console.error(error);
-        try{
-          const afterError=await firestore.getDoc(firestore.doc(db,'client_project_nps',id));
-          if(afterError.exists()){showNpsAlreadyAnswered(afterError.data());return;}
-        }catch(checkError){console.warn('Não foi possível confirmar avaliação existente depois da falha:',checkError);}
-        setError('Não foi possível enviar a avaliação. Publique o arquivo firestore_nps_corrigido_final.rules completo e tente novamente.');
-      }
+      const payload={id:`${currentCpf}_${currentRecord.projectId}`,cpf:currentCpf,companyId:currentRecord.companyId||'',projectId:currentRecord.projectId||'',proposalId:currentRecord.proposalId||'',clientName:currentRecord.clientName||'',projectStage:currentRecord.projectStage||'',scores,comment:$('npsComment').value.trim(),submittedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),source:'cliente.html'};
+      try{await firestore.setDoc(firestore.doc(db,'client_project_nps',payload.id),payload,{merge:true});$('successBox').style.display='block';$('successBox').textContent='Obrigado! Sua avaliação foi enviada com sucesso.';}catch(error){setError('Não foi possível enviar a avaliação. Verifique as regras do Firebase para client_project_nps.');console.error(error);}
     }
     $('searchBtn').addEventListener('click',()=>loadPortal($('cpfInput').value));
     $('cpfInput').addEventListener('keydown',event=>{if(event.key==='Enter')loadPortal($('cpfInput').value);});
     $('npsForm').addEventListener('submit',submitNps);
-    $('clearNpsBtn').addEventListener('click',()=>{if(npsAlreadySubmitted)return;$('npsForm').reset();$('npsComment').value='';clearFeedback();});
+    $('clearNpsBtn').addEventListener('click',()=>{$('npsForm').reset();$('npsComment').value='';clearFeedback();});
     try{await initFirebase();const cpf=new URLSearchParams(location.search).get('cpf')||'';if(cpf)await loadPortal(cpf);}catch(error){setError('Não foi possível conectar ao portal. Verifique a configuração do Firebase.');console.error(error);}
   </script>
 </body>
