@@ -156,7 +156,17 @@
       for(let index=0;index<stages.length;index++){const stage=stages[index];const key=stage.id||stage.label;const checked=document.querySelector(`input[name="score-${index}"]:checked`);if(!checked){setError(`Informe a nota da etapa ${key}.`);return;}scores[key]=Number(checked.value);}
       const now=new Date().toISOString();
       const payload={id,cpf:currentCpf,companyId:currentRecord.companyId||'',projectId:currentRecord.projectId||'',proposalId:currentRecord.proposalId||'',clientName:currentRecord.clientName||'',projectStage:currentRecord.projectStage||'',scores,comment:$('npsComment').value.trim(),submittedAt:now,updatedAt:now,source:'cliente.html'};
-      try{await firestore.setDoc(firestore.doc(db,'client_project_nps',payload.id),payload);showNpsAlreadyAnswered(payload);}catch(error){setError('Não foi possível enviar a avaliação. Publique as regras corrigidas do Firebase para client_project_nps.');console.error(error);}
+      try{
+        await firestore.setDoc(firestore.doc(db,'client_project_nps',payload.id),payload,{merge:false});
+        showNpsAlreadyAnswered(payload);
+      }catch(error){
+        console.error(error);
+        try{
+          const afterError=await firestore.getDoc(firestore.doc(db,'client_project_nps',id));
+          if(afterError.exists()){showNpsAlreadyAnswered(afterError.data());return;}
+        }catch(checkError){console.warn('Não foi possível confirmar avaliação existente depois da falha:',checkError);}
+        setError('Não foi possível enviar a avaliação. Publique o arquivo firestore_nps_corrigido_final.rules completo e tente novamente.');
+      }
     }
     $('searchBtn').addEventListener('click',()=>loadPortal($('cpfInput').value));
     $('cpfInput').addEventListener('keydown',event=>{if(event.key==='Enter')loadPortal($('cpfInput').value);});
