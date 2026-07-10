@@ -1282,7 +1282,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   <input id="backupImportInput" type="file" accept="application/json" hidden />
 
   <script>
-/* Adaptador Banco de dados modular — SolarCRM Pro v3.0.1. */
+/* Adaptador Banco de dados modular — SolarCRM Pro v3.1.0 — catálogo de equipamentos no Firebase. */
 (() => {
   'use strict';
   const SDK_VERSION = '11.10.0';
@@ -1297,7 +1297,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     companies: 'companies', users: 'users', teams: 'team_members', accessRequests: 'access_requests', clients: 'clients', leads: 'leads', proposals: 'proposals', contracts: 'contracts',
     projects: 'projects', works: 'projects', installations: 'installations', aftersales: 'installations', homologations: 'homologations',
     tickets: 'tickets', financial: 'financial', commissions: 'commissions', products: 'products', inventory: 'products',
-    suppliers: 'suppliers', notifications: 'notifications', projectDocuments: 'project_documents', automationRules: 'automation_rules', automationQueue: 'automation_queue', automationLogs: 'automation_logs', stockMovements: 'stock_movements', tasks: 'tasks', clientProjectStatus: 'client_project_status', client_project_status: 'client_project_status', publicProposals: 'public_proposals', public_proposals: 'public_proposals'
+    suppliers: 'suppliers', equipmentCatalog: 'equipment_catalog', notifications: 'notifications', projectDocuments: 'project_documents', automationRules: 'automation_rules', automationQueue: 'automation_queue', automationLogs: 'automation_logs', stockMovements: 'stock_movements', tasks: 'tasks', clientProjectStatus: 'client_project_status', client_project_status: 'client_project_status', publicProposals: 'public_proposals', public_proposals: 'public_proposals'
   };
 
   const firebaseErrorMessages = {
@@ -2171,7 +2171,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   const FIREBASE_CONFIG_KEY = 'solarcrm-firebase-config-v2-9-2';
   const LEGACY_FIREBASE_CONFIG_KEYS = ['solarcrm-firebase-config-v2-8','solarcrm-firebase-config-v2-7','solarcrm-firebase-config-v2-6','solarcrm-firebase-config'];
   const DEFAULT_FIREBASE_CONFIG = Object.freeze({"apiKey":"AIzaSyCYSQfnPLyV9B6osiZhsLYYrF64YLhGkMA","authDomain":"energiasolar-67b14.firebaseapp.com","databaseURL":"https://energiasolar-67b14-default-rtdb.firebaseio.com","projectId":"energiasolar-67b14","messagingSenderId":"394822890491","appId":"1:394822890491:web:5afc55e01902bbf142915e","functionsRegion":"southamerica-east1"});
-  const FIRESTORE_RULES_TEXT = `// SolarCRM Pro v20 sem Storage — leitura da empresa para todos os usuários autorizados — permissões granulares + proposta pública + aceite digital
+  const FIRESTORE_RULES_TEXT = `// SolarCRM Pro v21 — catálogo de equipamentos no Firebase sem Storage — leitura da empresa para todos os usuários autorizados — permissões granulares + proposta pública + aceite digital
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -2519,6 +2519,15 @@ service cloud.firestore {
       allow delete: if canReadRecord() && hasPermission('commissions','delete');
     }
 
+    match /equipment_catalog/{id} {
+      // Todos os usuários que usam Propostas ou Estoque podem consultar o catálogo central.
+      allow read: if canReadRecord() && (hasPermission('proposals','view') || hasPermission('inventory','view'));
+      // Cadastro e manutenção ficam sob as permissões de Estoque.
+      allow create: if canCreateRecord() && hasPermission('inventory','create');
+      allow update: if canUpdateRecord() && hasPermission('inventory','edit');
+      allow delete: if canReadRecord() && hasPermission('inventory','delete');
+    }
+
     match /products/{id} {
       allow read: if canReadRecord() && hasPermission('inventory','view');
       allow create: if canCreateRecord() && hasPermission('inventory','create');
@@ -2756,21 +2765,71 @@ service cloud.firestore {
     ['{data}','Data atual'],['{dias}','Quantidade de dias'],['{documento}','Documento'],['{tarefa}','Tarefa'],['{telefone_empresa}','Telefone da empresa']
   ];
 
-  const moduleCatalog = [
-    { id: 'mod-weg-590', brand: 'WEG', model: 'Módulo Monocristalino 590 W', power: 590, width: 1.134, height: 2.278, weight: 31.5, productWarranty: 12, performanceWarranty: 30, efficiency: 22.8, certification: 'INMETRO / IEC', datasheet: '' },
-    { id: 'mod-ja-610', brand: 'JA Solar', model: 'JAM72D42 610 W', power: 610, width: 1.134, height: 2.333, weight: 32.5, productWarranty: 12, performanceWarranty: 30, efficiency: 23.1, certification: 'INMETRO / IEC', datasheet: '' },
-    { id: 'mod-jinko-620', brand: 'Jinko', model: 'Tiger Neo 620 W', power: 620, width: 1.134, height: 2.382, weight: 33.0, productWarranty: 12, performanceWarranty: 30, efficiency: 23.0, certification: 'INMETRO / IEC', datasheet: '' },
-    { id: 'mod-canadian-620', brand: 'Canadian', model: 'TOPHiKu6 620 W', power: 620, width: 1.134, height: 2.382, weight: 32.8, productWarranty: 12, performanceWarranty: 30, efficiency: 22.9, certification: 'INMETRO / IEC', datasheet: '' },
-    { id: 'mod-trina-600', brand: 'Trina', model: 'Vertex N 600 W', power: 600, width: 1.134, height: 2.278, weight: 31.8, productWarranty: 12, performanceWarranty: 30, efficiency: 22.6, certification: 'INMETRO / IEC', datasheet: '' }
+  const defaultModuleCatalog = [
+    { id: 'mod-weg-590', type:'Módulo', status:'Ativo', brand: 'WEG', model: 'Módulo Monocristalino 590 W', power: 590, width: 1.134, height: 2.278, weight: 31.5, productWarranty: 12, performanceWarranty: 30, efficiency: 22.8, certification: 'INMETRO / IEC', datasheet: '' },
+    { id: 'mod-ja-610', type:'Módulo', status:'Ativo', brand: 'JA Solar', model: 'JAM72D42 610 W', power: 610, width: 1.134, height: 2.333, weight: 32.5, productWarranty: 12, performanceWarranty: 30, efficiency: 23.1, certification: 'INMETRO / IEC', datasheet: '' },
+    { id: 'mod-jinko-620', type:'Módulo', status:'Ativo', brand: 'Jinko', model: 'Tiger Neo 620 W', power: 620, width: 1.134, height: 2.382, weight: 33.0, productWarranty: 12, performanceWarranty: 30, efficiency: 23.0, certification: 'INMETRO / IEC', datasheet: '' },
+    { id: 'mod-canadian-620', type:'Módulo', status:'Ativo', brand: 'Canadian', model: 'TOPHiKu6 620 W', power: 620, width: 1.134, height: 2.382, weight: 32.8, productWarranty: 12, performanceWarranty: 30, efficiency: 22.9, certification: 'INMETRO / IEC', datasheet: '' },
+    { id: 'mod-trina-600', type:'Módulo', status:'Ativo', brand: 'Trina', model: 'Vertex N 600 W', power: 600, width: 1.134, height: 2.278, weight: 31.8, productWarranty: 12, performanceWarranty: 30, efficiency: 22.6, certification: 'INMETRO / IEC', datasheet: '' }
   ];
 
-  const inverterCatalog = [
-    { id: 'inv-weg-10', brand: 'WEG', model: 'Inversor String 10 kW', power: 10, phases: 'Trifásico', warranty: 10, mppt: 2, certification: 'INMETRO / IEC', datasheet: '' },
-    { id: 'inv-sungrow-10', brand: 'Sungrow', model: 'SG10RT 10 kW', power: 10, phases: 'Trifásico', warranty: 10, mppt: 2, certification: 'INMETRO / IEC', datasheet: '' },
-    { id: 'inv-solis-10', brand: 'Solis', model: 'S5-GR3P10K 10 kW', power: 10, phases: 'Trifásico', warranty: 10, mppt: 2, certification: 'INMETRO / IEC', datasheet: '' },
-    { id: 'inv-deye-10', brand: 'Deye', model: 'SUN-10K-G 10 kW', power: 10, phases: 'Trifásico', warranty: 10, mppt: 2, certification: 'INMETRO / IEC', datasheet: '' },
-    { id: 'inv-growatt-10', brand: 'Growatt', model: 'MID 10KTL3-X 10 kW', power: 10, phases: 'Trifásico', warranty: 10, mppt: 2, certification: 'INMETRO / IEC', datasheet: '' }
+  const defaultInverterCatalog = [
+    { id: 'inv-weg-10', type:'Inversor', status:'Ativo', brand: 'WEG', model: 'Inversor String 10 kW', power: 10, phases: 'Trifásico', warranty: 10, mppt: 2, overload:30, certification: 'INMETRO / IEC', datasheet: '' },
+    { id: 'inv-sungrow-10', type:'Inversor', status:'Ativo', brand: 'Sungrow', model: 'SG10RT 10 kW', power: 10, phases: 'Trifásico', warranty: 10, mppt: 2, overload:30, certification: 'INMETRO / IEC', datasheet: '' },
+    { id: 'inv-solis-10', type:'Inversor', status:'Ativo', brand: 'Solis', model: 'S5-GR3P10K 10 kW', power: 10, phases: 'Trifásico', warranty: 10, mppt: 2, overload:30, certification: 'INMETRO / IEC', datasheet: '' },
+    { id: 'inv-deye-10', type:'Inversor', status:'Ativo', brand: 'Deye', model: 'SUN-10K-G 10 kW', power: 10, phases: 'Trifásico', warranty: 10, mppt: 2, overload:30, certification: 'INMETRO / IEC', datasheet: '' },
+    { id: 'inv-growatt-10', type:'Inversor', status:'Ativo', brand: 'Growatt', model: 'MID 10KTL3-X 10 kW', power: 10, phases: 'Trifásico', warranty: 10, mppt: 2, overload:30, certification: 'INMETRO / IEC', datasheet: '' }
   ];
+
+  let allModuleCatalog = defaultModuleCatalog.map(item=>({...item}));
+  let allInverterCatalog = defaultInverterCatalog.map(item=>({...item}));
+  let moduleCatalog = allModuleCatalog.map(item=>({...item}));
+  let inverterCatalog = allInverterCatalog.map(item=>({...item}));
+
+  function normalizeEquipmentType(value){
+    const normalized=String(value||'').trim().toLowerCase();
+    return normalized.startsWith('inv')?'Inversor':'Módulo';
+  }
+
+  function normalizeEquipmentRecord(record={}){
+    const type=normalizeEquipmentType(record.type||record.category);
+    const base={...record,type,status:record.status==='Inativo'?'Inativo':'Ativo'};
+    base.brand=String(base.brand||'').trim();
+    base.model=String(base.model||base.name||'').trim();
+    base.name=base.model;
+    base.power=Number(base.power||0);
+    base.certification=String(base.certification||'').trim();
+    base.datasheet=String(base.datasheet||'').trim();
+    if(type==='Módulo'){
+      base.width=Number(base.width||0);base.height=Number(base.height||0);base.weight=Number(base.weight||0);
+      base.efficiency=Number(base.efficiency||0);base.productWarranty=Number(base.productWarranty||0);base.performanceWarranty=Number(base.performanceWarranty||0);
+    }else{
+      base.phases=String(base.phases||'').trim();base.mppt=Number(base.mppt||0);base.warranty=Number(base.warranty||0);base.overload=Number(base.overload||0);
+    }
+    return base;
+  }
+
+  function defaultEquipmentCatalogRecords(companyId=state?.currentCompanyId||'company-demo'){
+    return [...defaultModuleCatalog,...defaultInverterCatalog].map(item=>normalizeEquipmentRecord({
+      ...item,companyId,createdAt:new Date().toISOString(),updatedAt:new Date().toISOString(),seeded:true
+    }));
+  }
+
+  function refreshEquipmentCatalog(){
+    const current=state?.currentCompanyId;
+    const rows=(state?.equipmentCatalog||[]).filter(item=>(item.companyId||current)===current).map(normalizeEquipmentRecord);
+    const modules=rows.filter(item=>item.type==='Módulo');
+    const inverters=rows.filter(item=>item.type==='Inversor');
+    allModuleCatalog=(modules.length?modules:defaultModuleCatalog).map(item=>({...item}));
+    allInverterCatalog=(inverters.length?inverters:defaultInverterCatalog).map(item=>({...item}));
+    moduleCatalog=allModuleCatalog.filter(item=>item.status!=='Inativo');
+    inverterCatalog=allInverterCatalog.filter(item=>item.status!=='Inativo');
+    if(!moduleCatalog.length)moduleCatalog=allModuleCatalog.slice(0,1);
+    if(!inverterCatalog.length)inverterCatalog=allInverterCatalog.slice(0,1);
+  }
+
+  function findModuleCatalogItem(id){return allModuleCatalog.find(item=>item.id===id)||moduleCatalog[0]||defaultModuleCatalog[0];}
+  function findInverterCatalogItem(id){return allInverterCatalog.find(item=>item.id===id)||inverterCatalog[0]||defaultInverterCatalog[0];}
 
   const rolePermissions = {
     admin: ['dashboard','leads','kanban','clients','proposals','contracts','works','homologations','financial','aftersales','tickets','commissions','inventory','teams','reports','projectDocuments','settings'],
@@ -2812,7 +2871,7 @@ service cloud.firestore {
   const permissionCollectionModules = {
     leads:'leads', clients:'clients', proposals:'proposals', contracts:'contracts', works:'works', projects:'works',
     homologations:'homologations', financial:'financial', aftersales:'aftersales', installations:'aftersales', tickets:'tickets',
-    commissions:'commissions', inventory:'inventory', products:'inventory', suppliers:'inventory', teams:'teams', team_members:'teams',
+    commissions:'commissions', inventory:'inventory', products:'inventory', suppliers:'inventory', equipmentCatalog:'inventory', equipment_catalog:'inventory', teams:'teams', team_members:'teams',
     projectDocuments:'projectDocuments', project_documents:'projectDocuments', tasks:'works',
     automationRules:'settings', automation_rules:'settings', automationQueue:'settings', automation_queue:'settings', automationLogs:'settings', automation_logs:'settings',
     stockMovements:'inventory', notifications:'dashboard'
@@ -2988,6 +3047,16 @@ service cloud.firestore {
         ['seller','Vendedor','text',true], ['clientName','Cliente','text',true], ['proposalValue','Valor vendido','number'], ['percentage','Percentual (%)','number'], ['value','Comissão','number'], ['dueDate','Previsão','date'], ['status','Status','select',true,['Prevista','Liberada','Paga','Cancelada']], ['notes','Observações','textarea']
       ]
     },
+    equipmentCatalog: {
+      title: 'Equipamento', fields: [
+        ['type','Tipo','select',true,['Módulo','Inversor']], ['status','Status','select',true,['Ativo','Inativo']],
+        ['brand','Marca','text',true], ['model','Modelo','text',true], ['power','Potência nominal (W para módulo / kW para inversor)','number',true],
+        ['efficiency','Eficiência do módulo (%)','number'], ['width','Largura do módulo (m)','number'], ['height','Altura do módulo (m)','number'], ['weight','Peso do módulo (kg)','number'],
+        ['productWarranty','Garantia do produto — módulo (anos)','number'], ['performanceWarranty','Garantia de desempenho — módulo (anos)','number'],
+        ['phases','Fases do inversor','select',false,['Monofásico','Bifásico','Trifásico']], ['mppt','Quantidade de MPPT','number'], ['warranty','Garantia do inversor (anos)','number'], ['overload','Overload permitido (%)','number'],
+        ['certification','Certificações','text'], ['datasheet','Link do datasheet / Google Drive','url'], ['notes','Observações','textarea']
+      ]
+    },
     inventory: {
       title: 'Produto', fields: [
         ['name','Produto','text',true], ['category','Categoria','select',true,['Módulo','Inversor','Estrutura','Cabo','Proteção','Conector','Outros']], ['brand','Marca','text'], ['sku','SKU','text'], ['quantity','Quantidade','number'], ['minimum','Estoque mínimo','number'], ['unitCost','Custo unitário','number'], ['supplier','Fornecedor','text'], ['location','Localização','text']
@@ -3023,20 +3092,20 @@ service cloud.firestore {
 
   function seedState() {
     return {
-      version: 7,
+      version: 10,
       theme: 'dark', role: 'seller', currentView: 'dashboard', currentCompanyId: 'company-demo',
       currentUser: { id: '', name: '', email: '', initials: 'US', role: 'seller', companyIds: [], permissions: defaultPermissionMatrix('seller') },
       company: { ...defaultCompany }, companies: [{ ...defaultCompany }],
       users: [], accessRequests: [], notifications: [], leads: [], clients: [], proposals: [], contracts: [], works: [],
-      homologations: [], financial: [], aftersales: [], tickets: [], commissions: [], inventory: [], teams: [], products: [], suppliers: [],
+      homologations: [], financial: [], aftersales: [], tickets: [], commissions: [], inventory: [], equipmentCatalog: [], teams: [], products: [], suppliers: [],
       automations: { whatsappLead:true, emailProposal:true, followup:true, reminders:true, collections:false, nps:true, lastRunAt:'' },
       automationRules: [], automationQueue: [], automationLogs: [], stockMovements: [], projectDocuments: [], tasks: [], activity: []
     };
   }
 
   function createSampleProposal(id, clientName, city, consumption, price, status) {
-    const moduleItem = moduleCatalog[2];
-    const inverter = inverterCatalog[1];
+    const moduleItem = moduleCatalog[0] || defaultModuleCatalog[0];
+    const inverter = inverterCatalog[0] || defaultInverterCatalog[0];
     return {
       id, companyId:state?.currentCompanyId||defaultCompany.id, number:`PROP-${String(id).replace(/[^a-zA-Z0-9]/g,'').slice(-6).toUpperCase()}`, status, createdAt: todayISO(), validUntil:addDaysISO(10),
       client: { name: clientName, document:'', phone:'47999999999', email:'cliente@email.com', city, address:'', consumerUnit:'123456789', className:'Residencial', tariffGroup:'B1', distributor:'CELESC' },
@@ -3069,6 +3138,7 @@ service cloud.firestore {
   }
 
   let state = normalizeState(loadState());
+  refreshEquipmentCatalog();
   let activeView = state.currentView || 'dashboard';
   let entityContext = { collection:null, id:null };
   let activeProposal = null;
@@ -3116,7 +3186,7 @@ service cloud.firestore {
     const current = data.companies.find(c => c.id === data.currentCompanyId) || data.companies[0];
     data.currentCompanyId = current.id;
     data.company = { ...defaultCompany, ...current };
-    const recordCollections = ['clients','leads','proposals','contracts','works','homologations','tickets','financial','commissions','inventory','teams','aftersales','notifications','projectDocuments','automationRules','automationQueue','automationLogs','stockMovements','tasks','products','suppliers','public_proposals'];
+    const recordCollections = ['clients','leads','proposals','contracts','works','homologations','tickets','financial','commissions','inventory','equipmentCatalog','teams','aftersales','notifications','projectDocuments','automationRules','automationQueue','automationLogs','stockMovements','tasks','products','suppliers','public_proposals'];
     recordCollections.forEach(collection => {
       data[collection] = (Array.isArray(data[collection]) ? data[collection] : []).map(record => ({ ...record, companyId: record.companyId || data.currentCompanyId }));
     });
@@ -3447,6 +3517,7 @@ service cloud.firestore {
     {stateKey:'tickets', remote:'tickets', module:'tickets'},
     {stateKey:'commissions', remote:'commissions', module:'commissions'},
     {stateKey:'inventory', remote:'inventory', module:'inventory'},
+    {stateKey:'equipmentCatalog', remote:'equipmentCatalog', module:'inventory'},
     {stateKey:'suppliers', remote:'suppliers', module:'inventory'},
     {stateKey:'stockMovements', remote:'stockMovements', module:'inventory'},
     {stateKey:'notifications', remote:'notifications', module:'dashboard'},
@@ -3459,11 +3530,17 @@ service cloud.firestore {
     const current=state.currentCompanyId;
     const retained=(state[stateKey]||[]).filter(item=>(item.companyId||current)!==current);
     state[stateKey]=[...retained,...rows.map(item=>({...item,companyId:item.companyId||current}))];
+    if(stateKey==='equipmentCatalog')refreshEquipmentCatalog();
+  }
+
+  function hasCloudReadAccess(item){
+    if(item.stateKey==='equipmentCatalog')return hasPermission('proposals','view')||hasPermission('inventory','view');
+    return hasPermission(item.module,'view');
   }
 
   function clearUnauthorizedCollections(){
     cloudCollectionPlan.forEach(item=>{
-      if(!hasPermission(item.module,'view'))replaceCompanyCollection(item.stateKey,[]);
+      if(!hasCloudReadAccess(item))replaceCompanyCollection(item.stateKey,[]);
     });
   }
 
@@ -3483,7 +3560,7 @@ service cloud.firestore {
   function startAuthorizedDataWatchers(){
     stopAuthorizedDataWatchers();
     if(!window.FirebaseCRM?.syncReady)return;
-    cloudCollectionPlan.filter(item=>hasPermission(item.module,'view')).forEach(item=>{
+    cloudCollectionPlan.filter(hasCloudReadAccess).forEach(item=>{
       try{
         const unsubscribe=window.FirebaseCRM.watchRecords(item.remote,state.currentCompanyId,rows=>{
           replaceCompanyCollection(item.stateKey,rows);
@@ -3538,6 +3615,15 @@ service cloud.firestore {
     ]).finally(()=>clearTimeout(timer));
   }
 
+  async function ensureDefaultEquipmentCatalog(){
+    const existing=(state.equipmentCatalog||[]).filter(item=>(item.companyId||state.currentCompanyId)===state.currentCompanyId);
+    if(existing.length||!currentUserIsAdmin()||!window.FirebaseCRM?.syncReady)return existing;
+    const records=defaultEquipmentCatalogRecords(state.currentCompanyId);
+    for(const record of records)await window.FirebaseCRM.saveRecord('equipmentCatalog',firestoreSafeRecord(record));
+    replaceCompanyCollection('equipmentCatalog',records);
+    return records;
+  }
+
   async function loadAuthorizedFirebaseData({silent=false,restartWatchers=true}={}){
     if(!window.FirebaseCRM?.syncReady)throw new Error('O perfil ainda não está autorizado no Firebase.');
     if(cloudDataLoadBusy)return false;
@@ -3561,7 +3647,7 @@ service cloud.firestore {
       applySharedCompanySettings(company,{render:false,force:true,source:'Firebase / companies'});
 
       clearUnauthorizedCollections();
-      const allowed=cloudCollectionPlan.filter(item=>hasPermission(item.module,'view'));
+      const allowed=cloudCollectionPlan.filter(hasCloudReadAccess);
       const results=await Promise.allSettled(allowed.map(item=>promiseWithTimeout(
         window.FirebaseCRM.listRecords(item.remote,state.currentCompanyId),
         15000,
@@ -3574,6 +3660,8 @@ service cloud.firestore {
         else failures.push(`${item.remote}: ${result.reason?.message||result.reason}`);
       });
       if(failures.length)throw new Error(`O Firebase não liberou todos os módulos autorizados. ${failures.join(' | ')}`);
+      await ensureDefaultEquipmentCatalog();
+      refreshEquipmentCatalog();
 
       sharedSettingsLastSource='Firebase / companies';
       sharedSettingsLastLoadedAt=new Date().toISOString();
@@ -4355,7 +4443,7 @@ service cloud.firestore {
     const rows=filteredRows(collection);
     const addLabel=collection==='tickets'?'Abrir chamado':collection==='inventory'?'Novo produto':`Novo ${entitySchemas[collection]?.title?.toLowerCase()||'registro'}`;
     const summary=collection==='works'?`<div class="pipeline-summary">${['Planejamento','Compras','Em instalação','Vistoria','Concluída'].map(status=>`<div class="pipeline-pill"><span>${status}</span><strong>${companyRows('works').filter(w=>w.status===status).length}</strong></div>`).join('')}</div>`:'';
-    return `${pageHead(cfg.title,cfg.subtitle,`${hasPermission(permissionModuleForCollection(collection),'export')?`<button class="btn btn-ghost" data-action="export-csv" data-collection="${collection}">Exportar CSV</button>`:''}${hasPermission(permissionModuleForCollection(collection),'create')?`<button class="btn btn-primary" data-action="add-entity" data-collection="${collection}">＋ ${addLabel}</button>`:''}`)}${summary}
+    return `${pageHead(cfg.title,cfg.subtitle,`${collection==='inventory'?'<button class="btn btn-secondary" data-action="equipment-bank">⚙ Banco de equipamentos</button>':''}${hasPermission(permissionModuleForCollection(collection),'export')?`<button class="btn btn-ghost" data-action="export-csv" data-collection="${collection}">Exportar CSV</button>`:''}${hasPermission(permissionModuleForCollection(collection),'create')?`<button class="btn btn-primary" data-action="add-entity" data-collection="${collection}">＋ ${addLabel}</button>`:''}`)}${summary}
       <section class="card table-card">
         <div class="table-toolbar"><div><strong style="font-size:12px">${rows.length} registros</strong><span style="display:block;color:var(--muted);font-size:9px;margin-top:3px">Dados da empresa ativa</span></div><div class="table-tools"><input class="table-search" data-local-search="${collection}" placeholder="Filtrar nesta lista..." /></div></div>
         <div class="data-table-wrap"><table class="data-table"><thead><tr>${cfg.columns.map(c=>`<th>${escapeHtml(c[1])}</th>`).join('')}<th style="text-align:right">Ações</th></tr></thead>
@@ -4958,7 +5046,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
       'add-entity':[collectionModule,'create'],'edit-entity':[collectionModule,'edit'],'view-entity':[collectionModule,'view'],'delete-entity':[collectionModule,'delete'],
       'mark-paid':['financial','approve'],'open-project':['works','view'],'project-documents':['projectDocuments','view'],
       'edit-proposal':['proposals','edit'],'preview-proposal':['proposals','view'],'send-proposal':['proposals','approve'],'duplicate-proposal':['proposals','create'],'delete-proposal':['proposals','delete'],
-      'equipment-bank':['proposals','view'],'export-backup':['settings','export'],'export-csv':[collectionModule,'export'],'send-collections':['financial','approve'],
+      'equipment-bank':null,'export-backup':['settings','export'],'export-csv':[collectionModule,'export'],'send-collections':['financial','approve'],
       'run-nps':['aftersales','approve'],'automation-log':['view'],'automation-outbox':['view'],'process-automations':['approve'],
       'test-automation':['approve'],'run-ai':['approve'],'print-report':['reports','export']
     };
@@ -5013,10 +5101,21 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     const form=document.getElementById('entityForm');
     form.innerHTML=schema.fields.map(([key,label,type,required,options])=>{
       const value=data[key]??'';
-      if(type==='select')return `<label class="field"><span>${escapeHtml(label)}${required?' *':''}</span><select name="${key}" ${required?'required':''}><option value="">Selecione...</option>${options.map(opt=>`<option value="${attr(opt)}" ${String(value)===String(opt)?'selected':''}>${escapeHtml(opt)}</option>`).join('')}</select></label>`;
-      if(type==='textarea')return `<label class="field full"><span>${escapeHtml(label)}</span><textarea name="${key}" ${required?'required':''}>${escapeHtml(value)}</textarea></label>`;
-      return `<label class="field"><span>${escapeHtml(label)}${required?' *':''}</span><input name="${key}" type="${type}" value="${attr(value)}" ${required?'required':''} ${type==='number'?'step="any"':''}></label>`;
+      if(type==='select')return `<label class="field" data-field-name="${key}"><span>${escapeHtml(label)}${required?' *':''}</span><select name="${key}" ${required?'required':''}><option value="">Selecione...</option>${options.map(opt=>`<option value="${attr(opt)}" ${String(value)===String(opt)?'selected':''}>${escapeHtml(opt)}</option>`).join('')}</select></label>`;
+      if(type==='textarea')return `<label class="field full" data-field-name="${key}"><span>${escapeHtml(label)}</span><textarea name="${key}" ${required?'required':''}>${escapeHtml(value)}</textarea></label>`;
+      return `<label class="field" data-field-name="${key}"><span>${escapeHtml(label)}${required?' *':''}</span><input name="${key}" type="${type}" value="${attr(value)}" ${required?'required':''} ${type==='number'?'step="any"':''}></label>`;
     }).join('');
+    if(collection==='equipmentCatalog'){
+      const moduleFields=['efficiency','width','height','weight','productWarranty','performanceWarranty'];
+      const inverterFields=['phases','mppt','warranty','overload'];
+      const toggleEquipmentFields=()=>{
+        const isModule=form.elements.type?.value!=='Inversor';
+        moduleFields.forEach(key=>{const field=form.querySelector(`[data-field-name="${key}"]`);if(field)field.style.display=isModule?'flex':'none';});
+        inverterFields.forEach(key=>{const field=form.querySelector(`[data-field-name="${key}"]`);if(field)field.style.display=isModule?'none':'flex';});
+      };
+      form.elements.type?.addEventListener('change',toggleEquipmentFields);
+      toggleEquipmentFields();
+    }
     openModal('entityModal');
   }
 
@@ -5027,7 +5126,8 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     const fd=new FormData(event.currentTarget); const record={};
     schema.fields.forEach(([key,,type])=>{ const raw=fd.get(key); record[key]=type==='number'?(raw===''?'':Number(raw)):raw; });
     const previous=id?(state[collection]||[]).find(r=>r.id===id):null;
-    record.id=id||newId(collection.slice(0,3)); record.companyId=state.currentCompanyId; record.updatedAt=new Date().toISOString(); if(!id)record.createdAt=todayISO();
+    if(collection==='equipmentCatalog')Object.assign(record,normalizeEquipmentRecord(record));
+    record.id=id||newId(collection==='equipmentCatalog'?(record.type==='Inversor'?'inv':'mod'):collection.slice(0,3)); record.companyId=state.currentCompanyId; record.updatedAt=new Date().toISOString(); if(!id)record.createdAt=todayISO();
     if(collection==='commissions' && !record.value && record.proposalValue && record.percentage) record.value=record.proposalValue*record.percentage/100;
     if(collection==='aftersales'){
       const expected=Number(record.expectedMonth||0),generated=Number(record.generationMonth||0);
@@ -5058,9 +5158,11 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
       if(saved.status==='Concluída'||saved.projectStage==='Operação')ensureAfterSalesFromWork(saved);
     }
     addActivity('✓',`${schema.title} ${id?'atualizado':'criado'}`,record.name||record.clientName||record.subject||record.description||record.id);
+    if(collection==='equipmentCatalog')refreshEquipmentCatalog();
     persist(); closeModal('entityModal'); renderSidebar(); renderView(activeView);
     toast(`${schema.title} salvo`,id?'Alterações atualizadas.':'Novo registro criado.');
     if(window.FirebaseCRM?.syncReady){ try{const cloudRecord=collection==='works'?(state.works.find(item=>item.id===record.id)||record):{...previous,...record};await window.FirebaseCRM.saveRecord(collection,cloudRecord); }catch(err){console.warn(err);toast('Salvo localmente',err?.message||'A sincronização com o banco de dados falhou.','error');} }
+    if(collection==='equipmentCatalog')showEquipmentBank();
   }
 
   function ensureAfterSalesFromWork(work){
@@ -5121,8 +5223,9 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     if(!hasPermission(permissionModuleForCollection(collection),'delete')){denyPermission(permissionModuleForCollection(collection),'delete');return;}
     const row=(state[collection]||[]).find(r=>r.id===id); if(!row)return;
     if(!confirm(`Excluir este registro?\n\n${row.name||row.clientName||row.subject||row.description||id}`))return;
-    state[collection]=state[collection].filter(r=>r.id!==id);persist();renderSidebar();renderView(activeView);toast('Registro excluído','A exclusão foi aplicada localmente.','info');
+    state[collection]=state[collection].filter(r=>r.id!==id);if(collection==='equipmentCatalog')refreshEquipmentCatalog();persist();renderSidebar();renderView(activeView);toast('Registro excluído','A exclusão foi aplicada localmente.','info');
     window.FirebaseCRM?.syncReady&&window.FirebaseCRM.deleteRecord(collection,id).catch(console.warn);
+    if(collection==='equipmentCatalog')showEquipmentBank();
   }
 
   function viewEntity(collection,id){
@@ -5278,8 +5381,21 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
   }
 
   function showEquipmentBank(){
-    const cards=[...moduleCatalog.map(x=>({...x,type:'Módulo'})),...inverterCatalog.map(x=>({...x,type:'Inversor'}))];
-    openDrawer('Banco de equipamentos','Catálogo técnico',cards.map(e=>`<div class="detail-hero" style="margin-bottom:10px"><span class="pdf-badge">${e.type}</span><h3 style="margin-top:8px">${escapeHtml(e.brand)} · ${escapeHtml(e.model)}</h3><p>${e.type==='Módulo'?`${e.power} W · ${e.efficiency}% eficiência · ${e.performanceWarranty} anos desempenho`:`${e.power} kW · ${e.mppt} MPPT · ${e.warranty} anos garantia`}</p></div>`).join(''));
+    if(!hasPermission('proposals','view')&&!hasPermission('inventory','view')){denyPermission('inventory','view');return;}
+    const rows=companyRows('equipmentCatalog').map(normalizeEquipmentRecord).sort((a,b)=>`${a.type}-${a.brand}-${a.model}`.localeCompare(`${b.type}-${b.brand}-${b.model}`,'pt-BR'));
+    const canCreate=hasPermission('inventory','create');
+    const canEdit=hasPermission('inventory','edit');
+    const canDelete=hasPermission('inventory','delete');
+    const activeCount=rows.filter(item=>item.status!=='Inativo').length;
+    const toolbar=`<div class="notice" style="margin-bottom:12px"><strong>Catálogo central no Firebase</strong><br>Os equipamentos ativos aparecem automaticamente nas novas propostas para todos os usuários autorizados.</div><div class="pipeline-summary"><div class="pipeline-pill"><span>Total</span><strong>${rows.length}</strong></div><div class="pipeline-pill"><span>Ativos</span><strong>${activeCount}</strong></div><div class="pipeline-pill"><span>Módulos</span><strong>${rows.filter(x=>x.type==='Módulo').length}</strong></div><div class="pipeline-pill"><span>Inversores</span><strong>${rows.filter(x=>x.type==='Inversor').length}</strong></div></div>${canCreate?'<button class="btn btn-primary" data-action="add-entity" data-collection="equipmentCatalog" style="width:100%;margin:2px 0 14px">＋ Cadastrar equipamento</button>':''}`;
+    const cards=rows.length?rows.map(e=>{
+      const specs=e.type==='Módulo'
+        ? `${number(e.power,0)} W · ${number(e.efficiency,2)}% eficiência · ${number(e.productWarranty,0)} anos produto · ${number(e.performanceWarranty,0)} anos desempenho`
+        : `${number(e.power,2)} kW · ${escapeHtml(e.phases||'Fases não informadas')} · ${number(e.mppt,0)} MPPT · ${number(e.warranty,0)} anos garantia`;
+      const actions=`${canEdit?`<button class="btn btn-ghost btn-sm" data-action="edit-entity" data-collection="equipmentCatalog" data-id="${e.id}">Editar</button>`:''}${canDelete?`<button class="btn btn-danger btn-sm btn-icon" data-action="delete-entity" data-collection="equipmentCatalog" data-id="${e.id}" title="Excluir">×</button>`:''}`;
+      return `<div class="detail-hero" style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start"><div><span class="pdf-badge">${escapeHtml(e.type)}</span><span class="status ${e.status==='Inativo'?'gray':'green'}" style="margin-left:6px">${escapeHtml(e.status)}</span><h3 style="margin-top:8px">${escapeHtml(e.brand)} · ${escapeHtml(e.model)}</h3><p>${specs}</p>${e.certification?`<p>Certificação: ${escapeHtml(e.certification)}</p>`:''}</div><div class="row-actions">${actions}</div></div>${e.datasheet?`<a class="btn btn-secondary btn-sm" href="${attr(e.datasheet)}" target="_blank" rel="noopener" style="margin-top:10px">Abrir datasheet</a>`:''}</div>`;
+    }).join(''):'<div class="empty-state"><strong>Nenhum equipamento no Firebase</strong>O administrador pode cadastrar o primeiro equipamento usando o botão acima.</div>';
+    openDrawer('Banco de equipamentos','Módulos e inversores compartilhados',toolbar+cards);
   }
 
   function duplicateProposal(id){
@@ -5298,8 +5414,8 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     const cons=(p.consumption||Array(12).fill(0)).map(Number);
     const avgConsumption=average(cons);
     const annualConsumption=sum(cons);
-    const moduleItem=moduleCatalog.find(m=>m.id===p.technical?.moduleId)||moduleCatalog[0];
-    const inverter=inverterCatalog.find(i=>i.id===p.technical?.inverterId)||inverterCatalog[0];
+    const moduleItem=findModuleCatalogItem(p.technical?.moduleId);
+    const inverter=findInverterCatalogItem(p.technical?.inverterId);
     const specificYield=Math.max(1,Number(p.technical?.specificYield||120));
     const coverage=Math.max(1,Number(p.technical?.targetCoverage||100))/100;
     const requiredPower=avgConsumption*coverage/specificYield;
@@ -7679,7 +7795,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
       toast('Ação restrita','Somente o administrador pode importar um cache local para o Firebase.','error');
       return;
     }
-    const collections=['teams','clients','leads','proposals','contracts','works','homologations','tickets','financial','commissions','inventory','aftersales','suppliers','notifications','projectDocuments','tasks','automationRules','automationQueue','automationLogs','stockMovements','public_proposals'];
+    const collections=['teams','clients','leads','proposals','contracts','works','homologations','tickets','financial','commissions','inventory','equipmentCatalog','aftersales','suppliers','notifications','projectDocuments','tasks','automationRules','automationQueue','automationLogs','stockMovements','public_proposals'];
     try{
       await migrateSharedCompanyAssets();
       await window.FirebaseCRM.saveRecord('companies',buildSharedCompanyPayload());
