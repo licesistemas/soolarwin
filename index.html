@@ -1545,7 +1545,9 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
       this.ensureAuthenticated();
       try {
         const { doc, getDoc } = this.modules.firestoreMod;
-        const snapshot = await getDoc(doc(this.db, 'users', uid));
+        const request = getDoc(doc(this.db, 'users', uid));
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(Object.assign(new Error('Tempo excedido ao carregar o perfil.'), { code:'profile-timeout' })), 8000));
+        const snapshot = await Promise.race([request, timeout]);
         if (!snapshot.exists()) {
           this.profile = null;
           this.syncReady = false;
@@ -2192,7 +2194,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   const DRIVE_SCRIPT_TOKEN_KEY = 'solarcrm-drive-script-token-v1';
   const DRIVE_ROOT_FOLDER_KEY = 'solarcrm-drive-root-folder-v1';
   const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-2';
-  const SYSTEM_VERSION = '3.3.0-configuracoes-compartilhadas';
+  const SYSTEM_VERSION = '3.4.0-login-resiliente';
   let storageWarningShown = false;
   let draftSaveTimer = null;
   let firebaseLastDiagnostic = null;
@@ -2835,13 +2837,21 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     }catch(error){console.warn('Acompanhamento do perfil indisponível:',error);}
   }
 
+  function promiseWithTimeout(promise,ms=8000,message='A operação demorou mais que o esperado.'){
+    let timer;
+    return Promise.race([
+      Promise.resolve(promise),
+      new Promise((_,reject)=>{timer=setTimeout(()=>reject(Object.assign(new Error(message),{code:'operation-timeout'})),ms);})
+    ]).finally(()=>clearTimeout(timer));
+  }
+
   async function initializeSharedCompanySettings(){
     if(!window.FirebaseCRM?.syncReady)return false;
     const profileSnapshot=window.FirebaseCRM?.profile?.sharedCompanySettings||null;
     const localSnapshot={...state.company,id:state.currentCompanyId,companyId:state.currentCompanyId};
     const remoteResults=await Promise.allSettled([
-      window.FirebaseCRM.listRecords('companies',state.currentCompanyId),
-      window.FirebaseCRM.loadCompanySettingsMirror(state.currentCompanyId)
+      promiseWithTimeout(window.FirebaseCRM.listRecords('companies',state.currentCompanyId),7000,'Tempo excedido ao carregar a empresa.'),
+      promiseWithTimeout(window.FirebaseCRM.loadCompanySettingsMirror(state.currentCompanyId),7000,'Tempo excedido ao carregar o espelho da empresa.')
     ]);
     const companyCloud=remoteResults[0].status==='fulfilled'?(remoteResults[0].value?.[0]||null):null;
     const mirrorCloud=remoteResults[1].status==='fulfilled'?remoteResults[1].value:null;
@@ -2857,9 +2867,9 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     const remoteScore=companyConfigurationScore(bestRemote?.settings||{});
     if(state.role==='admin'&&localScore>0&&(localScore>remoteScore||!bestRemote)){
       applySharedCompanySettings(localSnapshot,{render:false,force:true,source:'local'});
-      await saveSharedCompanySettings({silent:true});
+      promiseWithTimeout(saveSharedCompanySettings({silent:true}),12000,'Tempo excedido ao publicar as configurações.').catch(error=>console.warn('Publicação em segundo plano:',error));
     }else if(state.role==='admin'&&best){
-      await publishSharedCompanyFallback(buildSharedCompanyPayload(),{silent:true});
+      promiseWithTimeout(publishSharedCompanyFallback(buildSharedCompanyPayload(),{silent:true}),12000,'Tempo excedido ao replicar as configurações.').catch(error=>console.warn('Replicação em segundo plano:',error));
     }
     const failures=remoteResults.filter(item=>item.status==='rejected').map(item=>item.reason?.message||String(item.reason));
     sharedSettingsLastError=failures.length===remoteResults.length?failures.join(' | '):'';
@@ -6727,39 +6737,38 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     authFlowBusy=true;
     try{
       setLoginStatus('Validando perfil',`Verificando as permissões de ${user.email||user.displayName||'sua conta'}.`,'info');
-      let profile=await window.FirebaseCRM.refreshProfile(user.uid).catch(()=>null);
+      let profile=window.FirebaseCRM?.profile||null;
+      if(profile?.id&&profile.id!==user.uid)profile=null;
+      if(!profile){
+        profile=await promiseWithTimeout(window.FirebaseCRM.refreshProfile(user.uid),8000,'O perfil demorou para responder.').catch(()=>null);
+      }
       if(!profile && window.FirebaseCRM.isPreapprovedAdmin(user)){
         setLoginStatus('Ativando administrador aprovado','Esta conta já está autorizada. Preparando o perfil administrativo.','info');
-        profile=await window.FirebaseCRM.ensurePreapprovedAdminProfile();
+        profile=await promiseWithTimeout(window.FirebaseCRM.ensurePreapprovedAdminProfile(),8000,'A ativação do administrador demorou para responder.').catch(()=>null);
       }
 
-      // Libera o administrador aprovado antes do diagnóstico. Assim uma regra antiga
-      // ou uma falha temporária do banco de dados não prende a conta na tela de login.
+      // O perfil ativo libera a interface imediatamente. Configurações da empresa e
+      // diagnóstico continuam em segundo plano para nunca travar a tela de entrada.
       if(profile&&window.FirebaseCRM.syncReady){
         applyFirebaseProfile(profile,user);
-        await initializeSharedCompanySettings();
         unlockSystemAfterAuthentication();
-        try{
-          firebaseLastDiagnostic=await window.FirebaseCRM.diagnose(profile.companyId||state.currentCompanyId);
-          if(profile.profileWritePending){
-            toast('Acesso administrativo liberado','O CRM está aberto. Publique as regras 2.9.6 para concluir a sincronização na nuvem.','info');
-          }
-        }catch(error){
-          firebaseLastDiagnostic={code:'cloud-rules-pending',message:error.message||'Acesso local liberado; sincronização da nuvem pendente.'};
-          toast('Acesso liberado em modo local','O banco de dados ainda negou o diagnóstico. Publique as regras 2.9.6 para sincronizar.','info');
-        }
+        promiseWithTimeout(initializeSharedCompanySettings(),10000,'As configurações da empresa demoraram para sincronizar.')
+          .then(()=>{renderSidebar();updateTopbar();if(!document.body.classList.contains('auth-locked'))renderView(activeView);})
+          .catch(error=>{console.warn('Sincronização após login:',error);toast('Acesso liberado','As configurações continuam sincronizando em segundo plano.','info');});
+        promiseWithTimeout(window.FirebaseCRM.diagnose(profile.companyId||state.currentCompanyId),8000,'O diagnóstico do banco demorou para responder.')
+          .then(result=>{firebaseLastDiagnostic=result;if(profile.profileWritePending)toast('Acesso administrativo liberado','O CRM está aberto. A gravação do perfil ainda está pendente na nuvem.','info');})
+          .catch(error=>{firebaseLastDiagnostic={code:'cloud-rules-pending',message:error.message||'Acesso liberado; sincronização da nuvem pendente.'};});
         return true;
       }
 
       let diagnostic;
       try{
-        diagnostic=await window.FirebaseCRM.diagnose(profile?.companyId||state.currentCompanyId);
+        diagnostic=await promiseWithTimeout(window.FirebaseCRM.diagnose(profile?.companyId||state.currentCompanyId),8000,'A validação do acesso demorou para responder.');
       }catch(error){
-        diagnostic={code:'permission-denied',message:error.message||'O banco de dados negou a validação do perfil.'};
+        diagnostic={code:error?.code==='operation-timeout'?'validation-timeout':'permission-denied',message:error.message||'O banco de dados negou a validação do perfil.'};
       }
       if(!profile && diagnostic.bootstrapExists && !diagnostic.bootstrapOwner && diagnostic.code!=='access-rejected'){
-        try{await window.FirebaseCRM.requestAccess({companyId:diagnostic.bootstrapCompanyId||state.currentCompanyId,companyName:state.company.tradeName||state.company.name||''});}catch(error){console.warn('Solicitação de acesso:',error);}
-        try{diagnostic=await window.FirebaseCRM.diagnose(state.currentCompanyId);}catch(_){}
+        try{await promiseWithTimeout(window.FirebaseCRM.requestAccess({companyId:diagnostic.bootstrapCompanyId||state.currentCompanyId,companyName:state.company.tradeName||state.company.name||''}),8000,'A solicitação de acesso demorou para responder.');}catch(error){console.warn('Solicitação de acesso:',error);}
       }
       firebaseLastDiagnostic=diagnostic;showPendingProfile(diagnostic);return false;
     }catch(error){
@@ -6767,7 +6776,8 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
       if(window.FirebaseCRM?.isPreapprovedAdmin(user)){
         const fallback=window.FirebaseCRM.buildPreapprovedAdminProfile(user,{virtual:true,profileWritePending:true,activationWarning:error.message||''});
         window.FirebaseCRM.profile=fallback;window.FirebaseCRM.syncReady=true;
-        applyFirebaseProfile(fallback,user);await initializeSharedCompanySettings();unlockSystemAfterAuthentication();
+        applyFirebaseProfile(fallback,user);unlockSystemAfterAuthentication();
+        promiseWithTimeout(initializeSharedCompanySettings(),10000,'As configurações da empresa demoraram para sincronizar.').catch(console.warn);
         toast('Administrador liberado','A sincronização com o banco de dados ficou pendente, mas o acesso ao CRM foi autorizado.','info');
         return true;
       }
