@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#08111f" />
-  <title>SolarCRM Pro — Firebase + Google Drive</title>
+  <title>SolarCRM Pro — Firebase + Google Drive · Sincronização automática</title>
   <meta name="description" content="CRM completo para empresas de energia solar com propostas profissionais, Kanban, banco de dados, financeiro, obras e pós-venda." />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <style>
@@ -2161,7 +2161,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
 </script>
   <script>
 /* SolarCRM Pro — aplicação front-end completa em JavaScript puro.
- * O Firebase é a fonte oficial. O armazenamento local é usado apenas como cache de interface.
+ * O Firebase é a fonte oficial. A empresa é sincronizada automaticamente; o armazenamento local é apenas cache de interface.
  */
 (() => {
   'use strict';
@@ -2171,244 +2171,506 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   const FIREBASE_CONFIG_KEY = 'solarcrm-firebase-config-v2-9-2';
   const LEGACY_FIREBASE_CONFIG_KEYS = ['solarcrm-firebase-config-v2-8','solarcrm-firebase-config-v2-7','solarcrm-firebase-config-v2-6','solarcrm-firebase-config'];
   const DEFAULT_FIREBASE_CONFIG = Object.freeze({"apiKey":"AIzaSyCYSQfnPLyV9B6osiZhsLYYrF64YLhGkMA","authDomain":"energiasolar-67b14.firebaseapp.com","databaseURL":"https://energiasolar-67b14-default-rtdb.firebaseio.com","projectId":"energiasolar-67b14","messagingSenderId":"394822890491","appId":"1:394822890491:web:5afc55e01902bbf142915e","functionsRegion":"southamerica-east1"});
-  const FIRESTORE_RULES_TEXT = `rules_version = '2';
+  const FIRESTORE_RULES_TEXT = `// SolarCRM Pro v19 sem Storage — leitura da empresa para todos os usuários autorizados — permissões granulares + proposta pública + aceite digital
+rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() {
-      return request.auth != null;
-    }
+    function signedIn() { return request.auth != null; }
+    function userPath(uid) { return /databases/$(database)/documents/users/$(uid); }
+    function myPath() { return userPath(request.auth.uid); }
+    function bootstrapPath() { return /databases/$(database)/documents/system/bootstrap; }
 
-    function userPath() {
-      return /databases/$(database)/documents/users/$(request.auth.uid);
-    }
-
-    function hasProfile() {
-      return signedIn() && exists(userPath());
-    }
-
-    function profile() {
-      return get(userPath()).data;
-    }
-
-    function active() {
-      return hasProfile()
-        && profile().keys().hasAll(['status'])
-        && profile().status == 'Ativo';
-    }
-
-    function isPreapprovedAdminIdentity() {
+    // Administrador de resgate: reconhecido diretamente pelo Firebase Auth.
+    // Assim, a primeira entrada não depende da existência prévia de users/{uid}.
+    function isPreapprovedAdminAuth() {
+      // O e-mail é estável mesmo se a conta for excluída e recriada com outro UID.
       return signedIn()
-        && request.auth.token.email == 'lucas@igenergia.com.br'
-        && request.auth.token.email_verified == true;
+        && request.auth.token.email == 'lucas@igenergia.com.br';
     }
 
-    function isAdmin() {
-      return active()
-        && profile().keys().hasAll(['role'])
-        && profile().role == 'admin';
+    function hasProfile() { return signedIn() && exists(myPath()); }
+    function profile() { return get(myPath()).data; }
+    function isActiveProfile() { return hasProfile() && profile().status == 'Ativo'; }
+    function isAdminProfile() { return isActiveProfile() && profile().role == 'admin'; }
+    function isAdmin() { return isPreapprovedAdminAuth() || isAdminProfile(); }
+    function isManager() { return isActiveProfile() && profile().role == 'manager'; }
+    function isSeller() { return isActiveProfile() && profile().role == 'seller'; }
+    function isTechnical() { return isActiveProfile() && profile().role == 'technical'; }
+    function isFinance() { return isActiveProfile() && profile().role == 'finance'; }
+
+    function hasCustomPermissions() {
+      return isActiveProfile() && profile().keys().hasAny([
+        'permissionsView','permissionsCreate','permissionsEdit','permissionsDelete','permissionsExport','permissionsApprove'
+      ]);
     }
 
-    function belongsTo(companyId) {
-      return active()
-        && companyId is string
-        && (
-          (profile().keys().hasAll(['companyId']) && profile().companyId == companyId)
-          || (
-            profile().keys().hasAll(['companyIds'])
-            && profile().companyIds is list
-            && companyId in profile().companyIds
-          )
-        );
+    function legacyView(module) {
+      return isAdminProfile()
+        || (isManager() && module in ['dashboard','leads','kanban','clients','proposals','contracts','works','projectDocuments','homologations','financial','aftersales','tickets','commissions','inventory','teams','reports','automations'])
+        || (isSeller() && module in ['dashboard','leads','kanban','clients','proposals','contracts','commissions','automations'])
+        || (isTechnical() && module in ['dashboard','clients','works','projectDocuments','homologations','aftersales','tickets','inventory','teams'])
+        || (isFinance() && module in ['dashboard','clients','contracts','financial','commissions','reports']);
     }
 
-    function matrixPermission(moduleId, actionId) {
-      return active()
-        && profile().keys().hasAll(['permissions'])
-        && profile().permissions is map
-        && moduleId in profile().permissions
-        && profile().permissions[moduleId] is map
-        && actionId in profile().permissions[moduleId]
-        && profile().permissions[moduleId][actionId] == true;
+    function legacyCreate(module) {
+      return isAdminProfile() || isManager()
+        || (isSeller() && module in ['leads','clients','proposals','automations'])
+        || (isTechnical() && module in ['clients','works','projectDocuments','homologations','aftersales','tickets','inventory','teams'])
+        || (isFinance() && module in ['contracts','financial','commissions']);
     }
 
-    function legacyPermission(moduleId, actionId) {
-      return active() && (
-        (actionId == 'view'
-          && profile().keys().hasAll(['permissionsView'])
-          && profile().permissionsView is list
-          && moduleId in profile().permissionsView)
-        || (actionId == 'create'
-          && profile().keys().hasAll(['permissionsCreate'])
-          && profile().permissionsCreate is list
-          && moduleId in profile().permissionsCreate)
-        || (actionId == 'edit'
-          && profile().keys().hasAll(['permissionsEdit'])
-          && profile().permissionsEdit is list
-          && moduleId in profile().permissionsEdit)
-        || (actionId == 'delete'
-          && profile().keys().hasAll(['permissionsDelete'])
-          && profile().permissionsDelete is list
-          && moduleId in profile().permissionsDelete)
-        || (actionId == 'export'
-          && profile().keys().hasAll(['permissionsExport'])
-          && profile().permissionsExport is list
-          && moduleId in profile().permissionsExport)
-        || (actionId == 'approve'
-          && profile().keys().hasAll(['permissionsApprove'])
-          && profile().permissionsApprove is list
-          && moduleId in profile().permissionsApprove)
+    function legacyEdit(module) { return legacyCreate(module); }
+
+    function legacyDelete(module) {
+      return isAdminProfile() || isManager()
+        || (isTechnical() && module in ['projectDocuments','tickets']);
+    }
+
+    function legacyExport(module) { return legacyView(module); }
+
+    function legacyApprove(module) {
+      return isAdminProfile() || isManager()
+        || (isSeller() && module == 'proposals')
+        || (isTechnical() && module in ['works','homologations','tickets'])
+        || (isFinance() && module in ['financial','contracts']);
+    }
+
+    function hasPermission(module, action) {
+      return isAdmin() || (
+        isActiveProfile() && (
+          (hasCustomPermissions() && (
+            (action == 'view' && profile().keys().hasAny(['permissionsView']) && module in profile().permissionsView)
+            || (action == 'create' && profile().keys().hasAny(['permissionsCreate']) && module in profile().permissionsCreate)
+            || (action == 'edit' && profile().keys().hasAny(['permissionsEdit']) && module in profile().permissionsEdit)
+            || (action == 'delete' && profile().keys().hasAny(['permissionsDelete']) && module in profile().permissionsDelete)
+            || (action == 'export' && profile().keys().hasAny(['permissionsExport']) && module in profile().permissionsExport)
+            || (action == 'approve' && profile().keys().hasAny(['permissionsApprove']) && module in profile().permissionsApprove)
+          ))
+          || (!hasCustomPermissions() && (
+            (action == 'view' && legacyView(module))
+            || (action == 'create' && legacyCreate(module))
+            || (action == 'edit' && legacyEdit(module))
+            || (action == 'delete' && legacyDelete(module))
+            || (action == 'export' && legacyExport(module))
+            || (action == 'approve' && legacyApprove(module))
+          ))
+        )
       );
     }
 
-    function hasPermission(moduleId, actionId) {
-      return isAdmin()
-        || matrixPermission(moduleId, actionId)
-        || legacyPermission(moduleId, actionId);
+    function belongsTo(companyId) {
+      return (isPreapprovedAdminAuth() && companyId == 'company-demo')
+        || (isActiveProfile() && companyId in profile().companyIds);
     }
 
-    function collectionPermission(collectionName, actionId) {
-      return (collectionName == 'team_members' && hasPermission('teams', actionId))
-        || (collectionName == 'clients' && hasPermission('clients', actionId))
-        || (collectionName == 'leads' && hasPermission('leads', actionId))
-        || (collectionName == 'proposals' && hasPermission('proposals', actionId))
-        || (collectionName == 'contracts' && hasPermission('contracts', actionId))
-        || (collectionName == 'projects' && hasPermission('works', actionId))
-        || (collectionName == 'installations' && hasPermission('aftersales', actionId))
-        || (collectionName == 'homologations' && hasPermission('homologations', actionId))
-        || (collectionName == 'tickets' && hasPermission('tickets', actionId))
-        || (collectionName == 'financial' && hasPermission('financial', actionId))
-        || (collectionName == 'commissions' && hasPermission('commissions', actionId))
-        || (collectionName == 'products' && hasPermission('inventory', actionId))
-        || (collectionName == 'suppliers' && hasPermission('inventory', actionId))
-        || (collectionName == 'stock_movements' && hasPermission('inventory', actionId))
-        || (collectionName == 'notifications' && (
-          (actionId == 'view' && hasPermission('dashboard', 'view'))
-          || (actionId != 'view' && hasPermission('settings', 'edit'))
-        ))
-        || (collectionName == 'project_documents' && hasPermission('projectDocuments', actionId))
-        || (collectionName == 'tasks' && hasPermission('works', actionId))
-        || (collectionName == 'client_project_status' && hasPermission('works', actionId))
-        || (collectionName == 'automation_rules' && hasPermission('settings', actionId))
-        || (collectionName == 'automation_queue' && hasPermission('settings', actionId))
-        || (collectionName == 'automation_logs' && hasPermission('settings', actionId));
+    function sameCompanyOnUpdate() { return request.resource.data.companyId == resource.data.companyId; }
+    function canReadRecord() { return belongsTo(resource.data.companyId); }
+    function canCreateRecord() { return belongsTo(request.resource.data.companyId); }
+    function canUpdateRecord() { return belongsTo(resource.data.companyId) && sameCompanyOnUpdate(); }
+
+    match /users/{userId} {
+      allow get: if signedIn() && (
+        request.auth.uid == userId
+        || (isPreapprovedAdminAuth() && resource.data.companyId == 'company-demo')
+        || (isAdminProfile() && resource.data.companyId in profile().companyIds)
+      );
+      allow list: if request.query.limit <= 200 && (
+        (isPreapprovedAdminAuth() && resource.data.companyId == 'company-demo')
+        || (isAdminProfile() && resource.data.companyId in profile().companyIds)
+      );
+      allow create: if (
+        isPreapprovedAdminAuth()
+        && userId == request.auth.uid
+        && request.resource.data.email == 'lucas@igenergia.com.br'
+        && request.resource.data.role == 'admin'
+        && request.resource.data.permission == 'admin'
+        && request.resource.data.status == 'Ativo'
+        && request.resource.data.companyId == 'company-demo'
+        && request.resource.data.companyIds.hasAny(['company-demo'])
+      ) || (
+        isAdminProfile()
+        && request.resource.data.companyIds.hasAny(profile().companyIds)
+      );
+      allow update: if (
+        // Autorreparo do próprio administrador, mesmo quando o documento antigo está incompleto.
+        isPreapprovedAdminAuth()
+        && userId == request.auth.uid
+        && request.resource.data.email == 'lucas@igenergia.com.br'
+        && request.resource.data.role == 'admin'
+        && request.resource.data.permission == 'admin'
+        && request.resource.data.status == 'Ativo'
+        && request.resource.data.companyId == 'company-demo'
+        && request.resource.data.companyIds.hasAny(['company-demo'])
+      ) || (
+        // Administração dos demais usuários da empresa.
+        isPreapprovedAdminAuth()
+        && userId != request.auth.uid
+        && resource.data.companyId == 'company-demo'
+        && request.resource.data.companyId == 'company-demo'
+        && request.resource.data.companyIds.hasAny(['company-demo'])
+      ) || (
+        isAdminProfile()
+        && resource.data.companyIds.hasAny(profile().companyIds)
+        && request.resource.data.companyIds.hasAny(profile().companyIds)
+      ) || (
+        signedIn() && request.auth.uid == userId
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'name','avatar','photoURL','phone','jobTitle','team','region','bio','updatedAt','updatedBy'
+        ])
+      );
+      allow delete: if request.auth.uid != userId && (
+        (isPreapprovedAdminAuth() && resource.data.companyId == 'company-demo')
+        || (isAdminProfile() && resource.data.companyIds.hasAny(profile().companyIds))
+      );
     }
 
-    function sameCompanyBeforeAndAfter() {
-      return resource.data.companyId == request.resource.data.companyId
-        && belongsTo(resource.data.companyId);
+    match /access_requests/{userId} {
+      allow create: if (
+        signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.uid == userId
+        && request.resource.data.companyId is string
+        && request.resource.data.status == 'Pendente'
+      ) || (
+        isPreapprovedAdminAuth()
+        && userId == request.auth.uid
+        && request.resource.data.companyId == 'company-demo'
+        && request.resource.data.status == 'Aprovado'
+      );
+      allow get: if signedIn() && (
+        request.auth.uid == userId
+        || (isPreapprovedAdminAuth() && resource.data.companyId == 'company-demo')
+        || (isAdminProfile() && resource.data.companyId in profile().companyIds)
+      );
+      allow list: if request.query.limit <= 200 && (
+        (isPreapprovedAdminAuth() && resource.data.companyId == 'company-demo')
+        || (isAdminProfile() && resource.data.companyId in profile().companyIds)
+      );
+      allow update: if signedIn() && (
+        (request.auth.uid == userId
+          && resource.data.uid == userId
+          && request.resource.data.uid == userId
+          && request.resource.data.companyId == resource.data.companyId
+          && request.resource.data.status == 'Pendente')
+        || (isPreapprovedAdminAuth()
+          && userId == request.auth.uid
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.email == 'lucas@igenergia.com.br'
+          && request.resource.data.companyId == 'company-demo'
+          && request.resource.data.status == 'Aprovado'
+          && request.resource.data.approvedRole == 'admin')
+        || (isPreapprovedAdminAuth()
+          && userId != request.auth.uid
+          && resource.data.companyId == 'company-demo'
+          && request.resource.data.companyId == 'company-demo'
+          && request.resource.data.uid == resource.data.uid)
+        || (isAdminProfile()
+          && resource.data.companyId in profile().companyIds
+          && request.resource.data.companyId == resource.data.companyId
+          && request.resource.data.uid == resource.data.uid)
+      );
+      allow delete: if (
+        (isPreapprovedAdminAuth() && resource.data.companyId == 'company-demo')
+        || (isAdminProfile() && resource.data.companyId in profile().companyIds)
+      );
     }
 
     match /system/bootstrap {
       allow read: if signedIn();
-      allow create: if signedIn()
-        && !exists(/databases/$(database)/documents/system/bootstrap)
-        && request.resource.data.uid == request.auth.uid;
-      allow update: if signedIn()
-        && (resource.data.uid == request.auth.uid || isAdmin());
+      allow create: if isPreapprovedAdminAuth()
+        && !exists(bootstrapPath())
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == 'lucas@igenergia.com.br'
+        && request.resource.data.companyId == 'company-demo';
+      allow update: if isPreapprovedAdminAuth()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == 'lucas@igenergia.com.br'
+        && request.resource.data.companyId == 'company-demo';
       allow delete: if false;
     }
 
-    match /users/{uid} {
-      allow get: if signedIn() && (
-        request.auth.uid == uid
-        || (isAdmin() && belongsTo(resource.data.companyId))
-      );
-
-      allow list: if isAdmin() && belongsTo(resource.data.companyId);
-
-      allow create: if signedIn() && (
-        (
-          request.auth.uid == uid
-          && request.resource.data.role == 'admin'
-          && (
-            getAfter(/databases/$(database)/documents/system/bootstrap).data.uid == uid
-            || isPreapprovedAdminIdentity()
-          )
-        )
-        || (isAdmin() && belongsTo(request.resource.data.companyId))
-      );
-
-      allow update: if signedIn() && (
-        (
-          request.auth.uid == uid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-            'name', 'email', 'phone', 'avatar', 'initials', 'team', 'region',
-            'updatedAt', 'updatedBy'
-          ])
-        )
-        || (
-          isAdmin()
-          && belongsTo(resource.data.companyId)
-          && belongsTo(request.resource.data.companyId)
-        )
-        || (
-          isPreapprovedAdminIdentity()
-          && request.auth.uid == uid
-          && request.resource.data.role == 'admin'
-          && request.resource.data.companyId == 'company-demo'
-        )
-      );
-
-      allow delete: if isAdmin()
-        && request.auth.uid != uid
-        && belongsTo(resource.data.companyId);
+    match /companies/{id} {
+      allow read: if belongsTo(id) && resource.data.companyId == id;
+      allow create: if belongsTo(id) && request.resource.data.companyId == id && hasPermission('settings','edit');
+      allow update: if belongsTo(id) && resource.data.companyId == id && request.resource.data.companyId == id && hasPermission('settings','edit');
+      allow delete: if belongsTo(id) && hasPermission('settings','delete');
     }
 
-    match /access_requests/{uid} {
-      allow create: if signedIn()
-        && request.auth.uid == uid
-        && request.resource.data.uid == uid;
-      allow get: if signedIn() && (
-        request.auth.uid == uid
-        || (isAdmin() && belongsTo(resource.data.companyId))
-      );
-      allow list: if isAdmin() && belongsTo(resource.data.companyId);
-      allow update, delete: if (
-        signedIn()
-        && request.auth.uid == uid
-        && request.resource.data.uid == uid
-      ) || (isAdmin() && belongsTo(resource.data.companyId));
+    match /team_members/{id} {
+      allow read: if canReadRecord() && hasPermission('teams','view');
+      allow create: if canCreateRecord() && hasPermission('teams','create');
+      allow update: if canUpdateRecord() && hasPermission('teams','edit');
+      allow delete: if canReadRecord() && hasPermission('teams','delete');
     }
 
-    match /companies/{companyId} {
-      // Todo usuário ativo da empresa precisa ler identidade, mensagens e parâmetros.
-      allow read: if belongsTo(companyId);
-      allow create: if isAdmin() && belongsTo(companyId);
-      allow update: if belongsTo(companyId) && hasPermission('settings', 'edit');
-      allow delete: if isAdmin() && belongsTo(companyId);
+    match /clients/{id} {
+      allow read: if canReadRecord() && hasPermission('clients','view');
+      allow create: if canCreateRecord() && hasPermission('clients','create');
+      allow update: if canUpdateRecord() && hasPermission('clients','edit');
+      allow delete: if canReadRecord() && hasPermission('clients','delete');
+    }
+
+    match /leads/{id} {
+      allow read: if canReadRecord() && hasPermission('leads','view');
+      allow create: if canCreateRecord() && hasPermission('leads','create');
+      allow update: if canUpdateRecord() && hasPermission('leads','edit');
+      allow delete: if canReadRecord() && hasPermission('leads','delete');
     }
 
     match /public_proposals/{proposalId} {
-      allow read: if resource.data.public == true
-        || (belongsTo(resource.data.companyId) && hasPermission('proposals', 'view'));
-      allow create: if belongsTo(request.resource.data.companyId)
-        && hasPermission('proposals', 'create');
-      allow update: if (
-        sameCompanyBeforeAndAfter()
-        && hasPermission('proposals', 'edit')
-      ) || (
-        resource.data.public == true
-        && request.resource.data.companyId == resource.data.companyId
-        && request.resource.data.id == resource.data.id
-      );
-      allow delete: if belongsTo(resource.data.companyId)
-        && hasPermission('proposals', 'delete');
+      // Página pública da proposta: permite abrir a proposta pelo QR Code/link.
+      allow get: if true;
+      allow list: if signedIn() && (isPreapprovedAdminAuth() || isActiveProfile());
+
+      // O CRM, logado, cria/publica a proposta online.
+      allow create: if canCreateRecord()
+        && (hasPermission('proposals','create') || hasPermission('proposals','approve'))
+        && request.resource.data.proposalId == proposalId;
+
+      // O CRM logado pode atualizar a proposta publicada.
+      allow update: if canUpdateRecord()
+        && (hasPermission('proposals','edit') || hasPermission('proposals','approve'));
+
+      // O cliente, sem login, pode apenas registrar aceite público.
+      allow update: if request.auth == null
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status',
+          'acceptance',
+          'acceptedAt',
+          'updatedAt'
+        ])
+        && request.resource.data.status == 'Aceita'
+        && request.resource.data.acceptance is map
+        && request.resource.data.acceptance.proposalId == proposalId
+        && request.resource.data.acceptance.document is string
+        && (
+          resource.data.clientDocument == ''
+          || request.resource.data.acceptance.document == resource.data.clientDocument
+        );
+
+      allow delete: if canReadRecord() && hasPermission('proposals','delete');
     }
 
-    match /{collectionName}/{documentId} {
-      allow get, list: if belongsTo(resource.data.companyId)
-        && collectionPermission(collectionName, 'view');
-      allow create: if belongsTo(request.resource.data.companyId)
-        && collectionPermission(collectionName, 'create');
-      allow update: if sameCompanyBeforeAndAfter()
-        && collectionPermission(collectionName, 'edit');
-      allow delete: if belongsTo(resource.data.companyId)
-        && collectionPermission(collectionName, 'delete');
+    match /proposals/{id} {
+      allow read: if canReadRecord() && hasPermission('proposals','view');
+      allow create: if canCreateRecord() && hasPermission('proposals','create');
+      allow update: if canUpdateRecord() && (hasPermission('proposals','edit') || hasPermission('proposals','approve'));
+      allow delete: if canReadRecord() && hasPermission('proposals','delete');
     }
 
-    match /{document=**} {
-      allow read, write: if false;
+    match /contracts/{id} {
+      allow read: if canReadRecord() && hasPermission('contracts','view');
+      allow create: if canCreateRecord() && hasPermission('contracts','create');
+      allow update: if canUpdateRecord() && (hasPermission('contracts','edit') || hasPermission('contracts','approve'));
+      allow delete: if canReadRecord() && hasPermission('contracts','delete');
     }
+
+    match /projects/{id} {
+      allow read: if canReadRecord() && hasPermission('works','view');
+      allow create: if canCreateRecord() && hasPermission('works','create');
+      allow update: if canUpdateRecord() && (hasPermission('works','edit') || hasPermission('works','approve'));
+      allow delete: if canReadRecord() && hasPermission('works','delete');
+    }
+
+    match /installations/{id} {
+      allow read: if canReadRecord() && hasPermission('aftersales','view');
+      allow create: if canCreateRecord() && hasPermission('aftersales','create');
+      allow update: if canUpdateRecord() && (hasPermission('aftersales','edit') || hasPermission('aftersales','approve'));
+      allow delete: if canReadRecord() && hasPermission('aftersales','delete');
+    }
+
+    match /homologations/{id} {
+      allow read: if canReadRecord() && hasPermission('homologations','view');
+      allow create: if canCreateRecord() && hasPermission('homologations','create');
+      allow update: if canUpdateRecord() && (hasPermission('homologations','edit') || hasPermission('homologations','approve'));
+      allow delete: if canReadRecord() && hasPermission('homologations','delete');
+    }
+
+    match /tickets/{id} {
+      allow read: if canReadRecord() && hasPermission('tickets','view');
+      allow create: if canCreateRecord() && hasPermission('tickets','create');
+      allow update: if canUpdateRecord() && (hasPermission('tickets','edit') || hasPermission('tickets','approve'));
+      allow delete: if canReadRecord() && hasPermission('tickets','delete');
+    }
+
+    match /financial/{id} {
+      allow read: if canReadRecord() && hasPermission('financial','view');
+      allow create: if canCreateRecord() && hasPermission('financial','create');
+      allow update: if canUpdateRecord() && (hasPermission('financial','edit') || hasPermission('financial','approve'));
+      allow delete: if canReadRecord() && hasPermission('financial','delete');
+    }
+
+    match /commissions/{id} {
+      allow read: if canReadRecord() && hasPermission('commissions','view');
+      allow create: if canCreateRecord() && hasPermission('commissions','create');
+      allow update: if canUpdateRecord() && (hasPermission('commissions','edit') || hasPermission('commissions','approve'));
+      allow delete: if canReadRecord() && hasPermission('commissions','delete');
+    }
+
+    match /products/{id} {
+      allow read: if canReadRecord() && hasPermission('inventory','view');
+      allow create: if canCreateRecord() && hasPermission('inventory','create');
+      allow update: if canUpdateRecord() && (hasPermission('inventory','edit') || hasPermission('inventory','approve'));
+      allow delete: if canReadRecord() && hasPermission('inventory','delete');
+    }
+
+    match /suppliers/{id} {
+      allow read: if canReadRecord() && hasPermission('inventory','view');
+      allow create: if canCreateRecord() && hasPermission('inventory','create');
+      allow update: if canUpdateRecord() && hasPermission('inventory','edit');
+      allow delete: if canReadRecord() && hasPermission('inventory','delete');
+    }
+
+    match /notifications/{id} {
+      allow read: if canReadRecord() && hasPermission('dashboard','view');
+      allow create: if canCreateRecord() && hasPermission('dashboard','view');
+      allow update: if canUpdateRecord() && hasPermission('dashboard','view');
+      allow delete: if canReadRecord() && hasPermission('dashboard','view');
+    }
+
+    match /proposal_acceptances/{id} {
+      allow read: if canReadRecord() && hasPermission('proposals','view');
+      allow write: if false;
+    }
+
+    match /automation_rules/{id} {
+      allow read: if canReadRecord() && hasPermission('automations','view');
+      allow create: if canCreateRecord() && hasPermission('automations','create');
+      allow update: if canUpdateRecord() && hasPermission('automations','edit');
+      allow delete: if canReadRecord() && hasPermission('automations','delete');
+    }
+
+    match /automation_queue/{id} {
+      allow read: if canReadRecord() && hasPermission('automations','view');
+      allow create: if canCreateRecord() && (hasPermission('automations','create') || hasPermission('automations','approve'));
+      allow update: if canUpdateRecord() && (hasPermission('automations','edit') || hasPermission('automations','approve'));
+      allow delete: if canReadRecord() && hasPermission('automations','delete');
+    }
+
+    match /automation_logs/{id} {
+      allow read: if canReadRecord() && hasPermission('automations','view');
+      allow create: if canCreateRecord() && hasPermission('automations','approve');
+      allow update, delete: if false;
+    }
+
+    match /stock_movements/{id} {
+      allow read: if canReadRecord() && hasPermission('inventory','view');
+      allow create: if canCreateRecord() && (hasPermission('inventory','edit') || hasPermission('inventory','approve'));
+      allow update, delete: if false;
+    }
+
+    match /tasks/{id} {
+      allow read: if canReadRecord() && hasPermission('works','view');
+      allow create: if canCreateRecord() && hasPermission('works','create');
+      allow update: if canUpdateRecord() && (hasPermission('works','edit') || hasPermission('works','approve'));
+      allow delete: if canReadRecord() && hasPermission('works','delete');
+    }
+
+    match /project_documents/{id} {
+      allow read: if canReadRecord() && hasPermission('projectDocuments','view');
+      allow create: if canCreateRecord() && hasPermission('projectDocuments','create');
+      allow update: if canUpdateRecord() && hasPermission('projectDocuments','create');
+      allow delete: if canReadRecord() && hasPermission('projectDocuments','delete');
+    }
+
+    match /client_project_status/{cpf} {
+      // Página pública do cliente: permite consultar somente o documento exato do CPF/CNPJ informado.
+      allow get: if resource.data.portalEnabled == true && resource.data.cpf == cpf;
+      allow list: if false;
+
+      // CRM logado publica o acompanhamento completo.
+      allow create: if canCreateRecord()
+        && (hasPermission('works','edit') || hasPermission('works','approve'))
+        && request.resource.data.cpf == cpf
+        && request.resource.data.portalEnabled == true;
+
+      allow update: if canUpdateRecord()
+        && (hasPermission('works','edit') || hasPermission('works','approve'))
+        && request.resource.data.cpf == cpf;
+
+      // Aceite público: cria uma tela inicial de boas-vindas quando o cliente aceita.
+      allow create: if request.auth == null
+        && request.resource.data.cpf == cpf
+        && request.resource.data.portalEnabled == true
+        && request.resource.data.welcome == true
+        && request.resource.data.projectStage == 'Projeto'
+        && request.resource.data.progress == 10
+        && request.resource.data.keys().hasOnly([
+          'id',
+          'cpf',
+          'cpfMasked',
+          'companyId',
+          'companyName',
+          'portalEnabled',
+          'proposalId',
+          'clientName',
+          'city',
+          'systemPower',
+          'projectStage',
+          'progress',
+          'status',
+          'publicMessage',
+          'welcome',
+          'acceptedAt',
+          'updatedAt'
+        ]);
+
+      // Se já existir acompanhamento, o cliente só pode gravar a mensagem de boas-vindas/aceite.
+      allow update: if request.auth == null
+        && resource.data.cpf == cpf
+        && request.resource.data.cpf == cpf
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'proposalId',
+          'clientName',
+          'status',
+          'publicMessage',
+          'welcome',
+          'acceptedAt',
+          'updatedAt'
+        ]);
+
+      allow delete: if canReadRecord() && hasPermission('works','delete');
+    }
+
+
+    match /client_project_nps/{id} {
+      // Avaliação pública do cliente no portal do projeto.
+      // Permite somente criar uma avaliação com nota controlada.
+      allow create: if request.auth == null
+        && request.resource.data.score is number
+        && request.resource.data.score >= 0
+        && request.resource.data.score <= 10
+        && request.resource.data.cpf is string
+        && request.resource.data.projectId is string
+        && request.resource.data.companyId is string
+        && request.resource.data.keys().hasOnly([
+          'id',
+          'cpf',
+          'cpfMasked',
+          'companyId',
+          'companyName',
+          'projectId',
+          'proposalId',
+          'clientName',
+          'score',
+          'rating',
+          'comment',
+          'message',
+          'source',
+          'userAgent',
+          'createdAt',
+          'updatedAt'
+        ]);
+
+      // O CRM logado pode consultar as avaliações da empresa.
+      allow get, list: if canReadRecord() && hasPermission('aftersales','view');
+
+      // Depois de enviada, a avaliação pública não pode ser alterada pelo cliente.
+      allow update: if canUpdateRecord() && hasPermission('aftersales','edit');
+      allow delete: if canReadRecord() && hasPermission('aftersales','delete');
+    }
+
+    match /{document=**} { allow read, write: if false; }
   }
 }
 `;
@@ -2419,7 +2681,7 @@ service cloud.firestore {
   const DRIVE_SCRIPT_TOKEN_KEY = 'solarcrm-drive-script-token-v1';
   const DRIVE_ROOT_FOLDER_KEY = 'solarcrm-drive-root-folder-v1';
   const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-2';
-  const SYSTEM_VERSION = '3.5.0-firebase-permissoes';
+  const SYSTEM_VERSION = '3.6.0-firebase-autosync';
   let storageWarningShown = false;
   let draftSaveTimer = null;
   let firebaseLastDiagnostic = null;
@@ -2830,6 +3092,10 @@ service cloud.firestore {
   let sharedSettingsLastError = '';
   let sharedSettingsLastLoadedAt = '';
   let sharedSettingsSyncBusy = false;
+  let companyAutoSaveTimer = null;
+  let companyAutoSaveDirty = false;
+  let companyAutoSaveInFlight = false;
+  let companyAutoSaveLastSavedAt = '';
 
   function normalizeState(data) {
     data = data && typeof data === 'object' ? data : seedState();
@@ -2945,7 +3211,16 @@ service cloud.firestore {
       sharedSettingsLastLoadedAt=new Date().toISOString();
       sharedSettingsLastError='';
       syncCurrentCompanyRecord();mirrorSharedGatewaySettings();persist();
-      if(render){renderSidebar();updateTopbar();if(!document.body.classList.contains('auth-locked'))renderView(activeView);if(document.getElementById('settingsModal')?.classList.contains('open'))renderSettings();}
+      if(render){
+        renderSidebar();
+        updateTopbar();
+        if(!document.body.classList.contains('auth-locked'))renderView(activeView);
+        if(document.getElementById('settingsModal')?.classList.contains('open')){
+          const editingCompany=Boolean(document.activeElement?.closest?.('#companySettingsForm'));
+          if(settingsTab==='company'&&(editingCompany||companyAutoSaveDirty||companyAutoSaveInFlight))updateCompanyAutoSaveStatus();
+          else renderSettings();
+        }
+      }
       return true;
     }finally{sharedCompanyApplying=false;}
   }
@@ -3021,6 +3296,100 @@ service cloud.firestore {
     };
     sharedCompanySaveQueue=sharedCompanySaveQueue.then(execute,execute);
     return sharedCompanySaveQueue;
+  }
+
+
+  function companyAutoSaveStatusModel(){
+    if(!hasPermission('settings','edit'))return {className:'blue',text:'Somente leitura'};
+    if(companyAutoSaveInFlight||sharedSettingsSyncBusy)return {className:'yellow',text:'Salvando automaticamente...'};
+    if(companyAutoSaveDirty)return {className:'yellow',text:'Alterações pendentes'};
+    if(sharedSettingsLastError)return {className:'red',text:'Falha na sincronização'};
+    if(companyAutoSaveLastSavedAt){
+      const time=new Date(companyAutoSaveLastSavedAt).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      return {className:'green',text:`Salvo automaticamente às ${time}`};
+    }
+    return {className:'green',text:'Sincronização automática ativa'};
+  }
+
+  function updateCompanyAutoSaveStatus(){
+    const element=document.getElementById('companyAutoSaveStatus');
+    if(!element)return;
+    const status=companyAutoSaveStatusModel();
+    element.className=`status ${status.className}`;
+    element.textContent=status.text;
+    const detail=document.getElementById('companyAutoSaveDetail');
+    if(detail){
+      detail.textContent=sharedSettingsLastError
+        ? sharedSettingsLastError
+        : hasPermission('settings','edit')
+          ? 'Cada alteração é gravada automaticamente no Firestore e aparece para os demais usuários autorizados.'
+          : 'Os dados são carregados diretamente do Firestore. Seu perfil não possui permissão para alterar a empresa.';
+    }
+  }
+
+  function readCompanyFormIntoState(form){
+    if(!form)return;
+    const numericFields=new Set(['proposalValidityDays','clientsCount','installedPowerMW','defaultCommissionPercent']);
+    const formData=new FormData(form);
+    for(const [key,value] of formData.entries())state.company[key]=numericFields.has(key)?Number(value):value;
+    state.company.id=state.currentCompanyId;
+    state.company.companyId=state.currentCompanyId;
+    syncCurrentCompanyRecord();
+    mirrorSharedGatewaySettings();
+    persist();
+    renderSidebar();
+    updateTopbar();
+  }
+
+  function scheduleCompanyAutoSave(form,{immediate=false}={}){
+    if(!hasPermission('settings','edit'))return;
+    readCompanyFormIntoState(form);
+    companyAutoSaveDirty=true;
+    sharedSettingsLastError='';
+    clearTimeout(companyAutoSaveTimer);
+    updateCompanyAutoSaveStatus();
+    companyAutoSaveTimer=setTimeout(()=>flushCompanyAutoSave(),immediate?80:800);
+  }
+
+  async function flushCompanyAutoSave(){
+    clearTimeout(companyAutoSaveTimer);
+    companyAutoSaveTimer=null;
+    if(!companyAutoSaveDirty||companyAutoSaveInFlight)return false;
+    if(!window.FirebaseCRM?.syncReady){
+      sharedSettingsLastError='O banco de dados ainda não está disponível para salvar.';
+      updateCompanyAutoSaveStatus();
+      return false;
+    }
+    companyAutoSaveDirty=false;
+    companyAutoSaveInFlight=true;
+    sharedSettingsSyncBusy=true;
+    updateCompanyAutoSaveStatus();
+    try{
+      const saved=await saveSharedCompanySettings({silent:true});
+      if(!saved){
+        companyAutoSaveDirty=true;
+        updateCompanyAutoSaveStatus();
+        return false;
+      }
+      companyAutoSaveLastSavedAt=new Date().toISOString();
+      sharedSettingsLastSource='Firebase / companies';
+      sharedSettingsLastError='';
+      updateCompanyAutoSaveStatus();
+      return true;
+    }catch(error){
+      companyAutoSaveDirty=true;
+      sharedSettingsLastError=sharedSettingsPermissionMessage(error);
+      updateCompanyAutoSaveStatus();
+      return false;
+    }finally{
+      companyAutoSaveInFlight=false;
+      sharedSettingsSyncBusy=false;
+      updateCompanyAutoSaveStatus();
+      if(companyAutoSaveDirty&&window.FirebaseCRM?.syncReady){
+        clearTimeout(companyAutoSaveTimer);
+        companyAutoSaveTimer=setTimeout(()=>flushCompanyAutoSave(),500);
+      }
+    }
   }
 
   async function uploadSharedCompanyAsset(dataUrl,folder,filename) {
@@ -6661,7 +7030,9 @@ ${company.tradeName||company.name}`:''}`;
 
   function renderSettings(){
     const root=document.getElementById('settingsBody');if(!root)return;
-    const tabs=[['profile','Meu usuário'],['company','Empresa'],['branding','Identidade e fotos'],['drive','Google Drive'],['firebase','Banco de dados'],['email','Servidor de e-mail'],['users','Usuários e permissões'],['backup','Backup e dados']];
+    const tabs=[['profile','Meu usuário'],['company','Empresa'],['branding','Identidade e fotos'],['drive','Google Drive'],['email','Servidor de e-mail'],['users','Usuários e permissões'],['backup','Backup e dados']];
+    if(currentUserIsAdmin())tabs.splice(4,0,['firebase','Banco de dados']);
+    if(settingsTab==='firebase'&&!currentUserIsAdmin())settingsTab='company';
     root.innerHTML=`<div class="settings-tabs">${tabs.map(([id,label])=>`<button class="settings-tab ${settingsTab===id?'active':''}" data-settings-tab="${id}">${label}</button>`).join('')}</div><div id="settingsPanel">${renderSettingsPanel(settingsTab)}</div>`;
     root.querySelectorAll('[data-settings-tab]').forEach(btn=>btn.addEventListener('click',()=>{settingsTab=btn.dataset.settingsTab;renderSettings();}));
     bindSettingsEvents();
@@ -6696,9 +7067,14 @@ ${company.tradeName||company.name}`:''}`;
       const u=state.currentUser||{};const linked=state.teams.find(team=>team.id===u.teamRecordId)||(u.email&&state.teams.find(team=>team.email?.toLowerCase()===u.email.toLowerCase()))||{};
       return `<form id="userProfileForm"><div class="profile-card"><div><div class="profile-avatar">${u.avatar?`<img src="${u.avatar}" alt="${attr(u.name||'Usuário')}">`:escapeHtml(initials(u.name||'Usuário'))}</div><label class="btn btn-ghost btn-sm" style="margin-top:10px;width:126px"><input id="userAvatarInput" type="file" accept="image/*" hidden>Alterar foto</label></div><div><div class="form-grid">${settingsInput('name','Nome completo',u.name||linked.name||'')}${settingsInput('email','E-mail',u.email||linked.email||'','email')}${settingsInput('phone','Telefone / WhatsApp',u.phone||linked.phone||'','tel')}${settingsInput('jobTitle','Cargo / função',u.jobTitle||linked.role||'')}${settingsInput('team','Equipe',u.team||linked.team||'')}${settingsInput('region','Região',u.region||linked.region||'')}<label class="field"><span>Permissão atual</span><input value="${attr(state.role||u.role||'admin')}" disabled></label><label class="field"><span>ID do usuário</span><input value="${attr(u.id||'')}" disabled></label><label class="field full"><span>Assinatura / apresentação curta</span><textarea name="bio" placeholder="Ex.: Gerente comercial responsável pela região Norte de SC.">${escapeHtml(u.bio||'')}</textarea></label></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-primary" type="submit">Salvar meus dados</button></div></div></div></form>`;
     }
-    if(tab==='company')return `<div class="notice" style="margin-bottom:14px"><strong>Fonte oficial: Firebase</strong><br>Todos os usuários carregam este cadastro diretamente de <b>companies/${escapeHtml(state.currentCompanyId)}</b>. Cada módulo do sistema é carregado conforme as permissões definidas no perfil do usuário.<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px"><span class="status ${sharedSettingsSyncBusy?'yellow':sharedSettingsLastError?'red':'green'}">${sharedSettingsSyncBusy?'Sincronizando':sharedSettingsLastError?'Falha ao acessar o Firebase':`Fonte: ${escapeHtml(sharedSettingsLastSource)}`}</span>${currentUserIsAdmin()?`<div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" id="downloadFirestoreRulesBtn" type="button">Baixar regras</button><button class="btn btn-ghost btn-sm" id="copyFirestoreRulesBtn" type="button">Copiar regras</button><button class="btn btn-ghost btn-sm" id="forceCompanySettingsSync" type="button" ${sharedSettingsSyncBusy?'disabled':''}>${sharedSettingsSyncBusy?'Sincronizando...':'↻ Gravar no Firebase'}</button></div>`:''}</div>${sharedSettingsLastError?`<small style="display:block;margin-top:8px">${escapeHtml(sharedSettingsLastError)}</small><small style="display:block;margin-top:5px">Publique o firestore.rules desta versão para aplicar as permissões por módulo.</small>`:''}</div><form id="companySettingsForm"><div class="form-grid">${settingsInput('name','Razão social',c.name)}${settingsInput('tradeName','Nome fantasia',c.tradeName)}${settingsInput('document','CNPJ',c.document)}${settingsInput('city','Cidade / sede',c.city)}${settingsInput('phone','Telefone',c.phone)}${settingsInput('email','E-mail',c.email,'email')}${settingsInput('website','Site',c.website)}${settingsInput('proposalValidityDays','Validade padrão da proposta (dias)',c.proposalValidityDays,'number')}${settingsInput('clientsCount','Quantidade de clientes',c.clientsCount,'number')}${settingsInput('installedPowerMW','Potência instalada (MW)',c.installedPowerMW,'number')}${settingsInput('defaultCommissionPercent','Comissão padrão (%)',c.defaultCommissionPercent,'number')}<label class="field full"><span>História da empresa</span><textarea name="history">${escapeHtml(c.history)}</textarea></label><label class="field full"><span>Certificações (separadas por vírgula)</span><input name="certifications" value="${attr(c.certifications)}"></label><label class="field full"><span>Parceiros</span><input name="partners" value="${attr(c.partners)}"></label><label class="field full"><span>Dados bancários</span><input name="bankData" value="${attr(c.bankData)}"></label><label class="field full"><span>Mensagem de envio de proposta</span><textarea name="proposalMessage">${escapeHtml(c.proposalMessage)}</textarea></label><label class="field full"><span>Mensagem de cobrança</span><textarea name="collectionMessage">${escapeHtml(c.collectionMessage)}</textarea></label><label class="field full"><span>Mensagem de NPS</span><textarea name="npsMessage">${escapeHtml(c.npsMessage)}</textarea></label></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-primary" type="submit">Salvar empresa</button></div></form>`;
+    if(tab==='company'){
+      const canEditCompany=hasPermission('settings','edit');
+      const autoStatus=companyAutoSaveStatusModel();
+      return `<div class="notice" style="margin-bottom:14px"><strong>Cadastro central da empresa</strong><br>Todos os usuários autorizados carregam estes dados diretamente de <b>companies/${escapeHtml(state.currentCompanyId)}</b>. Os demais módulos também são lidos do Firebase conforme as permissões do perfil.<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px"><span id="companyAutoSaveStatus" class="status ${autoStatus.className}">${escapeHtml(autoStatus.text)}</span><small id="companyAutoSaveDetail" style="color:var(--muted)">${canEditCompany?'Cada alteração é gravada automaticamente. Não é necessário clicar em sincronizar.':'Seu perfil pode consultar os dados, mas não pode alterá-los.'}</small></div>${sharedSettingsLastError?`<small style="display:block;margin-top:8px;color:var(--red)">${escapeHtml(sharedSettingsLastError)}</small>`:''}</div><form id="companySettingsForm" autocomplete="off"><fieldset ${canEditCompany?'':'disabled'} style="border:0;padding:0;margin:0;min-width:0"><div class="form-grid">${settingsInput('name','Razão social',c.name)}${settingsInput('tradeName','Nome fantasia',c.tradeName)}${settingsInput('document','CNPJ',c.document)}${settingsInput('city','Cidade / sede',c.city)}${settingsInput('phone','Telefone',c.phone)}${settingsInput('email','E-mail',c.email,'email')}${settingsInput('website','Site',c.website)}${settingsInput('proposalValidityDays','Validade padrão da proposta (dias)',c.proposalValidityDays,'number')}${settingsInput('clientsCount','Quantidade de clientes',c.clientsCount,'number')}${settingsInput('installedPowerMW','Potência instalada (MW)',c.installedPowerMW,'number')}${settingsInput('defaultCommissionPercent','Comissão padrão (%)',c.defaultCommissionPercent,'number')}<label class="field full"><span>História da empresa</span><textarea name="history">${escapeHtml(c.history)}</textarea></label><label class="field full"><span>Certificações (separadas por vírgula)</span><input name="certifications" value="${attr(c.certifications)}"></label><label class="field full"><span>Parceiros</span><input name="partners" value="${attr(c.partners)}"></label><label class="field full"><span>Dados bancários</span><input name="bankData" value="${attr(c.bankData)}"></label><label class="field full"><span>Mensagem de envio de proposta</span><textarea name="proposalMessage">${escapeHtml(c.proposalMessage)}</textarea></label><label class="field full"><span>Mensagem de cobrança</span><textarea name="collectionMessage">${escapeHtml(c.collectionMessage)}</textarea></label><label class="field full"><span>Mensagem de NPS</span><textarea name="npsMessage">${escapeHtml(c.npsMessage)}</textarea></label></div></fieldset><div class="notice" style="margin-top:16px"><strong>${canEditCompany?'Salvamento automático ativo':'Modo de consulta'}</strong><br>${canEditCompany?'Ao parar de digitar, o sistema salva no Firestore e atualiza os demais usuários em tempo real.':'As informações exibidas vieram diretamente do banco de dados da empresa.'}</div></form>`;
+    }
     if(tab==='branding')return `<div class="form-section"><div class="form-section-head"><div><h3>Logo da empresa</h3><p>Usada na capa e no cabeçalho de todas as páginas.</p></div></div><div class="grid grid-2"><div>${c.logo?`<img class="logo-preview" src="${c.logo}" alt="Logo">`:`<img class="logo-preview" src="${defaultLogoData()}" alt="Logo padrão">`}</div><label class="upload-drop"><div><strong>Selecionar logo</strong><span>Envie PNG da logo. O sistema remove fundo branco das bordas e preserva a transparência na proposta.</span><input id="companyLogoInput" type="file" accept="image/png" style="margin-top:10px"></div></label></div></div><div class="form-section"><div class="form-section-head"><div><h3>Fotos de obras executadas</h3><p>Até quatro imagens na página institucional da proposta.</p></div></div><label class="upload-drop"><div><strong>Adicionar fotos</strong><span>Selecione uma ou várias imagens.</span><input id="workPhotosInput" type="file" accept="image/*" multiple style="margin-top:10px"></div></label><div class="photo-list" style="margin-top:12px">${(c.workPhotos||[]).map((photo,i)=>`<div style="position:relative"><img src="${photo}"><button class="btn btn-danger btn-sm btn-icon" data-remove-work-photo="${i}" style="position:absolute;right:5px;top:5px">×</button></div>`).join('')}</div></div><div class="form-section"><div class="form-section-head"><div><h3>Assinatura do vendedor</h3><p>Imagem opcional utilizada na página de aceite.</p></div></div><div class="grid grid-2"><div>${c.sellerSignature?`<img class="logo-preview" src="${c.sellerSignature}" alt="Assinatura">`:'<div class="upload-drop"><span>Nenhuma assinatura cadastrada.</span></div>'}</div><label class="upload-drop"><div><strong>Enviar assinatura</strong><span>Use PNG com fundo branco ou transparente.</span><input id="sellerSignatureInput" type="file" accept="image/*" style="margin-top:10px"></div></label></div></div>`;
     if(tab==='firebase'){
+      if(!currentUserIsAdmin())return `<div class="notice danger-note"><strong>Acesso restrito</strong><br>As configurações técnicas do Firebase são exclusivas do administrador.</div>`;
       const status=getFirebaseUiState();
       const loggedEmail=window.FirebaseCRM?.auth?.currentUser?.email||state.currentUser.email||'';
       const profileActionLabel=firebaseLastDiagnostic?.code==='bootstrap-owner-profile-missing'?'Reparar meu perfil':firebaseLastDiagnostic?.code==='profile-missing-bootstrap-available'?'Ativar meu perfil administrador':'Ativar ou reparar meu perfil';
@@ -6948,14 +7324,14 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     document.getElementById('userAvatarInput')?.addEventListener('change',async event=>{const file=event.target.files?.[0];if(!file)return;state.currentUser.avatar=await resizeImage(file,500,500,.9);state.currentUser.initials=initials(state.currentUser.name);persist();updateTopbar();renderSettings();toast('Foto do usuário atualizada');});
     document.getElementById('downloadFirestoreRulesBtn')?.addEventListener('click',downloadFirestoreRules);
     document.getElementById('copyFirestoreRulesBtn')?.addEventListener('click',copyFirestoreRules);
-    document.getElementById('forceCompanySettingsSync')?.addEventListener('click',async()=>{
-      if(sharedSettingsSyncBusy)return;
-      sharedSettingsSyncBusy=true;renderSettings();
-      try{const saved=await promiseWithTimeout(saveSharedCompanySettings({successTitle:'Configurações gravadas no Firebase'}),18000,'A sincronização demorou além do limite.');if(saved)await loadAuthorizedFirebaseData({silent:true,restartWatchers:true});}
-      catch(error){sharedSettingsLastError=sharedSettingsPermissionMessage(error);toast('Sincronização não concluída',sharedSettingsLastError,'error');}
-      finally{sharedSettingsSyncBusy=false;renderSettings();}
-    });
-    document.getElementById('companySettingsForm')?.addEventListener('submit',async e=>{e.preventDefault();const fd=new FormData(e.currentTarget);for(const [k,v] of fd.entries())state.company[k]=['proposalValidityDays','clientsCount','installedPowerMW','defaultCommissionPercent'].includes(k)?Number(v):v;syncCurrentCompanyRecord();persist();renderSidebar();updateTopbar();await saveSharedCompanySettings({successTitle:'Empresa atualizada'});renderSettings();});
+    const companySettingsForm=document.getElementById('companySettingsForm');
+    if(companySettingsForm){
+      companySettingsForm.addEventListener('submit',event=>{event.preventDefault();scheduleCompanyAutoSave(companySettingsForm,{immediate:true});});
+      companySettingsForm.addEventListener('input',()=>scheduleCompanyAutoSave(companySettingsForm));
+      companySettingsForm.addEventListener('change',()=>scheduleCompanyAutoSave(companySettingsForm,{immediate:true}));
+      companySettingsForm.addEventListener('focusout',()=>{if(companyAutoSaveDirty)scheduleCompanyAutoSave(companySettingsForm,{immediate:true});});
+      updateCompanyAutoSaveStatus();
+    }
     document.getElementById('companyLogoInput')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;if(f.type!=='image/png'){toast('Use PNG sem fundo','A logo da proposta deve ser PNG com fundo transparente.','error');return;}const local=await resizeTransparentPng(f,1000,400);state.company.logo=local;syncCurrentCompanyRecord();persist();renderSettings();try{state.company.logo=await uploadSharedCompanyAsset(local,'branding','logo.png');}catch(error){console.warn(error);}await saveSharedCompanySettings({successTitle:'Logo atualizada'});renderSettings();});
     document.getElementById('sellerSignatureInput')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;const local=await resizeImage(f,900,350,.92);state.company.sellerSignature=local;syncCurrentCompanyRecord();persist();renderSettings();try{state.company.sellerSignature=await uploadSharedCompanyAsset(local,'branding','assinatura-vendedor.png');}catch(error){console.warn(error);}await saveSharedCompanySettings({successTitle:'Assinatura atualizada'});renderSettings();});
     document.getElementById('workPhotosInput')?.addEventListener('change',async e=>{const files=[...(e.target.files||[])].slice(0,4-(state.company.workPhotos?.length||0));for(let i=0;i<files.length;i++){const local=await resizeImage(files[i],1200,800,.82);let value=local;try{value=await uploadSharedCompanyAsset(local,'obras',`obra-${Date.now()}-${i+1}.jpg`);}catch(error){console.warn(error);}state.company.workPhotos.push(value);}syncCurrentCompanyRecord();persist();await saveSharedCompanySettings({successTitle:'Fotos adicionadas'});renderSettings();});
