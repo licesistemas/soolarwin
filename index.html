@@ -1282,7 +1282,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   <input id="backupImportInput" type="file" accept="application/json" hidden />
 
   <script>
-/* Adaptador Banco de dados modular — SolarCRM Pro v2.9.9. */
+/* Adaptador Banco de dados modular — SolarCRM Pro v3.0.0. */
 (() => {
   'use strict';
   const SDK_VERSION = '11.10.0';
@@ -1649,16 +1649,22 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
       this.ensureSyncReady();
       try {
         const { collection, query, where, limit, getDocs } = this.modules.firestoreMod;
-        const snapshot = await getDocs(query(
-          collection(this.db, 'users'),
-          where('companyId', '==', companyId),
-          limit(200)
-        ));
-        return snapshot.docs.map(item => ({ id:item.id, ...item.data() }));
+        const usersRef = collection(this.db, 'users');
+        const attempts = await Promise.allSettled([
+          getDocs(query(usersRef, where('companyId', '==', companyId), limit(400))),
+          getDocs(query(usersRef, where('companyIds', 'array-contains', companyId), limit(400)))
+        ]);
+        const rows = new Map();
+        attempts.forEach(result => {
+          if (result.status !== 'fulfilled') return;
+          result.value.docs.forEach(item => rows.set(item.id, { id:item.id, ...item.data() }));
+        });
+        if (!rows.size && attempts.every(result => result.status === 'rejected')) throw attempts[0].reason;
+        return [...rows.values()];
       } catch (error) {
         const wrapped = friendlyError(error, 'Não foi possível carregar os usuários e permissões.');
         if (wrapped.code === 'permission-denied' || wrapped.code === 'firestore/permission-denied') {
-          wrapped.message = 'O banco de dados bloqueou a lista de usuários. Publique o arquivo firestore.rules da versão 2.9.6, que alinha a consulta e a permissão pelo campo companyId.';
+          wrapped.message = 'O banco de dados bloqueou a lista de usuários. Confirme nas regras que administradores podem consultar perfis por companyId e companyIds.';
         }
         throw wrapped;
       }
@@ -1672,7 +1678,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
         const { doc, setDoc, serverTimestamp } = this.modules.firestoreMod;
         await setDoc(doc(this.db, 'users', uid), {
           sharedCompanySettings: { ...sharedCompanySettings, id:companyId, companyId },
-          sharedCompanySettingsVersion: Number(sharedCompanySettings.sharedSettingsVersion || 3),
+          sharedCompanySettingsVersion: Number(sharedCompanySettings.sharedSettingsVersion || 4),
           sharedCompanySettingsUpdatedAt: sharedCompanySettings.settingsUpdatedAt || new Date().toISOString(),
           updatedBy: this.auth.currentUser.uid,
           updatedAt: serverTimestamp()
@@ -1683,33 +1689,88 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
       }
     },
 
-    async broadcastCompanySettings(companyId, sharedCompanySettings) {
+    async broadcastCompanySettings(companyId, sharedCompanySettings, knownUserIds = []) {
       this.ensureSyncReady();
       if (this.profile?.role !== 'admin') throw new Error('Somente administradores podem distribuir configurações da empresa.');
       if (!companyId || !sharedCompanySettings) throw new Error('Empresa ou configuração não informada.');
       try {
-        const { collection, query, where, limit, getDocs, doc, writeBatch, serverTimestamp } = this.modules.firestoreMod;
-        const snapshot = await getDocs(query(
-          collection(this.db, 'users'),
-          where('companyId', '==', companyId),
-          limit(400)
-        ));
+        const { collection, query, where, limit, getDocs, doc, setDoc, serverTimestamp } = this.modules.firestoreMod;
+        const usersRef = collection(this.db, 'users');
+        const requestsRef = collection(this.db, 'access_requests');
+        const queryResults = await Promise.allSettled([
+          getDocs(query(usersRef, where('companyId', '==', companyId), limit(400))),
+          getDocs(query(usersRef, where('companyIds', 'array-contains', companyId), limit(400))),
+          getDocs(query(requestsRef, where('companyId', '==', companyId), limit(400)))
+        ]);
+        const ids = new Set((knownUserIds || []).filter(Boolean));
+        queryResults.forEach((result,index) => {
+          if (result.status !== 'fulfilled') return;
+          result.value.docs.forEach(item => {
+            const data=item.data()||{};
+            if(index<2||String(data.status||'').toLowerCase()==='aprovado')ids.add(item.id);
+          });
+        });
+        if (this.auth.currentUser?.uid) ids.add(this.auth.currentUser.uid);
         const cleanSettings = { ...sharedCompanySettings, id:companyId, companyId };
-        const ids = new Set(snapshot.docs.map(item => item.id));
-        if (this.auth.currentUser?.uid && (this.profile?.companyIds || []).includes(companyId)) ids.add(this.auth.currentUser.uid);
-        const batch = writeBatch(this.db);
-        ids.forEach(uid => batch.set(doc(this.db, 'users', uid), {
+        const writes = await Promise.allSettled([...ids].map(uid => setDoc(doc(this.db, 'users', uid), {
           sharedCompanySettings: cleanSettings,
-          sharedCompanySettingsVersion: Number(cleanSettings.sharedSettingsVersion || 3),
+          sharedCompanySettingsVersion: Number(cleanSettings.sharedSettingsVersion || 4),
           sharedCompanySettingsUpdatedAt: cleanSettings.settingsUpdatedAt || new Date().toISOString(),
           updatedBy: this.auth.currentUser.uid,
           updatedAt: serverTimestamp()
-        }, { merge:true }));
-        if (ids.size) await batch.commit();
-        return ids.size;
+        }, { merge:true })));
+        const updated = writes.filter(item => item.status === 'fulfilled').length;
+        if (!updated) {
+          const queryFailure = queryResults.find(item => item.status === 'rejected');
+          const writeFailure = writes.find(item => item.status === 'rejected');
+          throw writeFailure?.reason || queryFailure?.reason || new Error('Nenhum perfil pôde ser atualizado.');
+        }
+        return updated;
       } catch (error) {
-        throw friendlyError(error, 'A empresa foi salva, mas não foi possível replicar as configurações para os usuários.');
+        throw friendlyError(error, 'A empresa foi salva, mas não foi possível replicar as configurações para os perfis dos usuários.');
       }
+    },
+
+    companySettingsMirrorId(companyId) {
+      return `company-settings-${String(companyId || '').replace(/[^a-zA-Z0-9_-]/g, '-')}`;
+    },
+
+    async saveCompanySettingsMirror(companyId, sharedCompanySettings) {
+      this.ensureSyncReady();
+      if (this.profile?.role !== 'admin') throw new Error('Somente administradores podem publicar configurações da empresa.');
+      const { doc, setDoc, serverTimestamp } = this.modules.firestoreMod;
+      const id = this.companySettingsMirrorId(companyId);
+      const cleanSettings = { ...sharedCompanySettings, id:companyId, companyId };
+      await setDoc(doc(this.db, 'automation_rules', id), {
+        id,
+        companyId,
+        recordType:'company-settings',
+        name:'Configurações compartilhadas da empresa',
+        enabled:false,
+        settings:cleanSettings,
+        settingsUpdatedAt:cleanSettings.settingsUpdatedAt || new Date().toISOString(),
+        updatedBy:this.auth.currentUser.uid,
+        updatedAt:serverTimestamp()
+      }, { merge:true });
+      return cleanSettings;
+    },
+
+    async loadCompanySettingsMirror(companyId) {
+      this.ensureSyncReady();
+      const { doc, getDoc } = this.modules.firestoreMod;
+      const snapshot = await getDoc(doc(this.db, 'automation_rules', this.companySettingsMirrorId(companyId)));
+      if (!snapshot.exists()) return null;
+      const data = snapshot.data() || {};
+      return data.settings ? { ...data.settings, id:companyId, companyId } : null;
+    },
+
+    watchCompanySettingsMirror(companyId, callback) {
+      this.ensureSyncReady();
+      const { doc, onSnapshot } = this.modules.firestoreMod;
+      return onSnapshot(doc(this.db, 'automation_rules', this.companySettingsMirrorId(companyId)), snapshot => {
+        const data = snapshot.exists() ? snapshot.data() : null;
+        callback(data?.settings ? { ...data.settings, id:companyId, companyId } : null);
+      }, error => console.warn('Falha ao acompanhar o espelho das configurações:', friendlyError(error).message));
     },
 
     async listAccessRequests(companyId) {
@@ -1744,7 +1805,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
         const profile = {
           id:uid, name:request.name || request.email || 'Usuário', email:request.email || '', avatar:request.photoURL || '',
           role, permission:role, permissions, ...permissionArrays, companyId:targetCompany, companyIds:[targetCompany], companyName,
-          ...(sharedCompanySettings ? { sharedCompanySettings:{...sharedCompanySettings,id:targetCompany,companyId:targetCompany}, sharedCompanySettingsVersion:Number(sharedCompanySettings.sharedSettingsVersion||3), sharedCompanySettingsUpdatedAt:sharedCompanySettings.settingsUpdatedAt||new Date().toISOString() } : {}),
+          ...(sharedCompanySettings ? { sharedCompanySettings:{...sharedCompanySettings,id:targetCompany,companyId:targetCompany}, sharedCompanySettingsVersion:Number(sharedCompanySettings.sharedSettingsVersion||4), sharedCompanySettingsUpdatedAt:sharedCompanySettings.settingsUpdatedAt||new Date().toISOString() } : {}),
           status:'Ativo', approvedBy:this.auth.currentUser.uid, approvedAt:new Date().toISOString(),
           createdAt:new Date().toISOString(), updatedAt:new Date().toISOString()
         };
@@ -2030,7 +2091,9 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
           return snapshot.exists() ? [{ id: snapshot.id, ...snapshot.data() }] : [];
         }
         const snapshot = await getDocs(query(collection(this.db, mapped), where('companyId', '==', companyId)));
-        return snapshot.docs.map(document => ({ id: document.id, ...document.data() }));
+        return snapshot.docs
+          .map(document => ({ id: document.id, ...document.data() }))
+          .filter(document => !(mapped === 'automation_rules' && document.recordType === 'company-settings'));
       } catch (error) {
         throw friendlyError(error, `Não foi possível carregar ${collectionName}.`);
       }
@@ -2129,7 +2192,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   const DRIVE_SCRIPT_TOKEN_KEY = 'solarcrm-drive-script-token-v1';
   const DRIVE_ROOT_FOLDER_KEY = 'solarcrm-drive-root-folder-v1';
   const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-2';
-  const SYSTEM_VERSION = '3.2.0-fechamento-contrato-homologacao';
+  const SYSTEM_VERSION = '3.3.0-configuracoes-compartilhadas';
   let storageWarningShown = false;
   let draftSaveTimer = null;
   let firebaseLastDiagnostic = null;
@@ -2531,9 +2594,13 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   let permissionUsersLoading = false;
   let permissionDrafts = {};
   let sharedCompanyUnsubscribe = null;
+  let sharedCompanyMirrorUnsubscribe = null;
   let sharedProfileUnsubscribe = null;
   let sharedCompanyApplying = false;
   let sharedCompanySaveQueue = Promise.resolve();
+  let sharedSettingsLastSource = 'local';
+  let sharedSettingsLastError = '';
+  let sharedSettingsLastLoadedAt = '';
 
   function normalizeState(data) {
     data = data && typeof data === 'object' ? data : seedState();
@@ -2591,10 +2658,32 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   }
 
   function companyConfigurationScore(company={}) {
-    const keys=['name','tradeName','document','city','phone','email','website','history','certifications','partners','bankData','proposalMessage','collectionMessage','npsMessage','logo','sellerSignature','driveScriptUrl','emailScriptUrl'];
-    let score=keys.reduce((total,key)=>total+(String(company[key]||'').trim()&&!['Empresa','SolarCRM Pro'].includes(String(company[key]||'').trim())?1:0),0);
-    score+=Math.min(4,Array.isArray(company.workPhotos)?company.workPhotos.filter(Boolean).length:0);
+    const coreKeys=['name','tradeName','document','city','phone','email','website','history','certifications','partners','bankData'];
+    let score=coreKeys.reduce((total,key)=>total+(String(company?.[key]||'').trim()?1:0),0);
+    if(String(company?.logo||'').trim())score+=2;
+    if(String(company?.sellerSignature||'').trim())score+=1;
+    score+=Math.min(4,Array.isArray(company?.workPhotos)?company.workPhotos.filter(Boolean).length:0);
+    if(String(company?.primaryColor||'')&&company.primaryColor!==defaultCompany.primaryColor)score+=1;
+    if(String(company?.proposalMessage||'')&&company.proposalMessage!==defaultCompany.proposalMessage)score+=1;
+    if(String(company?.collectionMessage||'')&&company.collectionMessage!==defaultCompany.collectionMessage)score+=1;
+    if(String(company?.npsMessage||'')&&company.npsMessage!==defaultCompany.npsMessage)score+=1;
     return score;
+  }
+
+  function companySettingsTimestamp(company={}) {
+    const raw=company.settingsUpdatedAt||company.sharedCompanySettingsUpdatedAt||company.updatedAt||'';
+    const value=new Date(raw).getTime();
+    return Number.isFinite(value)?value:0;
+  }
+
+  function chooseBestCompanySettings(candidates=[]) {
+    return candidates.filter(item=>item?.settings).sort((a,b)=>{
+      const scoreA=companyConfigurationScore(a.settings);const scoreB=companyConfigurationScore(b.settings);
+      if(Boolean(scoreA)!==Boolean(scoreB))return scoreB-scoreA;
+      const timeA=companySettingsTimestamp(a.settings);const timeB=companySettingsTimestamp(b.settings);
+      if(timeA!==timeB)return timeB-timeA;
+      return scoreB-scoreA;
+    })[0]||null;
   }
 
   function buildSharedCompanyPayload() {
@@ -2603,21 +2692,29 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
       id:state.currentCompanyId,
       companyId:state.currentCompanyId,
       automations:{...state.automations},
-      sharedSettingsVersion:3,
+      sharedSettingsVersion:4,
       settingsUpdatedAt:new Date().toISOString(),
       settingsUpdatedBy:state.currentUser?.id||window.FirebaseCRM?.auth?.currentUser?.uid||''
     });
   }
 
-  function applySharedCompanySettings(cloudCompany,{render=true}={}) {
+  function applySharedCompanySettings(cloudCompany,{render=true,force=false,source='nuvem'}={}) {
     if(!cloudCompany||sharedCompanyApplying)return false;
     const companyId=cloudCompany.id||cloudCompany.companyId;
     if(companyId&&companyId!==state.currentCompanyId)return false;
+    const incomingScore=companyConfigurationScore(cloudCompany);
+    const currentScore=companyConfigurationScore(state.company);
+    const incomingTime=companySettingsTimestamp(cloudCompany);
+    const currentTime=companySettingsTimestamp(state.company);
+    if(!force&&currentScore>incomingScore&&currentTime>=incomingTime)return false;
     sharedCompanyApplying=true;
     try{
       const {automations,...companyData}=cloudCompany;
       state.company={...defaultCompany,...companyData,id:state.currentCompanyId,companyId:state.currentCompanyId};
       if(automations&&typeof automations==='object')state.automations={...state.automations,...automations};
+      sharedSettingsLastSource=source;
+      sharedSettingsLastLoadedAt=new Date().toISOString();
+      sharedSettingsLastError='';
       syncCurrentCompanyRecord();mirrorSharedGatewaySettings();persist();
       if(render){renderSidebar();updateTopbar();if(!document.body.classList.contains('auth-locked'))renderView(activeView);if(document.getElementById('settingsModal')?.classList.contains('open'))renderSettings();}
       return true;
@@ -2640,10 +2737,12 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   async function publishSharedCompanyFallback(snapshot=buildSharedCompanyPayload(),{silent=true}={}){
     if(!window.FirebaseCRM?.syncReady||state.role!=='admin')return 0;
     try{
-      const count=await window.FirebaseCRM.broadcastCompanySettings(state.currentCompanyId,firestoreSafeRecord(snapshot));
+      const knownIds=permissionUsers.map(item=>item.id).filter(Boolean);
+      const count=await window.FirebaseCRM.broadcastCompanySettings(state.currentCompanyId,firestoreSafeRecord(snapshot),knownIds);
       return Number(count||0);
     }catch(error){
       console.warn('Falha ao replicar configurações nos perfis dos usuários:',error);
+      sharedSettingsLastError=error.message||String(error);
       if(!silent)throw error;
       return 0;
     }
@@ -2660,18 +2759,28 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
       return false;
     }
     const execute=async()=>{
-      try{
-        await migrateSharedCompanyAssets();
-        const saved=await window.FirebaseCRM.saveRecord('companies',buildSharedCompanyPayload());
-        applySharedCompanySettings(saved,{render:false});
-        const replicated=await publishSharedCompanyFallback(saved,{silent:false});
-        if(!silent)toast(successTitle,replicated?`${successText} ${replicated} perfil(is) atualizado(s).`:successText,'success');
+      await migrateSharedCompanyAssets();
+      const payload=buildSharedCompanyPayload();
+      const results=await Promise.allSettled([
+        window.FirebaseCRM.saveRecord('companies',payload),
+        window.FirebaseCRM.saveCompanySettingsMirror(state.currentCompanyId,payload),
+        publishSharedCompanyFallback(payload,{silent:true})
+      ]);
+      const primary=results[0].status==='fulfilled'?results[0].value:null;
+      const mirror=results[1].status==='fulfilled'?results[1].value:null;
+      const replicated=results[2].status==='fulfilled'?Number(results[2].value||0):0;
+      const saved=primary||mirror||(replicated?payload:null);
+      if(saved){
+        applySharedCompanySettings(saved,{render:false,force:true,source:primary?'empresa':mirror?'espelho':'perfil'});
+        sharedSettingsLastError='';
+        if(!silent)toast(successTitle,`${successText}${replicated?` ${replicated} perfil(is) atualizado(s).`:''}`,'success');
         return true;
-      }catch(error){
-        console.warn('Configuração da empresa salva apenas localmente:',error);
-        if(!silent)toast('Não foi possível aplicar à equipe',error.message||'A alteração ficou salva apenas neste navegador.','error');
-        return false;
       }
+      const errors=results.filter(item=>item.status==='rejected').map(item=>item.reason?.message||String(item.reason));
+      sharedSettingsLastError=errors.join(' | ')||'Nenhum destino remoto aceitou a configuração.';
+      console.warn('Configuração da empresa salva apenas localmente:',sharedSettingsLastError);
+      if(!silent)toast('Não foi possível aplicar à equipe',sharedSettingsLastError,'error');
+      return false;
     };
     sharedCompanySaveQueue=sharedCompanySaveQueue.then(execute,execute);
     return sharedCompanySaveQueue;
@@ -2685,8 +2794,10 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
 
   function stopSharedCompanyWatcher(){
     try{sharedCompanyUnsubscribe?.();}catch(_){}
+    try{sharedCompanyMirrorUnsubscribe?.();}catch(_){}
     try{sharedProfileUnsubscribe?.();}catch(_){}
     sharedCompanyUnsubscribe=null;
+    sharedCompanyMirrorUnsubscribe=null;
     sharedProfileUnsubscribe=null;
   }
 
@@ -2695,19 +2806,27 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     if(!window.FirebaseCRM?.syncReady)return;
     try{
       sharedCompanyUnsubscribe=window.FirebaseCRM.watchCompany(state.currentCompanyId,cloud=>{
-        if(cloud)applySharedCompanySettings(cloud,{render:true});
+        if(cloud)applySharedCompanySettings(cloud,{render:true,source:'empresa'});
       });
     }catch(error){console.warn('Acompanhamento da empresa indisponível:',error);}
+    try{
+      sharedCompanyMirrorUnsubscribe=window.FirebaseCRM.watchCompanySettingsMirror(state.currentCompanyId,cloud=>{
+        if(cloud)applySharedCompanySettings(cloud,{render:true,source:'espelho'});
+      });
+    }catch(error){console.warn('Acompanhamento do espelho indisponível:',error);}
     try{
       const uid=window.FirebaseCRM?.auth?.currentUser?.uid;
       if(uid)sharedProfileUnsubscribe=window.FirebaseCRM.watchProfile(uid,profile=>{
         if(!profile||String(profile.status||'').toLowerCase()!=='ativo')return;
         const previousCompanyId=state.currentCompanyId;
+        const currentCompanySnapshot={...state.company};
         applyFirebaseProfile(profile,window.FirebaseCRM.auth.currentUser);
         const snapshot=profile.sharedCompanySettings;
         if(snapshot){
           const snapshotCompanyId=snapshot.companyId||snapshot.id;
-          if(!snapshotCompanyId||snapshotCompanyId===state.currentCompanyId)applySharedCompanySettings(snapshot,{render:false});
+          if(!snapshotCompanyId||snapshotCompanyId===state.currentCompanyId)applySharedCompanySettings(snapshot,{render:false,source:'perfil'});
+        }else if(previousCompanyId===state.currentCompanyId&&companyConfigurationScore(currentCompanySnapshot)>companyConfigurationScore(state.company)){
+          applySharedCompanySettings(currentCompanySnapshot,{render:false,force:true,source:sharedSettingsLastSource});
         }
         if(previousCompanyId!==state.currentCompanyId)startSharedCompanyWatcher();
         if(!document.body.classList.contains('auth-locked'))renderView(activeView);
@@ -2719,36 +2838,33 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   async function initializeSharedCompanySettings(){
     if(!window.FirebaseCRM?.syncReady)return false;
     const profileSnapshot=window.FirebaseCRM?.profile?.sharedCompanySettings||null;
-    let fallbackApplied=false;
-    if(profileSnapshot){
-      const snapshotCompanyId=profileSnapshot.companyId||profileSnapshot.id;
-      if(!snapshotCompanyId||snapshotCompanyId===state.currentCompanyId){
-        fallbackApplied=applySharedCompanySettings(profileSnapshot,{render:false});
-      }
+    const localSnapshot={...state.company,id:state.currentCompanyId,companyId:state.currentCompanyId};
+    const remoteResults=await Promise.allSettled([
+      window.FirebaseCRM.listRecords('companies',state.currentCompanyId),
+      window.FirebaseCRM.loadCompanySettingsMirror(state.currentCompanyId)
+    ]);
+    const companyCloud=remoteResults[0].status==='fulfilled'?(remoteResults[0].value?.[0]||null):null;
+    const mirrorCloud=remoteResults[1].status==='fulfilled'?remoteResults[1].value:null;
+    const candidates=[];
+    if(profileSnapshot)candidates.push({source:'perfil',settings:profileSnapshot});
+    if(companyCloud)candidates.push({source:'empresa',settings:companyCloud});
+    if(mirrorCloud)candidates.push({source:'espelho',settings:mirrorCloud});
+    if(state.role==='admin'||companyConfigurationScore(localSnapshot)>0)candidates.push({source:'local',settings:localSnapshot});
+    const best=chooseBestCompanySettings(candidates);
+    if(best)applySharedCompanySettings(best.settings,{render:false,force:true,source:best.source});
+    const bestRemote=chooseBestCompanySettings(candidates.filter(item=>item.source!=='local'));
+    const localScore=companyConfigurationScore(localSnapshot);
+    const remoteScore=companyConfigurationScore(bestRemote?.settings||{});
+    if(state.role==='admin'&&localScore>0&&(localScore>remoteScore||!bestRemote)){
+      applySharedCompanySettings(localSnapshot,{render:false,force:true,source:'local'});
+      await saveSharedCompanySettings({silent:true});
+    }else if(state.role==='admin'&&best){
+      await publishSharedCompanyFallback(buildSharedCompanyPayload(),{silent:true});
     }
-    try{
-      const rows=await window.FirebaseCRM.listRecords('companies',state.currentCompanyId);
-      const cloud=rows[0]||null;
-      const localScore=companyConfigurationScore(state.company);
-      const cloudScore=companyConfigurationScore(cloud||{});
-      if(state.role==='admin'&&localScore>cloudScore&&cloudScore<=1){
-        await saveSharedCompanySettings({silent:true});
-      }else if(cloud){
-        applySharedCompanySettings(cloud,{render:false});
-      }else if(state.role==='admin'){
-        await saveSharedCompanySettings({silent:true});
-      }
-      if(state.role==='admin')await publishSharedCompanyFallback(buildSharedCompanyPayload(),{silent:true});
-      startSharedCompanyWatcher();
-      return true;
-    }catch(error){
-      console.warn('Não foi possível carregar as configurações compartilhadas:',error);
-      if(fallbackApplied){
-        mirrorSharedGatewaySettings();persist();
-        return true;
-      }
-      return false;
-    }
+    const failures=remoteResults.filter(item=>item.status==='rejected').map(item=>item.reason?.message||String(item.reason));
+    sharedSettingsLastError=failures.length===remoteResults.length?failures.join(' | '):'';
+    startSharedCompanyWatcher();
+    return Boolean(best);
   }
 
   function loadState() {
@@ -6231,7 +6347,7 @@ ${company.tradeName||company.name}`:''}`;
       const u=state.currentUser||{};const linked=state.teams.find(team=>team.id===u.teamRecordId)||(u.email&&state.teams.find(team=>team.email?.toLowerCase()===u.email.toLowerCase()))||{};
       return `<form id="userProfileForm"><div class="profile-card"><div><div class="profile-avatar">${u.avatar?`<img src="${u.avatar}" alt="${attr(u.name||'Usuário')}">`:escapeHtml(initials(u.name||'Usuário'))}</div><label class="btn btn-ghost btn-sm" style="margin-top:10px;width:126px"><input id="userAvatarInput" type="file" accept="image/*" hidden>Alterar foto</label></div><div><div class="form-grid">${settingsInput('name','Nome completo',u.name||linked.name||'')}${settingsInput('email','E-mail',u.email||linked.email||'','email')}${settingsInput('phone','Telefone / WhatsApp',u.phone||linked.phone||'','tel')}${settingsInput('jobTitle','Cargo / função',u.jobTitle||linked.role||'')}${settingsInput('team','Equipe',u.team||linked.team||'')}${settingsInput('region','Região',u.region||linked.region||'')}<label class="field"><span>Permissão atual</span><input value="${attr(state.role||u.role||'admin')}" disabled></label><label class="field"><span>ID do usuário</span><input value="${attr(u.id||'')}" disabled></label><label class="field full"><span>Assinatura / apresentação curta</span><textarea name="bio" placeholder="Ex.: Gerente comercial responsável pela região Norte de SC.">${escapeHtml(u.bio||'')}</textarea></label></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-primary" type="submit">Salvar meus dados</button></div></div></div></form>`;
     }
-    if(tab==='company')return `<div class="notice" style="margin-bottom:14px"><strong>Configuração compartilhada</strong><br>Tudo que o administrador salvar aqui será aplicado automaticamente aos demais usuários autorizados da empresa.</div><form id="companySettingsForm"><div class="form-grid">${settingsInput('name','Razão social',c.name)}${settingsInput('tradeName','Nome fantasia',c.tradeName)}${settingsInput('document','CNPJ',c.document)}${settingsInput('city','Cidade / sede',c.city)}${settingsInput('phone','Telefone',c.phone)}${settingsInput('email','E-mail',c.email,'email')}${settingsInput('website','Site',c.website)}${settingsInput('proposalValidityDays','Validade padrão da proposta (dias)',c.proposalValidityDays,'number')}${settingsInput('clientsCount','Quantidade de clientes',c.clientsCount,'number')}${settingsInput('installedPowerMW','Potência instalada (MW)',c.installedPowerMW,'number')}${settingsInput('defaultCommissionPercent','Comissão padrão (%)',c.defaultCommissionPercent,'number')}<label class="field full"><span>História da empresa</span><textarea name="history">${escapeHtml(c.history)}</textarea></label><label class="field full"><span>Certificações (separadas por vírgula)</span><input name="certifications" value="${attr(c.certifications)}"></label><label class="field full"><span>Parceiros</span><input name="partners" value="${attr(c.partners)}"></label><label class="field full"><span>Dados bancários</span><input name="bankData" value="${attr(c.bankData)}"></label><label class="field full"><span>Mensagem de envio de proposta</span><textarea name="proposalMessage">${escapeHtml(c.proposalMessage)}</textarea></label><label class="field full"><span>Mensagem de cobrança</span><textarea name="collectionMessage">${escapeHtml(c.collectionMessage)}</textarea></label><label class="field full"><span>Mensagem de NPS</span><textarea name="npsMessage">${escapeHtml(c.npsMessage)}</textarea></label></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-primary" type="submit">Salvar empresa</button></div></form>`;
+    if(tab==='company')return `<div class="notice" style="margin-bottom:14px"><strong>Configuração compartilhada</strong><br>Tudo que o administrador salvar aqui será aplicado automaticamente aos demais usuários autorizados da empresa.<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px"><span class="status ${sharedSettingsLastError?'red':'green'}">${sharedSettingsLastError?'Falha de sincronização':`Fonte: ${escapeHtml(sharedSettingsLastSource)}`}</span>${state.role==='admin'?'<button class="btn btn-ghost btn-sm" id="forceCompanySettingsSync" type="button">↻ Sincronizar agora</button>':''}</div>${sharedSettingsLastError?`<small style="display:block;margin-top:8px">${escapeHtml(sharedSettingsLastError)}</small>`:''}</div><form id="companySettingsForm"><div class="form-grid">${settingsInput('name','Razão social',c.name)}${settingsInput('tradeName','Nome fantasia',c.tradeName)}${settingsInput('document','CNPJ',c.document)}${settingsInput('city','Cidade / sede',c.city)}${settingsInput('phone','Telefone',c.phone)}${settingsInput('email','E-mail',c.email,'email')}${settingsInput('website','Site',c.website)}${settingsInput('proposalValidityDays','Validade padrão da proposta (dias)',c.proposalValidityDays,'number')}${settingsInput('clientsCount','Quantidade de clientes',c.clientsCount,'number')}${settingsInput('installedPowerMW','Potência instalada (MW)',c.installedPowerMW,'number')}${settingsInput('defaultCommissionPercent','Comissão padrão (%)',c.defaultCommissionPercent,'number')}<label class="field full"><span>História da empresa</span><textarea name="history">${escapeHtml(c.history)}</textarea></label><label class="field full"><span>Certificações (separadas por vírgula)</span><input name="certifications" value="${attr(c.certifications)}"></label><label class="field full"><span>Parceiros</span><input name="partners" value="${attr(c.partners)}"></label><label class="field full"><span>Dados bancários</span><input name="bankData" value="${attr(c.bankData)}"></label><label class="field full"><span>Mensagem de envio de proposta</span><textarea name="proposalMessage">${escapeHtml(c.proposalMessage)}</textarea></label><label class="field full"><span>Mensagem de cobrança</span><textarea name="collectionMessage">${escapeHtml(c.collectionMessage)}</textarea></label><label class="field full"><span>Mensagem de NPS</span><textarea name="npsMessage">${escapeHtml(c.npsMessage)}</textarea></label></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-primary" type="submit">Salvar empresa</button></div></form>`;
     if(tab==='branding')return `<div class="form-section"><div class="form-section-head"><div><h3>Logo da empresa</h3><p>Usada na capa e no cabeçalho de todas as páginas.</p></div></div><div class="grid grid-2"><div>${c.logo?`<img class="logo-preview" src="${c.logo}" alt="Logo">`:`<img class="logo-preview" src="${defaultLogoData()}" alt="Logo padrão">`}</div><label class="upload-drop"><div><strong>Selecionar logo</strong><span>Envie PNG da logo. O sistema remove fundo branco das bordas e preserva a transparência na proposta.</span><input id="companyLogoInput" type="file" accept="image/png" style="margin-top:10px"></div></label></div></div><div class="form-section"><div class="form-section-head"><div><h3>Fotos de obras executadas</h3><p>Até quatro imagens na página institucional da proposta.</p></div></div><label class="upload-drop"><div><strong>Adicionar fotos</strong><span>Selecione uma ou várias imagens.</span><input id="workPhotosInput" type="file" accept="image/*" multiple style="margin-top:10px"></div></label><div class="photo-list" style="margin-top:12px">${(c.workPhotos||[]).map((photo,i)=>`<div style="position:relative"><img src="${photo}"><button class="btn btn-danger btn-sm btn-icon" data-remove-work-photo="${i}" style="position:absolute;right:5px;top:5px">×</button></div>`).join('')}</div></div><div class="form-section"><div class="form-section-head"><div><h3>Assinatura do vendedor</h3><p>Imagem opcional utilizada na página de aceite.</p></div></div><div class="grid grid-2"><div>${c.sellerSignature?`<img class="logo-preview" src="${c.sellerSignature}" alt="Assinatura">`:'<div class="upload-drop"><span>Nenhuma assinatura cadastrada.</span></div>'}</div><label class="upload-drop"><div><strong>Enviar assinatura</strong><span>Use PNG com fundo branco ou transparente.</span><input id="sellerSignatureInput" type="file" accept="image/*" style="margin-top:10px"></div></label></div></div>`;
     if(tab==='firebase'){
       const status=getFirebaseUiState();
@@ -6345,6 +6461,9 @@ function doPost(e) {
     try{
       const [users,requests]=await Promise.all([window.FirebaseCRM.listUsers(state.currentCompanyId),window.FirebaseCRM.listAccessRequests(state.currentCompanyId)]);
       permissionUsers=users;permissionRequests=requests;permissionUsersLoaded=true;
+      const payload=buildSharedCompanyPayload();
+      const outdated=users.filter(item=>String(item.status||'').toLowerCase()==='ativo'&&Number(item.sharedCompanySettingsVersion||0)<Number(payload.sharedSettingsVersion||4));
+      if(outdated.length)await Promise.allSettled(outdated.map(item=>window.FirebaseCRM.saveCompanySettingsSnapshotForUser(item.id,state.currentCompanyId,payload)));
     }catch(error){toast('Não foi possível carregar os usuários',error.message||String(error),'error');}
     finally{permissionUsersLoading=false;if(settingsTab==='users')renderSettings();}
   }
@@ -6473,6 +6592,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
   function bindSettingsEvents(){
     document.getElementById('userProfileForm')?.addEventListener('submit',saveUserProfile);
     document.getElementById('userAvatarInput')?.addEventListener('change',async event=>{const file=event.target.files?.[0];if(!file)return;state.currentUser.avatar=await resizeImage(file,500,500,.9);state.currentUser.initials=initials(state.currentUser.name);persist();updateTopbar();renderSettings();toast('Foto do usuário atualizada');});
+    document.getElementById('forceCompanySettingsSync')?.addEventListener('click',async()=>{const button=document.getElementById('forceCompanySettingsSync');if(button){button.disabled=true;button.textContent='Sincronizando...';}await saveSharedCompanySettings({successTitle:'Configurações republicadas'});renderSettings();});
     document.getElementById('companySettingsForm')?.addEventListener('submit',async e=>{e.preventDefault();const fd=new FormData(e.currentTarget);for(const [k,v] of fd.entries())state.company[k]=['proposalValidityDays','clientsCount','installedPowerMW','defaultCommissionPercent'].includes(k)?Number(v):v;syncCurrentCompanyRecord();persist();renderSidebar();updateTopbar();await saveSharedCompanySettings({successTitle:'Empresa atualizada'});renderSettings();});
     document.getElementById('companyLogoInput')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;if(f.type!=='image/png'){toast('Use PNG sem fundo','A logo da proposta deve ser PNG com fundo transparente.','error');return;}const local=await resizeTransparentPng(f,1000,400);state.company.logo=local;syncCurrentCompanyRecord();persist();renderSettings();try{state.company.logo=await uploadSharedCompanyAsset(local,'branding','logo.png');}catch(error){console.warn(error);}await saveSharedCompanySettings({successTitle:'Logo atualizada'});renderSettings();});
     document.getElementById('sellerSignatureInput')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;const local=await resizeImage(f,900,350,.92);state.company.sellerSignature=local;syncCurrentCompanyRecord();persist();renderSettings();try{state.company.sellerSignature=await uploadSharedCompanyAsset(local,'branding','assinatura-vendedor.png');}catch(error){console.warn(error);}await saveSharedCompanySettings({successTitle:'Assinatura atualizada'});renderSettings();});
@@ -6518,18 +6638,25 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
   function applyFirebaseProfile(profile,user=window.FirebaseCRM?.auth?.currentUser){
     if(!profile||!user||String(profile.status||'').toLowerCase()!=='ativo')return false;
     const {sharedCompanySettings,...profileData}=profile;
-    state.currentUser={...state.currentUser,...profileData,id:user.uid,email:user.email||profile.email||state.currentUser.email,name:profile.name||user.displayName||state.currentUser.name,avatar:profile.avatar||user.photoURL||state.currentUser.avatar||'',initials:initials(profile.name||user.displayName||user.email||'Usuário'),role:profile.role||'seller',companyIds:profile.companyIds||[],permissions:normalizePermissionMatrix(profile.permissions,profile.role||'seller',profile)};
+    const companyIds=Array.isArray(profile.companyIds)&&profile.companyIds.length?profile.companyIds:(profile.companyId?[profile.companyId]:[]);
+    state.currentUser={...state.currentUser,...profileData,id:user.uid,email:user.email||profile.email||state.currentUser.email,name:profile.name||user.displayName||state.currentUser.name,avatar:profile.avatar||user.photoURL||state.currentUser.avatar||'',initials:initials(profile.name||user.displayName||user.email||'Usuário'),role:profile.role||'seller',companyIds,permissions:normalizePermissionMatrix(profile.permissions,profile.role||'seller',profile)};
     delete state.currentUser.sharedCompanySettings;
     state.role=state.currentUser.role;
-    let authorized=state.companies.find(company=>state.currentUser.companyIds.includes(company.id));
-    if(!authorized&&state.currentUser.companyIds.length){
-      authorized={...defaultCompany,id:state.currentUser.companyIds[0],name:profile.companyName||'Empresa',tradeName:profile.companyName||'Empresa',city:''};
+    const targetCompanyId=(profile.companyId&&companyIds.includes(profile.companyId)?profile.companyId:companyIds[0])||state.currentCompanyId;
+    const previousCompany=state.currentCompanyId===targetCompanyId?{...state.company}:null;
+    let authorized=state.companies.find(company=>company.id===targetCompanyId);
+    if(!authorized&&targetCompanyId){
+      authorized={...defaultCompany,id:targetCompanyId,companyId:targetCompanyId,name:profile.companyName||'',tradeName:profile.companyName||'',city:''};
       state.companies.push(authorized);
     }
-    if(authorized){state.currentCompanyId=authorized.id;state.company={...defaultCompany,...authorized};}
+    if(authorized){
+      state.currentCompanyId=authorized.id;
+      const preferred=previousCompany&&companyConfigurationScore(previousCompany)>=companyConfigurationScore(authorized)?previousCompany:authorized;
+      state.company={...defaultCompany,...preferred,id:authorized.id,companyId:authorized.id};
+    }
     if(sharedCompanySettings){
       const snapshotCompanyId=sharedCompanySettings.companyId||sharedCompanySettings.id;
-      if(!snapshotCompanyId||snapshotCompanyId===state.currentCompanyId)applySharedCompanySettings(sharedCompanySettings,{render:false});
+      if(!snapshotCompanyId||snapshotCompanyId===state.currentCompanyId)applySharedCompanySettings(sharedCompanySettings,{render:false,force:true,source:'perfil'});
     }
     persist();renderSidebar();updateTopbar();return true;
   }
@@ -6815,8 +6942,11 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     const collections=['teams','clients','leads','proposals','contracts','works','homologations','tickets','financial','commissions','inventory','aftersales','suppliers','notifications','projectDocuments','tasks','automationRules','automationQueue','public_proposals'];
     try{
       await migrateSharedCompanyAssets();
-      await window.FirebaseCRM.saveRecord('companies',buildSharedCompanyPayload());
-      await window.FirebaseCRM.saveRecord('users',{...state.currentUser,...permissionArraysFromMatrix(normalizePermissionMatrix(state.currentUser.permissions,state.role,state.currentUser)),id:window.FirebaseCRM.auth.currentUser.uid,role:state.role,companyId:state.currentCompanyId,companyIds:state.currentUser.companyIds||[state.currentCompanyId],status:'Ativo'});
+      const sharedPayload=buildSharedCompanyPayload();
+      await window.FirebaseCRM.saveRecord('companies',sharedPayload);
+      await window.FirebaseCRM.saveCompanySettingsMirror(state.currentCompanyId,sharedPayload).catch(console.warn);
+      await window.FirebaseCRM.saveRecord('users',{...state.currentUser,...permissionArraysFromMatrix(normalizePermissionMatrix(state.currentUser.permissions,state.role,state.currentUser)),sharedCompanySettings:sharedPayload,sharedCompanySettingsVersion:Number(sharedPayload.sharedSettingsVersion||4),sharedCompanySettingsUpdatedAt:sharedPayload.settingsUpdatedAt,id:window.FirebaseCRM.auth.currentUser.uid,role:state.role,companyId:state.currentCompanyId,companyIds:state.currentUser.companyIds||[state.currentCompanyId],status:'Ativo'});
+      await publishSharedCompanyFallback(sharedPayload,{silent:true});
       for(const collection of collections){for(const record of companyRows(collection)){record.companyId=state.currentCompanyId;await window.FirebaseCRM.saveRecord(collection,firestoreSafeRecord(record));}}
       firebaseLastDiagnostic=await window.FirebaseCRM.diagnose(state.currentCompanyId);
       toast('Sincronização concluída','Empresa e registros locais foram enviados para a nuvem.','success');renderSettings();
@@ -6827,8 +6957,16 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     if(!ensureFirebaseSyncReady())return;
     const collections=['teams','clients','leads','proposals','contracts','works','homologations','tickets','financial','commissions','inventory','aftersales','suppliers','notifications','projectDocuments','tasks','automationRules','automationQueue','public_proposals'];
     try{
-      const cloudCompanies=await window.FirebaseCRM.listRecords('companies',state.currentCompanyId);
-      if(cloudCompanies.length)applySharedCompanySettings(cloudCompanies[0],{render:false});
+      const [cloudCompanies,mirrorCompany]=await Promise.all([
+        window.FirebaseCRM.listRecords('companies',state.currentCompanyId).catch(()=>[]),
+        window.FirebaseCRM.loadCompanySettingsMirror(state.currentCompanyId).catch(()=>null)
+      ]);
+      const bestCompany=chooseBestCompanySettings([
+        ...(cloudCompanies.length?[{source:'empresa',settings:cloudCompanies[0]}]:[]),
+        ...(mirrorCompany?[{source:'espelho',settings:mirrorCompany}]:[]),
+        ...(window.FirebaseCRM.profile?.sharedCompanySettings?[{source:'perfil',settings:window.FirebaseCRM.profile.sharedCompanySettings}]:[])
+      ]);
+      if(bestCompany)applySharedCompanySettings(bestCompany.settings,{render:false,force:true,source:bestCompany.source});
       let publicRows=[];
       for(const collection of collections){
         const rows=await window.FirebaseCRM.listRecords(collection,state.currentCompanyId);
@@ -6910,7 +7048,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     return {passed:tests.every(test=>test.passed),total:tests.length,success:tests.filter(test=>test.passed).length,tests};
   }
 
-  window.SolarCRMDebug={SYSTEM_VERSION,calculateProposal,extractBillFields,normalizeState,renderProposalDocument,projectStages,projectDocumentCategories,defaultAutomationRule,executeAutomationRules,queueAutomationRule,ensureProjectStructure,ensureAllProjectStructures,updateProjectStage,runSystemSelfTests,runWorkflowSelfTests,loadFirebaseConfig,clearFirebaseConfig,firebaseApiKeyLooksValid,finishAuthenticatedSession,initializeSharedCompanySettings,saveSharedCompanySettings,publishSharedCompanyFallback,applySharedCompanySettings,loadUserPermissionData,openPermissionMatrix,defaultPermissionMatrix,normalizePermissionMatrix,permissionArraysFromMatrix,hasPermission,lockSystemForAuthentication,unlockSystemAfterAuthentication,buildClientPortalRecord,publishClientPortalStatus,clientPortalUrl,getState:()=>deepClone(state)};
+  window.SolarCRMDebug={SYSTEM_VERSION,calculateProposal,extractBillFields,normalizeState,renderProposalDocument,projectStages,projectDocumentCategories,defaultAutomationRule,executeAutomationRules,queueAutomationRule,ensureProjectStructure,ensureAllProjectStructures,updateProjectStage,runSystemSelfTests,runWorkflowSelfTests,loadFirebaseConfig,clearFirebaseConfig,firebaseApiKeyLooksValid,finishAuthenticatedSession,initializeSharedCompanySettings,saveSharedCompanySettings,publishSharedCompanyFallback,applySharedCompanySettings,chooseBestCompanySettings,companyConfigurationScore,loadUserPermissionData,openPermissionMatrix,defaultPermissionMatrix,normalizePermissionMatrix,permissionArraysFromMatrix,hasPermission,lockSystemForAuthentication,unlockSystemAfterAuthentication,buildClientPortalRecord,publishClientPortalStatus,clientPortalUrl,getState:()=>deepClone(state)};
   document.addEventListener('DOMContentLoaded',()=>{init();autoConnectFirebase();});
 })();
 
