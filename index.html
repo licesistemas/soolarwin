@@ -1962,6 +1962,20 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
       }
     },
 
+    watchCompany(companyId, callback) {
+      this.ensureSyncReady();
+      try {
+        const { doc, onSnapshot } = this.modules.firestoreMod;
+        return onSnapshot(doc(this.db, 'companies', companyId), snapshot => {
+          callback(snapshot.exists() ? { id: snapshot.id, ...snapshot.data() } : null);
+        }, error => {
+          console.warn('Falha ao acompanhar configurações da empresa:', friendlyError(error).message);
+        });
+      } catch (error) {
+        throw friendlyError(error, 'Não foi possível acompanhar as configurações da empresa.');
+      }
+    },
+
     async uploadFile(companyId, folder, file, filename = file.name) {
       this.ensureSyncReady();
       try {
@@ -2442,6 +2456,9 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   let permissionUsersLoaded = false;
   let permissionUsersLoading = false;
   let permissionDrafts = {};
+  let sharedCompanyUnsubscribe = null;
+  let sharedCompanyApplying = false;
+  let sharedCompanySaveQueue = Promise.resolve();
 
   function normalizeState(data) {
     data = data && typeof data === 'object' ? data : seedState();
@@ -2485,6 +2502,131 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     const idx = state.companies.findIndex(c => c.id === state.currentCompanyId);
     if (idx >= 0) state.companies[idx] = { ...state.company, id: state.currentCompanyId };
     else state.companies.push({ ...state.company, id: state.currentCompanyId });
+  }
+
+  function mirrorSharedGatewaySettings() {
+    const pairs = [
+      [EMAIL_SCRIPT_URL_KEY, state.company.emailScriptUrl],
+      [EMAIL_SCRIPT_TOKEN_KEY, state.company.emailScriptToken],
+      [DRIVE_SCRIPT_URL_KEY, state.company.driveScriptUrl],
+      [DRIVE_SCRIPT_TOKEN_KEY, state.company.driveScriptToken],
+      [DRIVE_ROOT_FOLDER_KEY, state.company.driveRootFolderName]
+    ];
+    pairs.forEach(([key,value]) => value ? safeStorageSet(key,String(value)) : safeStorageRemove(key));
+  }
+
+  function companyConfigurationScore(company={}) {
+    const keys=['name','tradeName','document','city','phone','email','website','history','certifications','partners','bankData','proposalMessage','collectionMessage','npsMessage','logo','sellerSignature','driveScriptUrl','emailScriptUrl'];
+    let score=keys.reduce((total,key)=>total+(String(company[key]||'').trim()&&!['Empresa','SolarCRM Pro'].includes(String(company[key]||'').trim())?1:0),0);
+    score+=Math.min(4,Array.isArray(company.workPhotos)?company.workPhotos.filter(Boolean).length:0);
+    return score;
+  }
+
+  function buildSharedCompanyPayload() {
+    return firestoreSafeRecord({
+      ...state.company,
+      id:state.currentCompanyId,
+      companyId:state.currentCompanyId,
+      automations:{...state.automations},
+      sharedSettingsVersion:2,
+      settingsUpdatedAt:new Date().toISOString(),
+      settingsUpdatedBy:state.currentUser?.id||window.FirebaseCRM?.auth?.currentUser?.uid||''
+    });
+  }
+
+  function applySharedCompanySettings(cloudCompany,{render=true}={}) {
+    if(!cloudCompany||sharedCompanyApplying)return false;
+    const companyId=cloudCompany.id||cloudCompany.companyId;
+    if(companyId&&companyId!==state.currentCompanyId)return false;
+    sharedCompanyApplying=true;
+    try{
+      const {automations,...companyData}=cloudCompany;
+      state.company={...defaultCompany,...companyData,id:state.currentCompanyId,companyId:state.currentCompanyId};
+      if(automations&&typeof automations==='object')state.automations={...state.automations,...automations};
+      syncCurrentCompanyRecord();mirrorSharedGatewaySettings();persist();
+      if(render){renderSidebar();updateTopbar();if(!document.body.classList.contains('auth-locked'))renderView(activeView);if(document.getElementById('settingsModal')?.classList.contains('open'))renderSettings();}
+      return true;
+    }finally{sharedCompanyApplying=false;}
+  }
+
+  async function migrateSharedCompanyAssets() {
+    if(!window.FirebaseCRM?.syncReady||state.role!=='admin')return;
+    if(String(state.company.logo||'').startsWith('data:'))state.company.logo=await uploadSharedCompanyAsset(state.company.logo,'branding','logo.png');
+    if(String(state.company.sellerSignature||'').startsWith('data:'))state.company.sellerSignature=await uploadSharedCompanyAsset(state.company.sellerSignature,'branding','assinatura-vendedor.png');
+    const photos=[];
+    for(let i=0;i<(state.company.workPhotos||[]).length;i++){
+      const photo=state.company.workPhotos[i];
+      photos.push(String(photo||'').startsWith('data:')?await uploadSharedCompanyAsset(photo,'obras',`obra-${Date.now()}-${i+1}.jpg`):photo);
+    }
+    state.company.workPhotos=photos.filter(Boolean);
+    syncCurrentCompanyRecord();persist();
+  }
+
+  async function saveSharedCompanySettings({silent=false,successTitle='Configurações sincronizadas',successText='As alterações foram aplicadas a todos os usuários da empresa.'}={}) {
+    syncCurrentCompanyRecord();mirrorSharedGatewaySettings();persist();
+    if(!window.FirebaseCRM?.syncReady){
+      if(!silent)toast('Salvo somente neste navegador','Conecte o banco de dados para aplicar as configurações aos demais usuários.','info');
+      return false;
+    }
+    if(state.role!=='admin'){
+      if(!silent)toast('Alteração local','Somente o administrador pode publicar configurações para toda a empresa.','info');
+      return false;
+    }
+    const execute=async()=>{
+      try{
+        await migrateSharedCompanyAssets();
+        const saved=await window.FirebaseCRM.saveRecord('companies',buildSharedCompanyPayload());
+        applySharedCompanySettings(saved,{render:false});
+        if(!silent)toast(successTitle,successText,'success');
+        return true;
+      }catch(error){
+        console.warn('Configuração da empresa salva apenas localmente:',error);
+        if(!silent)toast('Não foi possível aplicar à equipe',error.message||'A alteração ficou salva apenas neste navegador.','error');
+        return false;
+      }
+    };
+    sharedCompanySaveQueue=sharedCompanySaveQueue.then(execute,execute);
+    return sharedCompanySaveQueue;
+  }
+
+  async function uploadSharedCompanyAsset(dataUrl,folder,filename) {
+    if(!dataUrl||!String(dataUrl).startsWith('data:')||!window.FirebaseCRM?.syncReady||state.role!=='admin')return dataUrl;
+    const response=await fetch(dataUrl);const blob=await response.blob();
+    return window.FirebaseCRM.uploadFile(state.currentCompanyId,`company-settings/${folder}`,blob,filename);
+  }
+
+  function stopSharedCompanyWatcher(){
+    try{sharedCompanyUnsubscribe?.();}catch(_){}
+    sharedCompanyUnsubscribe=null;
+  }
+
+  function startSharedCompanyWatcher(){
+    stopSharedCompanyWatcher();
+    if(!window.FirebaseCRM?.syncReady)return;
+    try{
+      sharedCompanyUnsubscribe=window.FirebaseCRM.watchCompany(state.currentCompanyId,cloud=>{
+        if(cloud)applySharedCompanySettings(cloud,{render:true});
+      });
+    }catch(error){console.warn('Acompanhamento da empresa indisponível:',error);}
+  }
+
+  async function initializeSharedCompanySettings(){
+    if(!window.FirebaseCRM?.syncReady)return false;
+    try{
+      const rows=await window.FirebaseCRM.listRecords('companies',state.currentCompanyId);
+      const cloud=rows[0]||null;
+      const localScore=companyConfigurationScore(state.company);
+      const cloudScore=companyConfigurationScore(cloud||{});
+      if(state.role==='admin'&&localScore>cloudScore&&cloudScore<=1){
+        await saveSharedCompanySettings({silent:true});
+      }else if(cloud){
+        applySharedCompanySettings(cloud,{render:false});
+      }else if(state.role==='admin'){
+        await saveSharedCompanySettings({silent:true});
+      }
+      startSharedCompanyWatcher();
+      return true;
+    }catch(error){console.warn('Não foi possível carregar as configurações compartilhadas:',error);return false;}
   }
 
   function loadState() {
@@ -3455,7 +3597,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
       inverterQty:Number(c.inverterQty||0), inverterPower:Number(c.inverter?.power||0), inverterBrand:c.inverter?.brand||'', structureType:proposal.technical?.structureType||'', orientation:proposal.technical?.orientation||'',
       annualGeneration:Number(c.annualGeneration||0), monthlyGeneration:Number(c.monthlyGeneration||0), avgConsumption:Number(c.avgConsumption||0), currentTariff:Number(proposal.currentTariff||0),
       investment:Number(proposal.commercial?.price||0), monthlySaving:Number(c.monthlySaving||0), annualSaving:Number(c.annualSaving||0), payback:Number(c.payback||0), roi:Number(c.roi||0), paymentMethod:proposal.commercial?.paymentMethod||'',
-      coverTitle:/solo/i.test(proposal.technical?.structureType||'')?'Projeto Solar Fotovoltaico':'Projeto Solar Fotovoltaico',
+      coverTitle:/solo/i.test(proposal.technical?.structureType||'')?'Projeto Solar de Solo':'Projeto Solar Fotovoltaico',
       summaryText:'Solução fotovoltaica com alta performance, economia e previsibilidade energética.',
       investmentFormatted:shortCurrency(proposal.commercial?.price||0), monthlySavingFormatted:shortCurrency(c.monthlySaving||0), annualSavingFormatted:shortCurrency(c.annualSaving||0)
     };
@@ -3788,8 +3930,10 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
       const term=input.value.trim().toLowerCase();
       document.querySelectorAll('.data-table tbody tr').forEach(tr=>tr.style.display=!term||tr.textContent.toLowerCase().includes(term)?'':'none');
     }));
-    document.querySelectorAll('[data-automation]').forEach(input=>input.addEventListener('change',()=>{
-      state.automations[input.dataset.automation]=input.checked;persist();renderView('automations');toast('Automação atualizada',input.checked?'Automação ativada.':'Automação pausada.','info');
+    document.querySelectorAll('[data-automation]').forEach(input=>input.addEventListener('change',async()=>{
+      state.automations[input.dataset.automation]=input.checked;persist();renderView('automations');
+      await saveSharedCompanySettings({silent:true});
+      toast('Automação atualizada',input.checked?'Automação ativada para toda a empresa.':'Automação pausada para toda a empresa.','info');
     }));
     document.querySelectorAll('[data-ai-prompt]').forEach(btn=>btn.addEventListener('click',()=>{document.getElementById('customAiPrompt').value=btn.dataset.aiPrompt;}));
     document.querySelector('[data-new-automation-rule]')?.addEventListener('click',()=>{automationRuleEditor=defaultAutomationRule();renderView('automations');});
@@ -4311,8 +4455,8 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
       <div class="form-section">${heading('Foto da residência ou empresa','A imagem será usada como fundo da capa profissional.')}
         <div class="grid grid-2"><label class="upload-drop"><div><strong>Selecionar foto da capa</strong><span>JPG ou PNG. A imagem será otimizada automaticamente.</span><input id="coverPhotoInput" type="file" accept="image/*" style="margin-top:10px"></div></label><div>${p.coverPhoto?`<img class="upload-preview" src="${p.coverPhoto}" alt="Foto da capa">`:`<div class="upload-drop"><div><strong>Pré-visualização</strong><span>Nenhuma foto selecionada. Será usado um fundo ilustrado.</span></div></div>`}</div></div>
       </div>
-      <div class="form-section" style="border:2px solid rgba(255,183,3,.45);box-shadow:0 16px 36px rgba(255,183,3,.10)">${heading('Simulação do Projeto 3D','Suba aqui a imagem do projeto do cliente já com as placas no telhado/solo. Essa é a imagem que substitui o layout padrão na página técnica da proposta.')}
-        <div class="grid grid-2"><label class="upload-drop" style="background:linear-gradient(135deg,rgba(255,183,3,.14),rgba(90,169,255,.08));border-color:rgba(255,183,3,.45)"><div><strong>📷 Subir foto/render do ajuste conceitual</strong><span>JPG ou PNG. Use a montagem do telhado/solo com os módulos posicionados.</span><input id="technicalProjectImageInputTop" type="file" accept="image/*" style="margin-top:10px"></div></label><div>${p.technical?.projectImage?`<img class="upload-preview" src="${p.technical.projectImage}" alt="Simulação do Projeto 3D">`:`<div class="upload-drop"><div><strong>Pré-visualização do ajuste</strong><span>Nenhuma imagem selecionada. Se não subir imagem, a proposta mostra o layout conceitual padrão.</span></div></div>`}</div></div>
+      <div class="form-section" style="border:2px solid rgba(255,183,3,.45);box-shadow:0 16px 36px rgba(255,183,3,.10)">${heading('Ajuste conceitual do arranjo','Suba aqui a imagem do projeto do cliente já com as placas no telhado/solo. Essa é a imagem que substitui o layout padrão na página técnica da proposta.')}
+        <div class="grid grid-2"><label class="upload-drop" style="background:linear-gradient(135deg,rgba(255,183,3,.14),rgba(90,169,255,.08));border-color:rgba(255,183,3,.45)"><div><strong>📷 Subir foto/render do ajuste conceitual</strong><span>JPG ou PNG. Use a montagem do telhado/solo com os módulos posicionados.</span><input id="technicalProjectImageInputTop" type="file" accept="image/*" style="margin-top:10px"></div></label><div>${p.technical?.projectImage?`<img class="upload-preview" src="${p.technical.projectImage}" alt="Ajuste conceitual do arranjo">`:`<div class="upload-drop"><div><strong>Pré-visualização do ajuste</strong><span>Nenhuma imagem selecionada. Se não subir imagem, a proposta mostra o layout conceitual padrão.</span></div></div>`}</div></div>
       </div>${nav}`;
     if(step===1)return `
       <div class="form-section">${heading('Importar conta de energia','O sistema lê automaticamente PDF, foto ou fatura escaneada e preenche o consumo.')}
@@ -4330,8 +4474,8 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
       <div class="form-section">${heading('Premissas de dimensionamento','Ajuste os parâmetros técnicos conforme a região e o projeto.')}
         <div class="form-grid">${proposalField('technical.specificYield','Geração específica (kWh/kWp/mês)','number')}${proposalField('technical.targetCoverage','Cobertura do consumo (%)','number')}${proposalField('technical.systemLosses','Perdas globais (%)','number')}${proposalField('technical.areaExtra','Margem adicional de área (%)','number')}${proposalField('technical.structureType','Tipo de estrutura','select',['Telhado cerâmico','Telhado metálico','Fibrocimento','Laje','Solo','Carport'])}${proposalField('technical.orientation','Orientação predominante','select',['Norte','Nordeste','Noroeste','Leste','Oeste','Sul'])}${proposalField('technical.inverterOverload','Overload permitido do inversor','number')}</div>
       </div>
-      <div class="form-section" style="border:2px solid rgba(255,183,3,.45);box-shadow:0 16px 36px rgba(255,183,3,.10)">${heading('Simulação do Projeto 3D','Este é o campo da imagem que aparece na página técnica da proposta, no lugar do layout padrão.')}
-        <div class="grid grid-2"><label class="upload-drop" style="background:linear-gradient(135deg,rgba(255,183,3,.14),rgba(90,169,255,.08));border-color:rgba(255,183,3,.45)"><div><strong>📷 Subir foto/render do projeto com placas</strong><span>JPG ou PNG. Envie a imagem do cliente já com as placas posicionadas no telhado, solo ou carport.</span><input id="technicalProjectImageInput" type="file" accept="image/*" style="margin-top:10px"></div></label><div>${p.technical?.projectImage?`<img class="upload-preview" src="${p.technical.projectImage}" alt="Simulação do Projeto 3D">`:`<div class="upload-drop"><div><strong>Pré-visualização do ajuste</strong><span>Nenhuma imagem selecionada. Se não subir imagem, a proposta mostra o layout conceitual padrão.</span></div></div>`}</div></div>
+      <div class="form-section" style="border:2px solid rgba(255,183,3,.45);box-shadow:0 16px 36px rgba(255,183,3,.10)">${heading('Ajuste conceitual do arranjo','Este é o campo da imagem que aparece na página técnica da proposta, no lugar do layout padrão.')}
+        <div class="grid grid-2"><label class="upload-drop" style="background:linear-gradient(135deg,rgba(255,183,3,.14),rgba(90,169,255,.08));border-color:rgba(255,183,3,.45)"><div><strong>📷 Subir foto/render do projeto com placas</strong><span>JPG ou PNG. Envie a imagem do cliente já com as placas posicionadas no telhado, solo ou carport.</span><input id="technicalProjectImageInput" type="file" accept="image/*" style="margin-top:10px"></div></label><div>${p.technical?.projectImage?`<img class="upload-preview" src="${p.technical.projectImage}" alt="Ajuste conceitual do arranjo">`:`<div class="upload-drop"><div><strong>Pré-visualização do ajuste</strong><span>Nenhuma imagem selecionada. Se não subir imagem, a proposta mostra o layout conceitual padrão.</span></div></div>`}</div></div>
       </div>
       <div class="form-section">${heading('Resultado técnico','Valores calculados automaticamente com o equipamento selecionado.')}
         <div class="detail-grid"><div class="detail-item"><span>Quantidade de módulos</span><strong>${calc.moduleQty}</strong></div><div class="detail-item"><span>Quantidade de inversores</span><strong>${calc.inverterQty}</strong></div><div class="detail-item"><span>Área ocupada</span><strong>${number(calc.occupiedArea,1)} m²</strong></div><div class="detail-item"><span>Peso total</span><strong>${number(calc.totalWeight)} kg</strong></div><div class="detail-item"><span>Módulo</span><strong>${escapeHtml(calc.moduleItem.brand)} ${calc.moduleItem.power} W</strong></div><div class="detail-item"><span>Inversor</span><strong>${escapeHtml(calc.inverter.brand)} ${calc.inverter.power} kW</strong></div></div>
@@ -5778,7 +5922,7 @@ ${company.tradeName||company.name}`:''}`;
         ${footer(3)}</div></section>
       <section class="proposal-page vp-page">${header(4,'Solução técnica','A composição da usina, equipamentos principais e premissas de implantação.')}
         <div class="vp-metric-grid">${metric('Potência DC',`${number(c.actualPower,2)} kWp`,'Potência total instalada em módulos.','#ffb703')}${metric('Potência AC',`${number(acPower,0)} kW`,'Capacidade nominal dos inversores.','#25a5bd')}${metric('Área estimada',`${number(c.occupiedArea,0)} m²`,'Área estimada para instalação dos módulos.','#168a56')}</div>
-        <div class="vp-grid-2"><div class="vp-card"><h3>Simulação do Projeto 3D</h3><div class="vp-project-wrap">${projectImage?`<img src="${projectImage}" alt="Projeto do cliente com placas">`:`<div class="vp-project-placeholder"><div><strong>Simulação do Projeto 3D</strong><span>Envie na etapa Dimensionamento uma foto/render com as placas no telhado, solo ou carport.</span></div></div>`}</div></div><div class="vp-card"><h3>Equipamentos principais</h3><table class="vp-table"><tbody><tr><th>Item</th><th>Especificação</th></tr><tr><td>Módulos</td><td>${c.moduleQty} × ${number(c.moduleItem.power,0)} Wp · ${safe(c.moduleItem.brand)}</td></tr><tr><td>Inversores</td><td>${c.inverterQty} × ${number(c.inverter.power,0)} kW · ${safe(c.inverter.brand)}</td></tr><tr><td>Estrutura</td><td>${safe(p.technical?.structureType)}</td></tr><tr><td>Orientação</td><td>${safe(p.technical?.orientation)}</td></tr><tr><td>Perdas</td><td>${number(p.technical?.systemLosses||0,0)}%</td></tr><tr><td>Monitoramento</td><td>Incluso</td></tr></tbody></table></div></div>
+        <div class="vp-grid-2"><div class="vp-card"><h3>Ajuste conceitual do arranjo</h3><div class="vp-project-wrap">${projectImage?`<img src="${projectImage}" alt="Projeto do cliente com placas">`:`<div class="vp-project-placeholder"><div><strong>Ajuste conceitual do arranjo</strong><span>Envie na etapa Dimensionamento uma foto/render com as placas no telhado, solo ou carport.</span></div></div>`}</div></div><div class="vp-card"><h3>Equipamentos principais</h3><table class="vp-table"><tbody><tr><th>Item</th><th>Especificação</th></tr><tr><td>Módulos</td><td>${c.moduleQty} × ${number(c.moduleItem.power,0)} Wp · ${safe(c.moduleItem.brand)}</td></tr><tr><td>Inversores</td><td>${c.inverterQty} × ${number(c.inverter.power,0)} kW · ${safe(c.inverter.brand)}</td></tr><tr><td>Estrutura</td><td>${safe(p.technical?.structureType)}</td></tr><tr><td>Orientação</td><td>${safe(p.technical?.orientation)}</td></tr><tr><td>Perdas</td><td>${number(p.technical?.systemLosses||0,0)}%</td></tr><tr><td>Monitoramento</td><td>Incluso</td></tr></tbody></table></div></div>
         ${footer(4)}</div></section>
       <section class="proposal-page vp-page">${header(5,'Retorno financeiro','Visualização do investimento, economia e comparação acumulada ao longo do tempo.')}
         <div class="vp-metric-grid">${metric('Investimento',shortCurrency(p.commercial.price),'Valor total considerado na proposta.','#ffb703')}${metric('Economia anual',shortCurrency(c.annualSaving),'Com base na tarifa de referência adotada.','#168a56')}${metric('VPL estimado',shortCurrency(c.npv),'Indicador financeiro no horizonte analisado.','#25a5bd')}</div>
@@ -5965,7 +6109,7 @@ ${company.tradeName||company.name}`:''}`;
       const u=state.currentUser||{};const linked=state.teams.find(team=>team.id===u.teamRecordId)||(u.email&&state.teams.find(team=>team.email?.toLowerCase()===u.email.toLowerCase()))||{};
       return `<form id="userProfileForm"><div class="profile-card"><div><div class="profile-avatar">${u.avatar?`<img src="${u.avatar}" alt="${attr(u.name||'Usuário')}">`:escapeHtml(initials(u.name||'Usuário'))}</div><label class="btn btn-ghost btn-sm" style="margin-top:10px;width:126px"><input id="userAvatarInput" type="file" accept="image/*" hidden>Alterar foto</label></div><div><div class="form-grid">${settingsInput('name','Nome completo',u.name||linked.name||'')}${settingsInput('email','E-mail',u.email||linked.email||'','email')}${settingsInput('phone','Telefone / WhatsApp',u.phone||linked.phone||'','tel')}${settingsInput('jobTitle','Cargo / função',u.jobTitle||linked.role||'')}${settingsInput('team','Equipe',u.team||linked.team||'')}${settingsInput('region','Região',u.region||linked.region||'')}<label class="field"><span>Permissão atual</span><input value="${attr(state.role||u.role||'admin')}" disabled></label><label class="field"><span>ID do usuário</span><input value="${attr(u.id||'')}" disabled></label><label class="field full"><span>Assinatura / apresentação curta</span><textarea name="bio" placeholder="Ex.: Gerente comercial responsável pela região Norte de SC.">${escapeHtml(u.bio||'')}</textarea></label></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-primary" type="submit">Salvar meus dados</button></div></div></div></form>`;
     }
-    if(tab==='company')return `<form id="companySettingsForm"><div class="form-grid">${settingsInput('name','Razão social',c.name)}${settingsInput('tradeName','Nome fantasia',c.tradeName)}${settingsInput('document','CNPJ',c.document)}${settingsInput('city','Cidade / sede',c.city)}${settingsInput('phone','Telefone',c.phone)}${settingsInput('email','E-mail',c.email,'email')}${settingsInput('website','Site',c.website)}${settingsInput('proposalValidityDays','Validade padrão da proposta (dias)',c.proposalValidityDays,'number')}${settingsInput('clientsCount','Quantidade de clientes',c.clientsCount,'number')}${settingsInput('installedPowerMW','Potência instalada (MW)',c.installedPowerMW,'number')}${settingsInput('defaultCommissionPercent','Comissão padrão (%)',c.defaultCommissionPercent,'number')}<label class="field full"><span>História da empresa</span><textarea name="history">${escapeHtml(c.history)}</textarea></label><label class="field full"><span>Certificações (separadas por vírgula)</span><input name="certifications" value="${attr(c.certifications)}"></label><label class="field full"><span>Parceiros</span><input name="partners" value="${attr(c.partners)}"></label><label class="field full"><span>Dados bancários</span><input name="bankData" value="${attr(c.bankData)}"></label><label class="field full"><span>Mensagem de envio de proposta</span><textarea name="proposalMessage">${escapeHtml(c.proposalMessage)}</textarea></label><label class="field full"><span>Mensagem de cobrança</span><textarea name="collectionMessage">${escapeHtml(c.collectionMessage)}</textarea></label><label class="field full"><span>Mensagem de NPS</span><textarea name="npsMessage">${escapeHtml(c.npsMessage)}</textarea></label></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-primary" type="submit">Salvar empresa</button></div></form>`;
+    if(tab==='company')return `<div class="notice" style="margin-bottom:14px"><strong>Configuração compartilhada</strong><br>Tudo que o administrador salvar aqui será aplicado automaticamente aos demais usuários autorizados da empresa.</div><form id="companySettingsForm"><div class="form-grid">${settingsInput('name','Razão social',c.name)}${settingsInput('tradeName','Nome fantasia',c.tradeName)}${settingsInput('document','CNPJ',c.document)}${settingsInput('city','Cidade / sede',c.city)}${settingsInput('phone','Telefone',c.phone)}${settingsInput('email','E-mail',c.email,'email')}${settingsInput('website','Site',c.website)}${settingsInput('proposalValidityDays','Validade padrão da proposta (dias)',c.proposalValidityDays,'number')}${settingsInput('clientsCount','Quantidade de clientes',c.clientsCount,'number')}${settingsInput('installedPowerMW','Potência instalada (MW)',c.installedPowerMW,'number')}${settingsInput('defaultCommissionPercent','Comissão padrão (%)',c.defaultCommissionPercent,'number')}<label class="field full"><span>História da empresa</span><textarea name="history">${escapeHtml(c.history)}</textarea></label><label class="field full"><span>Certificações (separadas por vírgula)</span><input name="certifications" value="${attr(c.certifications)}"></label><label class="field full"><span>Parceiros</span><input name="partners" value="${attr(c.partners)}"></label><label class="field full"><span>Dados bancários</span><input name="bankData" value="${attr(c.bankData)}"></label><label class="field full"><span>Mensagem de envio de proposta</span><textarea name="proposalMessage">${escapeHtml(c.proposalMessage)}</textarea></label><label class="field full"><span>Mensagem de cobrança</span><textarea name="collectionMessage">${escapeHtml(c.collectionMessage)}</textarea></label><label class="field full"><span>Mensagem de NPS</span><textarea name="npsMessage">${escapeHtml(c.npsMessage)}</textarea></label></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-primary" type="submit">Salvar empresa</button></div></form>`;
     if(tab==='branding')return `<div class="form-section"><div class="form-section-head"><div><h3>Logo da empresa</h3><p>Usada na capa e no cabeçalho de todas as páginas.</p></div></div><div class="grid grid-2"><div>${c.logo?`<img class="logo-preview" src="${c.logo}" alt="Logo">`:`<img class="logo-preview" src="${defaultLogoData()}" alt="Logo padrão">`}</div><label class="upload-drop"><div><strong>Selecionar logo</strong><span>Envie PNG da logo. O sistema remove fundo branco das bordas e preserva a transparência na proposta.</span><input id="companyLogoInput" type="file" accept="image/png" style="margin-top:10px"></div></label></div></div><div class="form-section"><div class="form-section-head"><div><h3>Fotos de obras executadas</h3><p>Até quatro imagens na página institucional da proposta.</p></div></div><label class="upload-drop"><div><strong>Adicionar fotos</strong><span>Selecione uma ou várias imagens.</span><input id="workPhotosInput" type="file" accept="image/*" multiple style="margin-top:10px"></div></label><div class="photo-list" style="margin-top:12px">${(c.workPhotos||[]).map((photo,i)=>`<div style="position:relative"><img src="${photo}"><button class="btn btn-danger btn-sm btn-icon" data-remove-work-photo="${i}" style="position:absolute;right:5px;top:5px">×</button></div>`).join('')}</div></div><div class="form-section"><div class="form-section-head"><div><h3>Assinatura do vendedor</h3><p>Imagem opcional utilizada na página de aceite.</p></div></div><div class="grid grid-2"><div>${c.sellerSignature?`<img class="logo-preview" src="${c.sellerSignature}" alt="Assinatura">`:'<div class="upload-drop"><span>Nenhuma assinatura cadastrada.</span></div>'}</div><label class="upload-drop"><div><strong>Enviar assinatura</strong><span>Use PNG com fundo branco ou transparente.</span><input id="sellerSignatureInput" type="file" accept="image/*" style="margin-top:10px"></div></label></div></div>`;
     if(tab==='firebase'){
       const status=getFirebaseUiState();
@@ -6119,7 +6263,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     }catch(error){toast('Bloqueio não concluído',error.message||String(error),'error');}
   }
 
-  function saveDriveStorageSettings(event){
+  async function saveDriveStorageSettings(event){
     event.preventDefault();
     const values=Object.fromEntries(new FormData(event.currentTarget).entries());
     state.company.driveScriptUrl=String(values.driveScriptUrl||'').trim();
@@ -6129,7 +6273,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     safeStorageSet(DRIVE_SCRIPT_URL_KEY,state.company.driveScriptUrl);
     safeStorageSet(DRIVE_SCRIPT_TOKEN_KEY,state.company.driveScriptToken);
     safeStorageSet(DRIVE_ROOT_FOLDER_KEY,state.company.driveRootFolderName);
-    syncCurrentCompanyRecord();persist();toast('Google Drive salvo','Documentos do projeto serão enviados para o Drive.','success');renderSettings();
+    syncCurrentCompanyRecord();persist();await saveSharedCompanySettings({successTitle:'Google Drive salvo',successText:'A configuração do Drive foi aplicada a todos os usuários.'});renderSettings();
   }
 
   async function testDriveStorageFromSettings(){
@@ -6150,7 +6294,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     finally{if(btn){btn.disabled=false;btn.textContent='Enviar teste pelo Apps Script';}}
   }
 
-  function saveEmailServerSettings(event){
+  async function saveEmailServerSettings(event){
     event.preventDefault();
     const values=Object.fromEntries(new FormData(event.currentTarget).entries());
     state.company.emailScriptUrl=String(values.emailScriptUrl||'').trim();
@@ -6159,7 +6303,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     state.company.emailGatewayMode='apps-script';
     safeStorageSet(EMAIL_SCRIPT_URL_KEY,state.company.emailScriptUrl);
     safeStorageSet(EMAIL_SCRIPT_TOKEN_KEY,state.company.emailScriptToken);
-    syncCurrentCompanyRecord();persist();toast('Servidor de e-mail salvo','Google Apps Script configurado.','success');renderSettings();
+    syncCurrentCompanyRecord();persist();await saveSharedCompanySettings({successTitle:'Servidor de e-mail salvo',successText:'O envio de e-mail foi configurado para todos os usuários.'});renderSettings();
   }
 
   const firebaseLabels={apiKey:'Chave de acesso',authDomain:'Domínio de autenticação',databaseURL:'URL do banco em tempo real',projectId:'ID do projeto',storageBucket:'Bucket de arquivos',messagingSenderId:'ID de mensagens',appId:'ID do aplicativo',functionsRegion:'Região do backend'};
@@ -6207,11 +6351,11 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
   function bindSettingsEvents(){
     document.getElementById('userProfileForm')?.addEventListener('submit',saveUserProfile);
     document.getElementById('userAvatarInput')?.addEventListener('change',async event=>{const file=event.target.files?.[0];if(!file)return;state.currentUser.avatar=await resizeImage(file,500,500,.9);state.currentUser.initials=initials(state.currentUser.name);persist();updateTopbar();renderSettings();toast('Foto do usuário atualizada');});
-    document.getElementById('companySettingsForm')?.addEventListener('submit',e=>{e.preventDefault();const fd=new FormData(e.currentTarget);for(const [k,v] of fd.entries())state.company[k]=['proposalValidityDays','clientsCount','installedPowerMW','defaultCommissionPercent'].includes(k)?Number(v):v;syncCurrentCompanyRecord();persist();renderSidebar();updateTopbar();toast('Empresa atualizada');});
-    document.getElementById('companyLogoInput')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;if(f.type!=='image/png'){toast('Use PNG sem fundo','A logo da proposta deve ser PNG com fundo transparente.','error');return;}state.company.logo=await resizeTransparentPng(f,1000,400);syncCurrentCompanyRecord();persist();renderSettings();toast('Logo PNG sem fundo atualizada');});
-    document.getElementById('sellerSignatureInput')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;state.company.sellerSignature=await resizeImage(f,900,350,.92);syncCurrentCompanyRecord();persist();renderSettings();toast('Assinatura atualizada');});
-    document.getElementById('workPhotosInput')?.addEventListener('change',async e=>{const files=[...(e.target.files||[])].slice(0,4-(state.company.workPhotos?.length||0));for(const f of files)state.company.workPhotos.push(await resizeImage(f,1200,800,.82));syncCurrentCompanyRecord();persist();renderSettings();toast('Fotos adicionadas');});
-    document.querySelectorAll('[data-remove-work-photo]').forEach(btn=>btn.addEventListener('click',()=>{state.company.workPhotos.splice(Number(btn.dataset.removeWorkPhoto),1);syncCurrentCompanyRecord();persist();renderSettings();}));
+    document.getElementById('companySettingsForm')?.addEventListener('submit',async e=>{e.preventDefault();const fd=new FormData(e.currentTarget);for(const [k,v] of fd.entries())state.company[k]=['proposalValidityDays','clientsCount','installedPowerMW','defaultCommissionPercent'].includes(k)?Number(v):v;syncCurrentCompanyRecord();persist();renderSidebar();updateTopbar();await saveSharedCompanySettings({successTitle:'Empresa atualizada'});renderSettings();});
+    document.getElementById('companyLogoInput')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;if(f.type!=='image/png'){toast('Use PNG sem fundo','A logo da proposta deve ser PNG com fundo transparente.','error');return;}const local=await resizeTransparentPng(f,1000,400);state.company.logo=local;syncCurrentCompanyRecord();persist();renderSettings();try{state.company.logo=await uploadSharedCompanyAsset(local,'branding','logo.png');}catch(error){console.warn(error);}await saveSharedCompanySettings({successTitle:'Logo atualizada'});renderSettings();});
+    document.getElementById('sellerSignatureInput')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;const local=await resizeImage(f,900,350,.92);state.company.sellerSignature=local;syncCurrentCompanyRecord();persist();renderSettings();try{state.company.sellerSignature=await uploadSharedCompanyAsset(local,'branding','assinatura-vendedor.png');}catch(error){console.warn(error);}await saveSharedCompanySettings({successTitle:'Assinatura atualizada'});renderSettings();});
+    document.getElementById('workPhotosInput')?.addEventListener('change',async e=>{const files=[...(e.target.files||[])].slice(0,4-(state.company.workPhotos?.length||0));for(let i=0;i<files.length;i++){const local=await resizeImage(files[i],1200,800,.82);let value=local;try{value=await uploadSharedCompanyAsset(local,'obras',`obra-${Date.now()}-${i+1}.jpg`);}catch(error){console.warn(error);}state.company.workPhotos.push(value);}syncCurrentCompanyRecord();persist();await saveSharedCompanySettings({successTitle:'Fotos adicionadas'});renderSettings();});
+    document.querySelectorAll('[data-remove-work-photo]').forEach(btn=>btn.addEventListener('click',async()=>{state.company.workPhotos.splice(Number(btn.dataset.removeWorkPhoto),1);syncCurrentCompanyRecord();persist();await saveSharedCompanySettings({successTitle:'Foto removida'});renderSettings();}));
     document.getElementById('firebaseSettingsForm')?.addEventListener('submit',async e=>{e.preventDefault();const config=normalizeFirebaseConfig(Object.fromEntries(new FormData(e.currentTarget).entries()));if(!firebaseApiKeyLooksValid(config.apiKey)){toast('API Key inválida','A chave precisa começar com AIza e possuir 39 caracteres. Remova a configuração antiga ou copie novamente do painel do banco de dados.','error');return;}safeStorageSet(FIREBASE_CONFIG_KEY,JSON.stringify(config));await connectFirebase(config);renderSettings();});
     document.getElementById('firebaseRestoreConfigBtn')?.addEventListener('click',async()=>{const config=clearFirebaseConfig();toast('Configuração oficial restaurada','Os dados do aplicativo Web energiasolar-67b14 foram recarregados.','success');renderSettings();});
     document.getElementById('firebaseTestBtn')?.addEventListener('click',async()=>connectFirebase(loadFirebaseConfig()));
@@ -6338,6 +6482,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
       // ou uma falha temporária do banco de dados não prende a conta na tela de login.
       if(profile&&window.FirebaseCRM.syncReady){
         applyFirebaseProfile(profile,user);
+        await initializeSharedCompanySettings();
         unlockSystemAfterAuthentication();
         try{
           firebaseLastDiagnostic=await window.FirebaseCRM.diagnose(profile.companyId||state.currentCompanyId);
@@ -6367,7 +6512,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
       if(window.FirebaseCRM?.isPreapprovedAdmin(user)){
         const fallback=window.FirebaseCRM.buildPreapprovedAdminProfile(user,{virtual:true,profileWritePending:true,activationWarning:error.message||''});
         window.FirebaseCRM.profile=fallback;window.FirebaseCRM.syncReady=true;
-        applyFirebaseProfile(fallback,user);unlockSystemAfterAuthentication();
+        applyFirebaseProfile(fallback,user);await initializeSharedCompanySettings();unlockSystemAfterAuthentication();
         toast('Administrador liberado','A sincronização com o banco de dados ficou pendente, mas o acesso ao CRM foi autorizado.','info');
         return true;
       }
@@ -6432,7 +6577,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
       try{
         setLoginStatus('Ativando administrador aprovado','Aguarde enquanto o perfil é gravado no banco de dados.','info');
         const profile=await window.FirebaseCRM.ensurePreapprovedAdminProfile();
-        applyFirebaseProfile(profile,user);unlockSystemAfterAuthentication();return;
+        applyFirebaseProfile(profile,user);await initializeSharedCompanySettings();unlockSystemAfterAuthentication();return;
       }catch(error){setLoginStatus('Perfil não ativado',error.message||'Publique as regras da versão 2.9.6 e tente novamente.','error');return;}
     }
     if(!['profile-missing-bootstrap-available','bootstrap-owner-profile-missing'].includes(code)){
@@ -6441,8 +6586,9 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     try{
       setLoginStatus('Ativando administrador','Aguarde a configuração inicial da empresa.','info');
       const profile=await window.FirebaseCRM.bootstrapAdmin({name:user.displayName||user.email?.split('@')[0]||'Administrador',email:user.email,companyId:state.currentCompanyId,companyName:state.company.tradeName||state.company.name||''});
-      await window.FirebaseCRM.saveRecord('companies',{...state.company,id:state.currentCompanyId,companyId:state.currentCompanyId});
-      applyFirebaseProfile(profile,user);unlockSystemAfterAuthentication();
+      await migrateSharedCompanyAssets();
+      await window.FirebaseCRM.saveRecord('companies',buildSharedCompanyPayload());
+      applyFirebaseProfile(profile,user);await initializeSharedCompanySettings();unlockSystemAfterAuthentication();
     }catch(error){setLoginStatus('Perfil não ativado',error.message||'Publique as regras da versão 2.9.6 e tente novamente.','error');}
   }
 
@@ -6512,7 +6658,8 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
       const user=window.FirebaseCRM.auth.currentUser;
       const profile=await window.FirebaseCRM.bootstrapAdmin({name:state.currentUser.name||user.displayName||'Administrador',email:user.email,companyId:state.currentCompanyId,companyName:state.company.tradeName||state.company.name});
       applyFirebaseProfile(profile,user);
-      await window.FirebaseCRM.saveRecord('companies',{...state.company,id:state.currentCompanyId,companyId:state.currentCompanyId});
+      await migrateSharedCompanyAssets();
+      await window.FirebaseCRM.saveRecord('companies',buildSharedCompanyPayload());
       firebaseLastDiagnostic=await window.FirebaseCRM.diagnose(state.currentCompanyId);
       toast('Perfil ativado','A sincronização foi liberada para esta conta.','success');renderSettings();
     }catch(error){
@@ -6531,7 +6678,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
   async function firebaseLogout(){
     if(!window.FirebaseCRM?.connected)return;
     try{
-      await window.FirebaseCRM.logout();firebaseLastDiagnostic=null;pendingAuthDiagnostic=null;closeModal('settingsModal');lockSystemForAuthentication('Sessão encerrada','Entre novamente para acessar o CRM.');renderSidebar();updateTopbar();
+      stopSharedCompanyWatcher();await window.FirebaseCRM.logout();firebaseLastDiagnostic=null;pendingAuthDiagnostic=null;closeModal('settingsModal');lockSystemForAuthentication('Sessão encerrada','Entre novamente para acessar o CRM.');renderSidebar();updateTopbar();
     }catch(error){toast('Não foi possível sair',error.message||String(error),'error');}
   }
 
@@ -6539,7 +6686,8 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     if(!ensureFirebaseSyncReady())return;
     const collections=['teams','clients','leads','proposals','contracts','works','homologations','tickets','financial','commissions','inventory','aftersales','suppliers','notifications','projectDocuments','tasks','automationRules','automationQueue','public_proposals'];
     try{
-      await window.FirebaseCRM.saveRecord('companies',{...state.company,id:state.currentCompanyId,companyId:state.currentCompanyId});
+      await migrateSharedCompanyAssets();
+      await window.FirebaseCRM.saveRecord('companies',buildSharedCompanyPayload());
       await window.FirebaseCRM.saveRecord('users',{...state.currentUser,...permissionArraysFromMatrix(normalizePermissionMatrix(state.currentUser.permissions,state.role,state.currentUser)),id:window.FirebaseCRM.auth.currentUser.uid,role:state.role,companyId:state.currentCompanyId,companyIds:state.currentUser.companyIds||[state.currentCompanyId],status:'Ativo'});
       for(const collection of collections){for(const record of companyRows(collection)){record.companyId=state.currentCompanyId;await window.FirebaseCRM.saveRecord(collection,firestoreSafeRecord(record));}}
       firebaseLastDiagnostic=await window.FirebaseCRM.diagnose(state.currentCompanyId);
@@ -6552,7 +6700,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     const collections=['teams','clients','leads','proposals','contracts','works','homologations','tickets','financial','commissions','inventory','aftersales','suppliers','notifications','projectDocuments','tasks','automationRules','automationQueue','public_proposals'];
     try{
       const cloudCompanies=await window.FirebaseCRM.listRecords('companies',state.currentCompanyId);
-      if(cloudCompanies.length){state.company={...defaultCompany,...cloudCompanies[0]};syncCurrentCompanyRecord();}
+      if(cloudCompanies.length)applySharedCompanySettings(cloudCompanies[0],{render:false});
       let publicRows=[];
       for(const collection of collections){
         const rows=await window.FirebaseCRM.listRecords(collection,state.currentCompanyId);
@@ -6560,8 +6708,8 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
         if(rows.length)state[collection]=[...(state[collection]||[]).filter(r=>(r.companyId||state.currentCompanyId)!==state.currentCompanyId),...rows];
       }
       const acceptedApplied=applyPublicProposalAcceptances(publicRows);
-      persist();renderSidebar();renderView(activeView);updateTopbar();renderSettings();
-      toast('Dados carregados',acceptedApplied?`Base atualizada. ${acceptedApplied} aceite(s) foram convertidos automaticamente em contrato, homologação e projeto.`:'A base da empresa ativa foi atualizada com os registros da nuvem.','success');
+      persist();startSharedCompanyWatcher();renderSidebar();renderView(activeView);updateTopbar();renderSettings();
+      toast('Dados carregados',acceptedApplied?`Base atualizada. ${acceptedApplied} aceite(s) foram convertidos automaticamente em contrato, homologação e projeto.`:'A base da empresa ativa e suas configurações compartilhadas foram atualizadas.','success');
     }catch(error){console.error(error);toast('Falha ao carregar',error.message||'Verifique regras, índices e autenticação.','error');}
   }
 
@@ -6634,7 +6782,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     return {passed:tests.every(test=>test.passed),total:tests.length,success:tests.filter(test=>test.passed).length,tests};
   }
 
-  window.SolarCRMDebug={SYSTEM_VERSION,calculateProposal,extractBillFields,normalizeState,renderProposalDocument,projectStages,projectDocumentCategories,defaultAutomationRule,executeAutomationRules,queueAutomationRule,ensureProjectStructure,ensureAllProjectStructures,updateProjectStage,runSystemSelfTests,runWorkflowSelfTests,loadFirebaseConfig,clearFirebaseConfig,firebaseApiKeyLooksValid,finishAuthenticatedSession,loadUserPermissionData,openPermissionMatrix,defaultPermissionMatrix,normalizePermissionMatrix,permissionArraysFromMatrix,hasPermission,lockSystemForAuthentication,unlockSystemAfterAuthentication,buildClientPortalRecord,publishClientPortalStatus,clientPortalUrl,getState:()=>deepClone(state)};
+  window.SolarCRMDebug={SYSTEM_VERSION,calculateProposal,extractBillFields,normalizeState,renderProposalDocument,projectStages,projectDocumentCategories,defaultAutomationRule,executeAutomationRules,queueAutomationRule,ensureProjectStructure,ensureAllProjectStructures,updateProjectStage,runSystemSelfTests,runWorkflowSelfTests,loadFirebaseConfig,clearFirebaseConfig,firebaseApiKeyLooksValid,finishAuthenticatedSession,initializeSharedCompanySettings,saveSharedCompanySettings,applySharedCompanySettings,loadUserPermissionData,openPermissionMatrix,defaultPermissionMatrix,normalizePermissionMatrix,permissionArraysFromMatrix,hasPermission,lockSystemForAuthentication,unlockSystemAfterAuthentication,buildClientPortalRecord,publishClientPortalStatus,clientPortalUrl,getState:()=>deepClone(state)};
   document.addEventListener('DOMContentLoaded',()=>{init();autoConnectFirebase();});
 })();
 
