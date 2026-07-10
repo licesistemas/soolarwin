@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#08111f" />
-  <title>SolarCRM Pro — Proposta Visual Premium</title>
+  <title>SolarCRM Pro — Firebase + Google Drive</title>
   <meta name="description" content="CRM completo para empresas de energia solar com propostas profissionais, Kanban, banco de dados, financeiro, obras e pós-venda." />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <style>
@@ -1282,7 +1282,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   <input id="backupImportInput" type="file" accept="application/json" hidden />
 
   <script>
-/* Adaptador Banco de dados modular — SolarCRM Pro v3.0.0. */
+/* Adaptador Banco de dados modular — SolarCRM Pro v3.0.1. */
 (() => {
   'use strict';
   const SDK_VERSION = '11.10.0';
@@ -1324,10 +1324,8 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     'auth/provider-already-linked': 'A conta Google já está vinculada a este usuário.',
     'auth/user-not-found': 'Usuário não encontrado.',
 
-    'permission-denied': 'Permissão negada pelo banco de dados. Verifique o perfil do usuário e publique as regras da versão 2.9.6.',
-    'firestore/permission-denied': 'Permissão negada pelo banco de dados. Verifique o perfil do usuário e publique as regras da versão 2.9.6.',
-    'storage/unauthorized': 'Sem permissão para acessar o armazenamento em nuvem. Verifique o usuário e as regras publicadas.',
-    'storage/object-not-found': 'O arquivo solicitado não foi encontrado no armazenamento em nuvem.',
+    'permission-denied': 'Permissão negada pelo banco de dados. Verifique o perfil do usuário e publique o arquivo firestore.rules fornecido com o sistema.',
+    'firestore/permission-denied': 'Permissão negada pelo banco de dados. Verifique o perfil do usuário e publique o arquivo firestore.rules fornecido com o sistema.',
     'functions/not-found': 'A Cloud Function ainda não foi publicada. Faça o deploy da pasta functions incluída no pacote.',
     'functions/failed-precondition': 'O backend está publicado, mas falta configurar um segredo ou serviço obrigatório.',
     'functions/resource-exhausted': 'O limite do serviço foi atingido. Verifique créditos e limites da API.',
@@ -1337,8 +1335,8 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     'functions/permission-denied': 'O usuário não tem permissão para executar essa função.',
     'unavailable': 'O serviço Banco de dados está temporariamente indisponível.',
     'crm/bootstrap-owned-by-another-user': 'O primeiro administrador já está vinculado a outra conta. Entre com a conta original ou peça ao administrador para liberar este usuário.',
-    'crm/bootstrap-profile-repair-denied': 'O login é o administrador inicial, mas o banco de dados não permitiu reconstruir o perfil. Publique as regras da versão 2.9.6 e tente novamente.',
-    'crm/preapproved-admin-denied': 'A conta administradora pré-aprovada foi reconhecida, mas o banco de dados bloqueou a ativação. Publique o arquivo firestore.rules da versão 2.9.6.'
+    'crm/bootstrap-profile-repair-denied': 'O login é o administrador inicial, mas o banco de dados não permitiu reconstruir o perfil. Publique o arquivo firestore.rules fornecido com o sistema e tente novamente.',
+    'crm/preapproved-admin-denied': 'A conta administradora pré-aprovada foi reconhecida, mas o banco de dados bloqueou a ativação. Publique o arquivo firestore.rules fornecido com o sistema.'
   };
 
   function friendlyError(error, fallback = 'O Banco de dados não conseguiu concluir a operação.') {
@@ -1365,7 +1363,6 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     auth: null,
     db: null,
     realtimeDb: null,
-    storage: null,
     functions: null,
     user: null,
     profile: null,
@@ -1376,17 +1373,16 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
       try {
         this.config = config;
         const base = `https://www.gstatic.com/firebasejs/${SDK_VERSION}`;
-        const [appMod, authMod, firestoreMod, databaseMod, storageMod, functionsMod] = await Promise.all([
+        const [appMod, authMod, firestoreMod, databaseMod, functionsMod] = await Promise.all([
           import(`${base}/firebase-app.js`), import(`${base}/firebase-auth.js`), import(`${base}/firebase-firestore.js`),
-          import(`${base}/firebase-database.js`), import(`${base}/firebase-storage.js`), import(`${base}/firebase-functions.js`)
+          import(`${base}/firebase-database.js`), import(`${base}/firebase-functions.js`)
         ]);
-        this.modules = { appMod, authMod, firestoreMod, databaseMod, storageMod, functionsMod };
+        this.modules = { appMod, authMod, firestoreMod, databaseMod, functionsMod };
         const firebaseOptions = {
           apiKey: config.apiKey,
           authDomain: config.authDomain,
           databaseURL: config.databaseURL,
           projectId: config.projectId,
-          storageBucket: config.storageBucket,
           messagingSenderId: config.messagingSenderId,
           appId: config.appId
         };
@@ -1405,7 +1401,6 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
         try { await authMod.getRedirectResult(this.auth); } catch (redirectError) { this.lastAuthError = friendlyError(redirectError, 'Não foi possível concluir o login com Google.'); }
         this.db = firestoreMod.getFirestore(this.app);
         this.realtimeDb = databaseMod.getDatabase(this.app);
-        this.storage = storageMod.getStorage(this.app);
         this.functions = functionsMod.getFunctions(this.app, config.functionsRegion || 'southamerica-east1');
         this.connected = true;
         this.syncReady = false;
@@ -1643,7 +1638,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
         await setDoc(doc(this.db, 'access_requests', user.uid), request, { merge: true });
         return { ...request, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() };
       } catch (error) {
-        throw friendlyError(error, 'Não foi possível registrar a solicitação de acesso. Publique as regras da versão 2.9.6.');
+        throw friendlyError(error, 'Não foi possível registrar a solicitação de acesso. Publique o arquivo firestore.rules fornecido com o sistema.');
       }
     },
 
@@ -1788,7 +1783,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
       } catch (error) {
         const wrapped = friendlyError(error, 'Não foi possível carregar as solicitações pendentes.');
         if (wrapped.code === 'permission-denied' || wrapped.code === 'firestore/permission-denied') {
-          wrapped.message = 'O banco de dados bloqueou as solicitações de acesso. Publique o arquivo firestore.rules da versão 2.9.6 e confirme que o administrador está Ativo na empresa atual.';
+          wrapped.message = 'O banco de dados bloqueou as solicitações de acesso. Publique o arquivo firestore.rules fornecido com o sistema e confirme que o administrador está Ativo na empresa atual.';
         }
         throw wrapped;
       }
@@ -1914,17 +1909,10 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
         return this.profile;
       } catch (error) {
         const wrapped = friendlyError(error, 'Não foi possível gravar o perfil administrativo no banco de dados.');
-        // A conta aprovada nunca fica bloqueada pelo banco de dados. O CRM abre localmente e
-        // o autorreparo da nuvem pode ser repetido depois em Configurações → Banco de dados.
-        const fallback = this.buildPreapprovedAdminProfile(user, {
-          virtual: true,
-          profileWritePending: true,
-          activationWarning: wrapped.message
-        });
-        this.profile = fallback;
-        this.syncReady = true;
+        this.profile = null;
+        this.syncReady = false;
         this.lastProfileRepairError = wrapped;
-        return fallback;
+        throw wrapped;
       }
     },
 
@@ -2010,7 +1998,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
         return profile;
       } catch (error) {
         if (error?.code === 'crm/bootstrap-owned-by-another-user') throw error;
-        throw friendlyError(error, 'Não foi possível criar ou recuperar o primeiro administrador. Publique as regras da versão 2.9.6.');
+        throw friendlyError(error, 'Não foi possível criar ou recuperar o primeiro administrador. Publique o arquivo firestore.rules fornecido com o sistema.');
       }
     },
 
@@ -2101,6 +2089,26 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
       }
     },
 
+    watchRecords(collectionName, companyId, callback) {
+      this.ensureSyncReady();
+      try {
+        const mapped = collectionMap[collectionName] || collectionName;
+        const { collection, query, where, onSnapshot } = this.modules.firestoreMod;
+        return onSnapshot(
+          query(collection(this.db, mapped), where('companyId', '==', companyId)),
+          snapshot => {
+            const rows = snapshot.docs
+              .map(document => ({ id:document.id, ...document.data() }))
+              .filter(document => !(mapped === 'automation_rules' && document.recordType === 'company-settings'));
+            if (typeof callback === 'function') callback(rows);
+          },
+          error => console.warn(`Falha ao acompanhar ${collectionName}:`, friendlyError(error).message)
+        );
+      } catch (error) {
+        throw friendlyError(error, `Não foi possível acompanhar ${collectionName}.`);
+      }
+    },
+
     watchCompany(companyId, callback) {
       this.ensureSyncReady();
       try {
@@ -2112,30 +2120,6 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
         });
       } catch (error) {
         throw friendlyError(error, 'Não foi possível acompanhar as configurações da empresa.');
-      }
-    },
-
-    async uploadFile(companyId, folder, file, filename = file.name) {
-      this.ensureSyncReady();
-      try {
-        const { ref, uploadBytes, getDownloadURL } = this.modules.storageMod;
-        const safe = filename.replace(/[^a-zA-Z0-9._-]/g, '-');
-        const fileRef = ref(this.storage, `companies/${companyId}/${folder}/${Date.now()}-${safe}`);
-        await uploadBytes(fileRef, file, { contentType: file.type });
-        return getDownloadURL(fileRef);
-      } catch (error) {
-        throw friendlyError(error, 'Não foi possível enviar o arquivo para o armazenamento em nuvem.');
-      }
-    },
-
-    async deleteFileByUrl(url) {
-      this.ensureSyncReady();
-      if (!url) return;
-      try {
-        const { ref, deleteObject } = this.modules.storageMod;
-        await deleteObject(ref(this.storage, url));
-      } catch (error) {
-        throw friendlyError(error, 'Não foi possível excluir o arquivo do armazenamento em nuvem.');
       }
     },
 
@@ -2177,7 +2161,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
 </script>
   <script>
 /* SolarCRM Pro — aplicação front-end completa em JavaScript puro.
- * Funciona em modo local (localStorage) e pode sincronizar com Banco de dados via firebase-adapter.js.
+ * O Firebase é a fonte oficial. O armazenamento local é usado apenas como cache de interface.
  */
 (() => {
   'use strict';
@@ -2186,7 +2170,248 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   const LEGACY_STORAGE_KEY = ''; // versão limpa: não importa cadastros anteriores
   const FIREBASE_CONFIG_KEY = 'solarcrm-firebase-config-v2-9-2';
   const LEGACY_FIREBASE_CONFIG_KEYS = ['solarcrm-firebase-config-v2-8','solarcrm-firebase-config-v2-7','solarcrm-firebase-config-v2-6','solarcrm-firebase-config'];
-  const DEFAULT_FIREBASE_CONFIG = Object.freeze({"apiKey":"AIzaSyCYSQfnPLyV9B6osiZhsLYYrF64YLhGkMA","authDomain":"energiasolar-67b14.firebaseapp.com","databaseURL":"https://energiasolar-67b14-default-rtdb.firebaseio.com","projectId":"energiasolar-67b14","storageBucket":"energiasolar-67b14.firebasestorage.app","messagingSenderId":"394822890491","appId":"1:394822890491:web:5afc55e01902bbf142915e","functionsRegion":"southamerica-east1"});
+  const DEFAULT_FIREBASE_CONFIG = Object.freeze({"apiKey":"AIzaSyCYSQfnPLyV9B6osiZhsLYYrF64YLhGkMA","authDomain":"energiasolar-67b14.firebaseapp.com","databaseURL":"https://energiasolar-67b14-default-rtdb.firebaseio.com","projectId":"energiasolar-67b14","messagingSenderId":"394822890491","appId":"1:394822890491:web:5afc55e01902bbf142915e","functionsRegion":"southamerica-east1"});
+  const FIRESTORE_RULES_TEXT = `rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
+    }
+
+    function hasProfile() {
+      return signedIn() && exists(userPath());
+    }
+
+    function profile() {
+      return get(userPath()).data;
+    }
+
+    function active() {
+      return hasProfile()
+        && profile().keys().hasAll(['status'])
+        && profile().status == 'Ativo';
+    }
+
+    function isPreapprovedAdminIdentity() {
+      return signedIn()
+        && request.auth.token.email == 'lucas@igenergia.com.br'
+        && request.auth.token.email_verified == true;
+    }
+
+    function isAdmin() {
+      return active()
+        && profile().keys().hasAll(['role'])
+        && profile().role == 'admin';
+    }
+
+    function belongsTo(companyId) {
+      return active()
+        && companyId is string
+        && (
+          (profile().keys().hasAll(['companyId']) && profile().companyId == companyId)
+          || (
+            profile().keys().hasAll(['companyIds'])
+            && profile().companyIds is list
+            && companyId in profile().companyIds
+          )
+        );
+    }
+
+    function matrixPermission(moduleId, actionId) {
+      return active()
+        && profile().keys().hasAll(['permissions'])
+        && profile().permissions is map
+        && moduleId in profile().permissions
+        && profile().permissions[moduleId] is map
+        && actionId in profile().permissions[moduleId]
+        && profile().permissions[moduleId][actionId] == true;
+    }
+
+    function legacyPermission(moduleId, actionId) {
+      return active() && (
+        (actionId == 'view'
+          && profile().keys().hasAll(['permissionsView'])
+          && profile().permissionsView is list
+          && moduleId in profile().permissionsView)
+        || (actionId == 'create'
+          && profile().keys().hasAll(['permissionsCreate'])
+          && profile().permissionsCreate is list
+          && moduleId in profile().permissionsCreate)
+        || (actionId == 'edit'
+          && profile().keys().hasAll(['permissionsEdit'])
+          && profile().permissionsEdit is list
+          && moduleId in profile().permissionsEdit)
+        || (actionId == 'delete'
+          && profile().keys().hasAll(['permissionsDelete'])
+          && profile().permissionsDelete is list
+          && moduleId in profile().permissionsDelete)
+        || (actionId == 'export'
+          && profile().keys().hasAll(['permissionsExport'])
+          && profile().permissionsExport is list
+          && moduleId in profile().permissionsExport)
+        || (actionId == 'approve'
+          && profile().keys().hasAll(['permissionsApprove'])
+          && profile().permissionsApprove is list
+          && moduleId in profile().permissionsApprove)
+      );
+    }
+
+    function hasPermission(moduleId, actionId) {
+      return isAdmin()
+        || matrixPermission(moduleId, actionId)
+        || legacyPermission(moduleId, actionId);
+    }
+
+    function collectionPermission(collectionName, actionId) {
+      return (collectionName == 'team_members' && hasPermission('teams', actionId))
+        || (collectionName == 'clients' && hasPermission('clients', actionId))
+        || (collectionName == 'leads' && hasPermission('leads', actionId))
+        || (collectionName == 'proposals' && hasPermission('proposals', actionId))
+        || (collectionName == 'contracts' && hasPermission('contracts', actionId))
+        || (collectionName == 'projects' && hasPermission('works', actionId))
+        || (collectionName == 'installations' && hasPermission('aftersales', actionId))
+        || (collectionName == 'homologations' && hasPermission('homologations', actionId))
+        || (collectionName == 'tickets' && hasPermission('tickets', actionId))
+        || (collectionName == 'financial' && hasPermission('financial', actionId))
+        || (collectionName == 'commissions' && hasPermission('commissions', actionId))
+        || (collectionName == 'products' && hasPermission('inventory', actionId))
+        || (collectionName == 'suppliers' && hasPermission('inventory', actionId))
+        || (collectionName == 'stock_movements' && hasPermission('inventory', actionId))
+        || (collectionName == 'notifications' && (
+          (actionId == 'view' && hasPermission('dashboard', 'view'))
+          || (actionId != 'view' && hasPermission('settings', 'edit'))
+        ))
+        || (collectionName == 'project_documents' && hasPermission('projectDocuments', actionId))
+        || (collectionName == 'tasks' && hasPermission('works', actionId))
+        || (collectionName == 'client_project_status' && hasPermission('works', actionId))
+        || (collectionName == 'automation_rules' && hasPermission('settings', actionId))
+        || (collectionName == 'automation_queue' && hasPermission('settings', actionId))
+        || (collectionName == 'automation_logs' && hasPermission('settings', actionId));
+    }
+
+    function sameCompanyBeforeAndAfter() {
+      return resource.data.companyId == request.resource.data.companyId
+        && belongsTo(resource.data.companyId);
+    }
+
+    match /system/bootstrap {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && !exists(/databases/$(database)/documents/system/bootstrap)
+        && request.resource.data.uid == request.auth.uid;
+      allow update: if signedIn()
+        && (resource.data.uid == request.auth.uid || isAdmin());
+      allow delete: if false;
+    }
+
+    match /users/{uid} {
+      allow get: if signedIn() && (
+        request.auth.uid == uid
+        || (isAdmin() && belongsTo(resource.data.companyId))
+      );
+
+      allow list: if isAdmin() && belongsTo(resource.data.companyId);
+
+      allow create: if signedIn() && (
+        (
+          request.auth.uid == uid
+          && request.resource.data.role == 'admin'
+          && (
+            getAfter(/databases/$(database)/documents/system/bootstrap).data.uid == uid
+            || isPreapprovedAdminIdentity()
+          )
+        )
+        || (isAdmin() && belongsTo(request.resource.data.companyId))
+      );
+
+      allow update: if signedIn() && (
+        (
+          request.auth.uid == uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'name', 'email', 'phone', 'avatar', 'initials', 'team', 'region',
+            'updatedAt', 'updatedBy'
+          ])
+        )
+        || (
+          isAdmin()
+          && belongsTo(resource.data.companyId)
+          && belongsTo(request.resource.data.companyId)
+        )
+        || (
+          isPreapprovedAdminIdentity()
+          && request.auth.uid == uid
+          && request.resource.data.role == 'admin'
+          && request.resource.data.companyId == 'company-demo'
+        )
+      );
+
+      allow delete: if isAdmin()
+        && request.auth.uid != uid
+        && belongsTo(resource.data.companyId);
+    }
+
+    match /access_requests/{uid} {
+      allow create: if signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid;
+      allow get: if signedIn() && (
+        request.auth.uid == uid
+        || (isAdmin() && belongsTo(resource.data.companyId))
+      );
+      allow list: if isAdmin() && belongsTo(resource.data.companyId);
+      allow update, delete: if (
+        signedIn()
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+      ) || (isAdmin() && belongsTo(resource.data.companyId));
+    }
+
+    match /companies/{companyId} {
+      // Todo usuário ativo da empresa precisa ler identidade, mensagens e parâmetros.
+      allow read: if belongsTo(companyId);
+      allow create: if isAdmin() && belongsTo(companyId);
+      allow update: if belongsTo(companyId) && hasPermission('settings', 'edit');
+      allow delete: if isAdmin() && belongsTo(companyId);
+    }
+
+    match /public_proposals/{proposalId} {
+      allow read: if resource.data.public == true
+        || (belongsTo(resource.data.companyId) && hasPermission('proposals', 'view'));
+      allow create: if belongsTo(request.resource.data.companyId)
+        && hasPermission('proposals', 'create');
+      allow update: if (
+        sameCompanyBeforeAndAfter()
+        && hasPermission('proposals', 'edit')
+      ) || (
+        resource.data.public == true
+        && request.resource.data.companyId == resource.data.companyId
+        && request.resource.data.id == resource.data.id
+      );
+      allow delete: if belongsTo(resource.data.companyId)
+        && hasPermission('proposals', 'delete');
+    }
+
+    match /{collectionName}/{documentId} {
+      allow get, list: if belongsTo(resource.data.companyId)
+        && collectionPermission(collectionName, 'view');
+      allow create: if belongsTo(request.resource.data.companyId)
+        && collectionPermission(collectionName, 'create');
+      allow update: if sameCompanyBeforeAndAfter()
+        && collectionPermission(collectionName, 'edit');
+      allow delete: if belongsTo(resource.data.companyId)
+        && collectionPermission(collectionName, 'delete');
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+`;
   const DEFAULT_APPS_SCRIPT_EMAIL_URL = 'https://script.google.com/macros/s/AKfycbzfrrrlpheo2KbRytwH-LAovNmBK5ojUESl1z3sfbROto69Bd4iV0_NXrR0GSmQFn0xQQ/exec';
   const EMAIL_SCRIPT_URL_KEY = 'solarcrm-email-script-url-v1';
   const EMAIL_SCRIPT_TOKEN_KEY = 'solarcrm-email-script-token-v1';
@@ -2194,7 +2419,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   const DRIVE_SCRIPT_TOKEN_KEY = 'solarcrm-drive-script-token-v1';
   const DRIVE_ROOT_FOLDER_KEY = 'solarcrm-drive-root-folder-v1';
   const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-2';
-  const SYSTEM_VERSION = '3.4.0-login-resiliente';
+  const SYSTEM_VERSION = '3.5.0-firebase-permissoes';
   let storageWarningShown = false;
   let draftSaveTimer = null;
   let firebaseLastDiagnostic = null;
@@ -2524,7 +2749,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
 
   function seedState() {
     return {
-      version: 3,
+      version: 7,
       theme: 'dark', role: 'seller', currentView: 'dashboard', currentCompanyId: 'company-demo',
       currentUser: { id: '', name: '', email: '', initials: 'US', role: 'seller', companyIds: [], permissions: defaultPermissionMatrix('seller') },
       company: { ...defaultCompany }, companies: [{ ...defaultCompany }],
@@ -2596,13 +2821,15 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   let permissionUsersLoading = false;
   let permissionDrafts = {};
   let sharedCompanyUnsubscribe = null;
-  let sharedCompanyMirrorUnsubscribe = null;
+  let cloudCollectionUnsubscribes = [];
+  let cloudDataLoadBusy = false;
   let sharedProfileUnsubscribe = null;
   let sharedCompanyApplying = false;
   let sharedCompanySaveQueue = Promise.resolve();
   let sharedSettingsLastSource = 'local';
   let sharedSettingsLastError = '';
   let sharedSettingsLastLoadedAt = '';
+  let sharedSettingsSyncBusy = false;
 
   function normalizeState(data) {
     data = data && typeof data === 'object' ? data : seedState();
@@ -2740,99 +2967,184 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     if(!window.FirebaseCRM?.syncReady||state.role!=='admin')return 0;
     try{
       const knownIds=permissionUsers.map(item=>item.id).filter(Boolean);
-      const count=await window.FirebaseCRM.broadcastCompanySettings(state.currentCompanyId,firestoreSafeRecord(snapshot),knownIds);
+      const count=await promiseWithTimeout(
+        window.FirebaseCRM.broadcastCompanySettings(state.currentCompanyId,firestoreSafeRecord(snapshot),knownIds),
+        10000,
+        'Tempo excedido ao atualizar os perfis da equipe.'
+      );
       return Number(count||0);
     }catch(error){
-      console.warn('Falha ao replicar configurações nos perfis dos usuários:',error);
-      sharedSettingsLastError=error.message||String(error);
-      if(!silent)throw error;
+      console.warn('Replicação auxiliar dos perfis indisponível:',error);
+      if(!silent){
+        sharedSettingsLastError=error.message||String(error);
+        throw error;
+      }
       return 0;
     }
   }
 
-  async function saveSharedCompanySettings({silent=false,successTitle='Configurações sincronizadas',successText='As alterações foram aplicadas a todos os usuários da empresa.'}={}) {
-    syncCurrentCompanyRecord();mirrorSharedGatewaySettings();persist();
+  function sharedSettingsPermissionMessage(error){
+    const raw=String(error?.message||error||'');
+    const denied=/permission|insufficient/i.test(raw)||String(error?.code||'').includes('permission-denied');
+    if(denied)return 'O Firebase recusou a gravação. Publique o arquivo firestore.rules fornecido com esta versão no projeto energiasolar-67b14.';
+    return raw||'Não foi possível gravar as configurações compartilhadas.';
+  }
+
+  async function saveSharedCompanySettings({silent=false,successTitle='Configurações sincronizadas',successText='As alterações foram gravadas no Firebase para todos os usuários autorizados.'}={}) {
     if(!window.FirebaseCRM?.syncReady){
-      if(!silent)toast('Salvo somente neste navegador','Conecte o banco de dados para aplicar as configurações aos demais usuários.','info');
+      if(!silent)toast('Banco de dados indisponível','Entre com um usuário aprovado para salvar as configurações.','error');
       return false;
     }
-    if(state.role!=='admin'){
-      if(!silent)toast('Alteração local','Somente o administrador pode publicar configurações para toda a empresa.','info');
+    if(!hasPermission('settings','edit')){
+      if(!silent)denyPermission('settings','edit');
       return false;
     }
     const execute=async()=>{
-      await migrateSharedCompanyAssets();
-      const payload=buildSharedCompanyPayload();
-      const results=await Promise.allSettled([
-        window.FirebaseCRM.saveRecord('companies',payload),
-        window.FirebaseCRM.saveCompanySettingsMirror(state.currentCompanyId,payload),
-        publishSharedCompanyFallback(payload,{silent:true})
-      ]);
-      const primary=results[0].status==='fulfilled'?results[0].value:null;
-      const mirror=results[1].status==='fulfilled'?results[1].value:null;
-      const replicated=results[2].status==='fulfilled'?Number(results[2].value||0):0;
-      const saved=primary||mirror||(replicated?payload:null);
-      if(saved){
-        applySharedCompanySettings(saved,{render:false,force:true,source:primary?'empresa':mirror?'espelho':'perfil'});
+      try{
+        await promiseWithTimeout(migrateSharedCompanyAssets(),15000,'Tempo excedido ao preparar os arquivos da empresa.');
+        const payload=buildSharedCompanyPayload();
+        const saved=await promiseWithTimeout(
+          window.FirebaseCRM.saveRecord('companies',payload),
+          12000,
+          'Tempo excedido ao salvar a empresa no Firebase.'
+        );
+        applySharedCompanySettings(saved,{render:false,force:true,source:'Firebase / companies'});
         sharedSettingsLastError='';
-        if(!silent)toast(successTitle,`${successText}${replicated?` ${replicated} perfil(is) atualizado(s).`:''}`,'success');
+        if(!silent)toast(successTitle,successText,'success');
         return true;
+      }catch(error){
+        sharedSettingsLastError=sharedSettingsPermissionMessage(error);
+        console.warn('Falha ao gravar a empresa no Firebase:',error);
+        if(!silent)toast('Não foi possível salvar no Firebase',sharedSettingsLastError,'error');
+        return false;
       }
-      const errors=results.filter(item=>item.status==='rejected').map(item=>item.reason?.message||String(item.reason));
-      sharedSettingsLastError=errors.join(' | ')||'Nenhum destino remoto aceitou a configuração.';
-      console.warn('Configuração da empresa salva apenas localmente:',sharedSettingsLastError);
-      if(!silent)toast('Não foi possível aplicar à equipe',sharedSettingsLastError,'error');
-      return false;
     };
     sharedCompanySaveQueue=sharedCompanySaveQueue.then(execute,execute);
     return sharedCompanySaveQueue;
   }
 
   async function uploadSharedCompanyAsset(dataUrl,folder,filename) {
-    if(!dataUrl||!String(dataUrl).startsWith('data:')||!window.FirebaseCRM?.syncReady||state.role!=='admin')return dataUrl;
-    const response=await fetch(dataUrl);const blob=await response.blob();
-    return window.FirebaseCRM.uploadFile(state.currentCompanyId,`company-settings/${folder}`,blob,filename);
+    if(!dataUrl||!String(dataUrl).startsWith('data:')||state.role!=='admin')return dataUrl;
+    const response=await fetch(dataUrl);
+    const blob=await response.blob();
+    const file=new File([blob],filename,{type:blob.type||'application/octet-stream'});
+    const base64=await fileToBase64Payload(file);
+    const data=await postToDriveScript({
+      action:'uploadProjectDocument',
+      companyId:state.currentCompanyId,
+      companyName:state.company.tradeName||state.company.name||'',
+      projectId:'company-settings',
+      proposalId:'',
+      projectFolderName:'_Configuração da empresa',
+      clientName:state.company.tradeName||state.company.name||'Empresa',
+      stage:'Identidade visual',
+      category:folder||'Arquivos',
+      notes:'Arquivo compartilhado da configuração da empresa',
+      fileName:filename,
+      mimeType:file.type||'application/octet-stream',
+      size:file.size,
+      uploadedBy:state.currentUser.name||state.currentUser.email||'Administrador',
+      dataBase64:base64
+    });
+    const driveId=data.fileId||data.driveFileId||'';
+    return data.directUrl||data.downloadUrl||(driveId?`https://drive.google.com/uc?export=view&id=${encodeURIComponent(driveId)}`:'')||data.fileUrl||data.url||data.webContentLink||data.webViewLink||dataUrl;
+  }
+
+  const cloudCollectionPlan = [
+    {stateKey:'teams', remote:'teams', module:'teams'},
+    {stateKey:'clients', remote:'clients', module:'clients'},
+    {stateKey:'leads', remote:'leads', module:'leads'},
+    {stateKey:'proposals', remote:'proposals', module:'proposals'},
+    {stateKey:'public_proposals', remote:'public_proposals', module:'proposals'},
+    {stateKey:'contracts', remote:'contracts', module:'contracts'},
+    {stateKey:'works', remote:'works', module:'works'},
+    {stateKey:'tasks', remote:'tasks', module:'works'},
+    {stateKey:'projectDocuments', remote:'projectDocuments', module:'projectDocuments'},
+    {stateKey:'homologations', remote:'homologations', module:'homologations'},
+    {stateKey:'financial', remote:'financial', module:'financial'},
+    {stateKey:'aftersales', remote:'aftersales', module:'aftersales'},
+    {stateKey:'tickets', remote:'tickets', module:'tickets'},
+    {stateKey:'commissions', remote:'commissions', module:'commissions'},
+    {stateKey:'inventory', remote:'inventory', module:'inventory'},
+    {stateKey:'suppliers', remote:'suppliers', module:'inventory'},
+    {stateKey:'stockMovements', remote:'stockMovements', module:'inventory'},
+    {stateKey:'notifications', remote:'notifications', module:'dashboard'},
+    {stateKey:'automationRules', remote:'automationRules', module:'settings'},
+    {stateKey:'automationQueue', remote:'automationQueue', module:'settings'},
+    {stateKey:'automationLogs', remote:'automationLogs', module:'settings'}
+  ];
+
+  function replaceCompanyCollection(stateKey,rows=[]){
+    const current=state.currentCompanyId;
+    const retained=(state[stateKey]||[]).filter(item=>(item.companyId||current)!==current);
+    state[stateKey]=[...retained,...rows.map(item=>({...item,companyId:item.companyId||current}))];
+  }
+
+  function clearUnauthorizedCollections(){
+    cloudCollectionPlan.forEach(item=>{
+      if(!hasPermission(item.module,'view'))replaceCompanyCollection(item.stateKey,[]);
+    });
+  }
+
+  function stopAuthorizedDataWatchers(){
+    cloudCollectionUnsubscribes.forEach(unsubscribe=>{try{unsubscribe?.();}catch(_){}});
+    cloudCollectionUnsubscribes=[];
   }
 
   function stopSharedCompanyWatcher(){
-    try{sharedCompanyUnsubscribe?.();}catch(_){}
-    try{sharedCompanyMirrorUnsubscribe?.();}catch(_){}
-    try{sharedProfileUnsubscribe?.();}catch(_){}
+    try{sharedCompanyUnsubscribe?.();}catch(_){ }
+    try{sharedProfileUnsubscribe?.();}catch(_){ }
     sharedCompanyUnsubscribe=null;
-    sharedCompanyMirrorUnsubscribe=null;
     sharedProfileUnsubscribe=null;
+    stopAuthorizedDataWatchers();
+  }
+
+  function startAuthorizedDataWatchers(){
+    stopAuthorizedDataWatchers();
+    if(!window.FirebaseCRM?.syncReady)return;
+    cloudCollectionPlan.filter(item=>hasPermission(item.module,'view')).forEach(item=>{
+      try{
+        const unsubscribe=window.FirebaseCRM.watchRecords(item.remote,state.currentCompanyId,rows=>{
+          replaceCompanyCollection(item.stateKey,rows);
+          persist();
+          if(!document.body.classList.contains('auth-locked')){
+            renderSidebar();
+            if(canAccess(activeView))renderView(activeView);
+            updateTopbar();
+          }
+        });
+        cloudCollectionUnsubscribes.push(unsubscribe);
+      }catch(error){console.warn(`Acompanhamento de ${item.remote} indisponível:`,error);}
+    });
   }
 
   function startSharedCompanyWatcher(){
-    stopSharedCompanyWatcher();
+    try{sharedCompanyUnsubscribe?.();}catch(_){ }
+    try{sharedProfileUnsubscribe?.();}catch(_){ }
+    sharedCompanyUnsubscribe=null;
+    sharedProfileUnsubscribe=null;
     if(!window.FirebaseCRM?.syncReady)return;
     try{
       sharedCompanyUnsubscribe=window.FirebaseCRM.watchCompany(state.currentCompanyId,cloud=>{
-        if(cloud)applySharedCompanySettings(cloud,{render:true,source:'empresa'});
+        if(cloud)applySharedCompanySettings(cloud,{render:true,force:true,source:'Firebase / companies'});
       });
     }catch(error){console.warn('Acompanhamento da empresa indisponível:',error);}
     try{
-      sharedCompanyMirrorUnsubscribe=window.FirebaseCRM.watchCompanySettingsMirror(state.currentCompanyId,cloud=>{
-        if(cloud)applySharedCompanySettings(cloud,{render:true,source:'espelho'});
-      });
-    }catch(error){console.warn('Acompanhamento do espelho indisponível:',error);}
-    try{
       const uid=window.FirebaseCRM?.auth?.currentUser?.uid;
       if(uid)sharedProfileUnsubscribe=window.FirebaseCRM.watchProfile(uid,profile=>{
-        if(!profile||String(profile.status||'').toLowerCase()!=='ativo')return;
-        const previousCompanyId=state.currentCompanyId;
-        const currentCompanySnapshot={...state.company};
-        applyFirebaseProfile(profile,window.FirebaseCRM.auth.currentUser);
-        const snapshot=profile.sharedCompanySettings;
-        if(snapshot){
-          const snapshotCompanyId=snapshot.companyId||snapshot.id;
-          if(!snapshotCompanyId||snapshotCompanyId===state.currentCompanyId)applySharedCompanySettings(snapshot,{render:false,source:'perfil'});
-        }else if(previousCompanyId===state.currentCompanyId&&companyConfigurationScore(currentCompanySnapshot)>companyConfigurationScore(state.company)){
-          applySharedCompanySettings(currentCompanySnapshot,{render:false,force:true,source:sharedSettingsLastSource});
+        if(!profile||String(profile.status||'').toLowerCase()!=='ativo'){
+          lockSystemForAuthentication('Acesso suspenso','O perfil foi desativado ou removido pelo administrador.');
+          return;
         }
-        if(previousCompanyId!==state.currentCompanyId)startSharedCompanyWatcher();
-        if(!document.body.classList.contains('auth-locked'))renderView(activeView);
-        if(document.getElementById('settingsModal')?.classList.contains('open'))renderSettings();
+        const before=JSON.stringify({companyId:state.currentCompanyId,role:state.role,permissions:state.currentUser?.permissions||{}});
+        applyFirebaseProfile(profile,window.FirebaseCRM.auth.currentUser);
+        const after=JSON.stringify({companyId:state.currentCompanyId,role:state.role,permissions:state.currentUser?.permissions||{}});
+        if(before!==after){
+          loadAuthorizedFirebaseData({silent:true,restartWatchers:true}).catch(error=>{
+            console.warn('Não foi possível recarregar dados após a alteração de acesso:',error);
+            toast('Permissões atualizadas','Atualize a página caso algum módulo não apareça.','info');
+          });
+        }
       });
     }catch(error){console.warn('Acompanhamento do perfil indisponível:',error);}
   }
@@ -2845,36 +3157,65 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     ]).finally(()=>clearTimeout(timer));
   }
 
-  async function initializeSharedCompanySettings(){
-    if(!window.FirebaseCRM?.syncReady)return false;
-    const profileSnapshot=window.FirebaseCRM?.profile?.sharedCompanySettings||null;
-    const localSnapshot={...state.company,id:state.currentCompanyId,companyId:state.currentCompanyId};
-    const remoteResults=await Promise.allSettled([
-      promiseWithTimeout(window.FirebaseCRM.listRecords('companies',state.currentCompanyId),7000,'Tempo excedido ao carregar a empresa.'),
-      promiseWithTimeout(window.FirebaseCRM.loadCompanySettingsMirror(state.currentCompanyId),7000,'Tempo excedido ao carregar o espelho da empresa.')
-    ]);
-    const companyCloud=remoteResults[0].status==='fulfilled'?(remoteResults[0].value?.[0]||null):null;
-    const mirrorCloud=remoteResults[1].status==='fulfilled'?remoteResults[1].value:null;
-    const candidates=[];
-    if(profileSnapshot)candidates.push({source:'perfil',settings:profileSnapshot});
-    if(companyCloud)candidates.push({source:'empresa',settings:companyCloud});
-    if(mirrorCloud)candidates.push({source:'espelho',settings:mirrorCloud});
-    if(state.role==='admin'||companyConfigurationScore(localSnapshot)>0)candidates.push({source:'local',settings:localSnapshot});
-    const best=chooseBestCompanySettings(candidates);
-    if(best)applySharedCompanySettings(best.settings,{render:false,force:true,source:best.source});
-    const bestRemote=chooseBestCompanySettings(candidates.filter(item=>item.source!=='local'));
-    const localScore=companyConfigurationScore(localSnapshot);
-    const remoteScore=companyConfigurationScore(bestRemote?.settings||{});
-    if(state.role==='admin'&&localScore>0&&(localScore>remoteScore||!bestRemote)){
-      applySharedCompanySettings(localSnapshot,{render:false,force:true,source:'local'});
-      promiseWithTimeout(saveSharedCompanySettings({silent:true}),12000,'Tempo excedido ao publicar as configurações.').catch(error=>console.warn('Publicação em segundo plano:',error));
-    }else if(state.role==='admin'&&best){
-      promiseWithTimeout(publishSharedCompanyFallback(buildSharedCompanyPayload(),{silent:true}),12000,'Tempo excedido ao replicar as configurações.').catch(error=>console.warn('Replicação em segundo plano:',error));
+  async function loadAuthorizedFirebaseData({silent=false,restartWatchers=true}={}){
+    if(!window.FirebaseCRM?.syncReady)throw new Error('O perfil ainda não está autorizado no Firebase.');
+    if(cloudDataLoadBusy)return false;
+    cloudDataLoadBusy=true;
+    try{
+      const companyRows=await promiseWithTimeout(
+        window.FirebaseCRM.listRecords('companies',state.currentCompanyId),
+        12000,
+        'Tempo excedido ao carregar a empresa no Firebase.'
+      );
+      let company=companyRows[0]||null;
+      if(!company&&currentUserIsAdmin()){
+        const initialPayload=buildSharedCompanyPayload();
+        company=await promiseWithTimeout(
+          window.FirebaseCRM.saveRecord('companies',initialPayload),
+          12000,
+          'A empresa ainda não existe e não pôde ser criada no Firebase.'
+        );
+      }
+      if(!company)throw new Error('O cadastro da empresa não foi encontrado no Firebase. Peça ao administrador para preencher e salvar a empresa.');
+      applySharedCompanySettings(company,{render:false,force:true,source:'Firebase / companies'});
+
+      clearUnauthorizedCollections();
+      const allowed=cloudCollectionPlan.filter(item=>hasPermission(item.module,'view'));
+      const results=await Promise.allSettled(allowed.map(item=>promiseWithTimeout(
+        window.FirebaseCRM.listRecords(item.remote,state.currentCompanyId),
+        15000,
+        `Tempo excedido ao carregar ${item.remote}.`
+      )));
+      const failures=[];
+      results.forEach((result,index)=>{
+        const item=allowed[index];
+        if(result.status==='fulfilled')replaceCompanyCollection(item.stateKey,result.value||[]);
+        else failures.push(`${item.remote}: ${result.reason?.message||result.reason}`);
+      });
+      if(failures.length)throw new Error(`O Firebase não liberou todos os módulos autorizados. ${failures.join(' | ')}`);
+
+      sharedSettingsLastSource='Firebase / companies';
+      sharedSettingsLastLoadedAt=new Date().toISOString();
+      sharedSettingsLastError='';
+      persist();
+      if(restartWatchers){startSharedCompanyWatcher();startAuthorizedDataWatchers();}
+      if(!silent)toast('Dados carregados do Firebase','Foram carregados somente os módulos liberados para este usuário.','success');
+      return true;
+    }catch(error){
+      sharedSettingsLastError=sharedSettingsPermissionMessage(error);
+      if(!silent)toast('Falha ao carregar o Firebase',sharedSettingsLastError,'error');
+      throw error;
+    }finally{
+      cloudDataLoadBusy=false;
     }
-    const failures=remoteResults.filter(item=>item.status==='rejected').map(item=>item.reason?.message||String(item.reason));
-    sharedSettingsLastError=failures.length===remoteResults.length?failures.join(' | '):'';
-    startSharedCompanyWatcher();
-    return Boolean(best);
+  }
+
+  function companyRowsFromState(collection){
+    return (state[collection]||[]).filter(record=>(record.companyId||state.currentCompanyId)===state.currentCompanyId);
+  }
+
+  async function initializeSharedCompanySettings(){
+    return loadAuthorizedFirebaseData({silent:true,restartWatchers:true});
   }
 
   function loadState() {
@@ -2898,7 +3239,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
         return;
       }
       const el = document.getElementById('proposalAutosaveStatus');
-      if (el) el.textContent = `Salvo localmente às ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
+      if (el) el.textContent = `Cache atualizado às ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
     } catch (error) {
       if (!storageWarningShown) toast('Erro ao salvar', 'O armazenamento local pode estar cheio. Exporte um backup.', 'error');
       storageWarningShown = true;
@@ -3914,14 +4255,15 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   }
 
   function projectDocumentStorageLabel(doc){
-    if(doc.storage==='google-drive'||doc.driveFileId)return 'Google Drive';
-    if(doc.storage==='firebase'||doc.url)return 'Firebase Storage';
-    return 'Armazenamento local do navegador';
+    return doc.driveFileId||doc.storage==='google-drive'||doc.url?'Google Drive':'Link do Drive pendente';
   }
 
   function renderProjectDocuments(work){
-    const all=projectDocumentsFor(work.id);const docs=projectDocumentFilter==='Todos'?all:all.filter(doc=>doc.category===projectDocumentFilter);const local=all.filter(doc=>doc.storage==='indexeddb').length;const drive=all.filter(doc=>doc.storage==='google-drive'||doc.driveFileId).length;const cloud=all.filter(doc=>doc.storage==='firebase'||(doc.url&&doc.storage!=='google-drive')).length;
-    return `<div class="project-doc-summary"><div><span>Total de arquivos</span><strong>${all.length}</strong></div><div><span>Google Drive</span><strong>${drive}</strong></div><div><span>Firebase Storage</span><strong>${cloud}</strong></div><div><span>Local navegador</span><strong>${local}</strong></div></div><div class="document-upload-panel"><section class="form-section"><div class="form-section-head"><div><h3>Adicionar documentação</h3><p>PDF, imagens, planilhas, documentos, DWG/DXF, XML ou ZIP.</p></div></div><form id="projectDocumentForm"><div class="form-grid"><label class="field"><span>Categoria *</span><select name="category" required>${projectDocumentCategories.map(category=>`<option>${escapeHtml(category)}</option>`).join('')}</select></label><label class="field"><span>Etapa relacionada</span><select name="stage">${projectStages.map(stage=>`<option ${stage.id===normalizeProjectStage(work.projectStage)?'selected':''}>${escapeHtml(stage.id)}</option>`).join('')}</select></label><label class="field full"><span>Descrição / observações</span><textarea name="notes" placeholder="Ex.: versão aprovada, protocolo, número da ART..."></textarea></label></div><label class="document-drop" style="display:block;margin-top:12px"><strong>Selecionar um ou vários arquivos</strong><span style="display:block;color:var(--muted);font-size:9px;margin-top:5px">Limite: 20 MB por arquivo. Nesta versão, os documentos do projeto são enviados primeiro para o Google Drive.</span><input name="files" type="file" multiple required accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx,.csv,.xml,.dwg,.dxf,.zip,.txt,application/pdf,image/*"></label><button class="btn btn-primary" type="submit" style="width:100%;margin-top:12px">＋ Incluir no dossiê</button></form></section><section><div class="document-filter-row"><select id="projectDocumentFilter" class="compact-select"><option>Todos</option>${projectDocumentCategories.map(category=>`<option ${category===projectDocumentFilter?'selected':''}>${escapeHtml(category)}</option>`).join('')}</select><button class="btn btn-ghost" data-export-document-index type="button">Exportar índice CSV</button></div><div class="document-list">${docs.length?docs.map(doc=>renderProjectDocumentCard(doc)).join(''):'<div class="empty-state"><strong>Nenhum documento nesta categoria</strong>Adicione os arquivos do projeto usando o formulário ao lado.</div>'}</div></section></div>`;
+    const all=projectDocumentsFor(work.id);
+    const docs=projectDocumentFilter==='Todos'?all:all.filter(doc=>doc.category===projectDocumentFilter);
+    const drive=all.filter(doc=>doc.storage==='google-drive'||doc.driveFileId||doc.url).length;
+    const pending=Math.max(0,all.length-drive);
+    return `<div class="project-doc-summary"><div><span>Total de arquivos</span><strong>${all.length}</strong></div><div><span>Google Drive</span><strong>${drive}</strong></div><div><span>Pendentes</span><strong>${pending}</strong></div><div><span>Banco de dados</span><strong>${all.length}</strong></div></div><div class="document-upload-panel"><section class="form-section"><div class="form-section-head"><div><h3>Adicionar documentação</h3><p>PDF, imagens, planilhas, documentos, DWG/DXF, XML ou ZIP.</p></div></div><form id="projectDocumentForm"><div class="form-grid"><label class="field"><span>Categoria *</span><select name="category" required>${projectDocumentCategories.map(category=>`<option>${escapeHtml(category)}</option>`).join('')}</select></label><label class="field"><span>Etapa relacionada</span><select name="stage">${projectStages.map(stage=>`<option ${stage.id===normalizeProjectStage(work.projectStage)?'selected':''}>${escapeHtml(stage.id)}</option>`).join('')}</select></label><label class="field full"><span>Descrição / observações</span><textarea name="notes" placeholder="Ex.: versão aprovada, protocolo, número da ART..."></textarea></label></div><label class="document-drop" style="display:block;margin-top:12px"><strong>Selecionar um ou vários arquivos</strong><span style="display:block;color:var(--muted);font-size:9px;margin-top:5px">Limite: 20 MB por arquivo. Os arquivos são enviados exclusivamente ao Google Drive; o Firebase guarda somente os dados e permissões.</span><input name="files" type="file" multiple required accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx,.xls,.xlsx,.csv,.xml,.dwg,.dxf,.zip,.txt,application/pdf,image/*"></label><button class="btn btn-primary" type="submit" style="width:100%;margin-top:12px">＋ Enviar ao Google Drive</button></form></section><section><div class="document-filter-row"><select id="projectDocumentFilter" class="compact-select"><option>Todos</option>${projectDocumentCategories.map(category=>`<option ${category===projectDocumentFilter?'selected':''}>${escapeHtml(category)}</option>`).join('')}</select><button class="btn btn-ghost" data-export-document-index type="button">Exportar índice CSV</button></div><div class="document-list">${docs.length?docs.map(doc=>renderProjectDocumentCard(doc)).join(''):'<div class="empty-state"><strong>Nenhum documento nesta categoria</strong>Adicione os arquivos do projeto usando o formulário ao lado.</div>'}</div></section></div>`;
   }
 
   function renderProjectDocumentCard(doc){
@@ -3986,7 +4328,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   }
 
   function isGoogleDrivePrimary(){
-    return (state.company.documentStorageMode||'google-drive')==='google-drive';
+    return true;
   }
 
   function driveGatewayConfig(){
@@ -4043,9 +4385,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   async function uploadProjectDocuments(event,work){
     event.preventDefault();if(!hasPermission('projectDocuments','create')){denyPermission('projectDocuments','create');return;}const form=event.currentTarget;const fd=new FormData(form);const files=[...(form.elements.files.files||[])];if(!files.length){toast('Selecione pelo menos um arquivo','','error');return;}const button=form.querySelector('button[type=submit]');button.disabled=true;const old=button.textContent;let added=0;
     try{for(const file of files){if(file.size>20*1024*1024){toast('Arquivo ignorado',`${file.name} excede 20 MB.`,'error');continue;}const doc={id:newId('doc'),companyId:state.currentCompanyId,projectId:work.id,proposalId:work.proposalId||'',clientName:work.clientName,name:file.name,fileName:file.name,mimeType:file.type||'application/octet-stream',size:file.size,category:fd.get('category'),stage:fd.get('stage'),notes:fd.get('notes')||'',uploadedBy:state.currentUser.name,uploadedAt:new Date().toISOString(),storage:'google-drive',url:'',driveFileId:'',driveFolderId:'',drivePath:''};button.textContent=`Enviando ${added+1}/${files.length} para o Drive...`;
-      if(isGoogleDrivePrimary()){Object.assign(doc,await uploadProjectDocumentToDrive(work,file,doc));}
-      else if(window.FirebaseCRM?.syncReady){try{doc.url=await window.FirebaseCRM.uploadFile(state.currentCompanyId,`projects/${work.id}/documents`,file,file.name);doc.storage='firebase';}catch(error){console.warn('Upload no banco de dados falhou, usando armazenamento local:',error);doc.storage='indexeddb';await ProjectFileDB.put(doc.id,file);}}
-      else{doc.storage='indexeddb';await ProjectFileDB.put(doc.id,file);}
+      Object.assign(doc,await uploadProjectDocumentToDrive(work,file,doc));
       state.projectDocuments.unshift(doc);syncRecordToFirebase('projectDocuments',doc);added++;}
       persist();if(work.portalPublishedAt)publishClientPortalStatus(work,{silent:true});addActivity('▤','Documentação adicionada',`${work.clientName} · ${added} arquivo(s)`);renderProjectWorkspace();toast('Documentação incluída',`${added} arquivo(s) enviado(s) ao projeto.`);
     }catch(error){console.error(error);toast('Falha ao armazenar arquivo',error.message||'Não foi possível incluir a documentação.','error');}finally{button.disabled=false;button.textContent=old;}
@@ -4058,7 +4398,9 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
 
   async function deleteProjectDocument(id){
     if(!hasPermission('projectDocuments','delete')){denyPermission('projectDocuments','delete');return;}
-    const doc=getCompanyRecord('projectDocuments',id);if(!doc||!confirm(`Excluir “${doc.name||doc.fileName}” do dossiê?`))return;try{if(doc.url&&window.FirebaseCRM?.syncReady)await window.FirebaseCRM.deleteFileByUrl(doc.url);else await ProjectFileDB.delete(id);}catch(error){console.warn(error);}state.projectDocuments=state.projectDocuments.filter(item=>item.id!==id);persist();if(window.FirebaseCRM?.syncReady)window.FirebaseCRM.deleteRecord('projectDocuments',id).catch(console.warn);renderProjectWorkspace();toast('Documento excluído','','info');
+    const doc=getCompanyRecord('projectDocuments',id);if(!doc||!confirm(`Remover “${doc.name||doc.fileName}” do dossiê?
+
+O registro será removido do CRM. O arquivo original continuará protegido no Google Drive.`))return;state.projectDocuments=state.projectDocuments.filter(item=>item.id!==id);persist();if(window.FirebaseCRM?.syncReady)window.FirebaseCRM.deleteRecord('projectDocuments',id).catch(console.warn);renderProjectWorkspace();toast('Documento removido do CRM','O arquivo permanece no Google Drive.','info');
   }
 
   function exportProjectDocumentIndex(work){
@@ -4371,10 +4713,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
     if(!confirm(message))return;
     try{
       for(const doc of docRows){
-        try{
-          if(doc.url&&window.FirebaseCRM?.syncReady)await window.FirebaseCRM.deleteFileByUrl(doc.url);
-          else await ProjectFileDB.delete(doc.id);
-        }catch(error){console.warn('Falha ao remover arquivo do projeto:',error);}
+        // Os arquivos físicos permanecem no Google Drive; somente os registros do CRM são removidos.
       }
       state.works=state.works.filter(row=>row.id!==projectId);
       state.tasks=state.tasks.filter(row=>row.projectId!==projectId);
@@ -6357,13 +6696,13 @@ ${company.tradeName||company.name}`:''}`;
       const u=state.currentUser||{};const linked=state.teams.find(team=>team.id===u.teamRecordId)||(u.email&&state.teams.find(team=>team.email?.toLowerCase()===u.email.toLowerCase()))||{};
       return `<form id="userProfileForm"><div class="profile-card"><div><div class="profile-avatar">${u.avatar?`<img src="${u.avatar}" alt="${attr(u.name||'Usuário')}">`:escapeHtml(initials(u.name||'Usuário'))}</div><label class="btn btn-ghost btn-sm" style="margin-top:10px;width:126px"><input id="userAvatarInput" type="file" accept="image/*" hidden>Alterar foto</label></div><div><div class="form-grid">${settingsInput('name','Nome completo',u.name||linked.name||'')}${settingsInput('email','E-mail',u.email||linked.email||'','email')}${settingsInput('phone','Telefone / WhatsApp',u.phone||linked.phone||'','tel')}${settingsInput('jobTitle','Cargo / função',u.jobTitle||linked.role||'')}${settingsInput('team','Equipe',u.team||linked.team||'')}${settingsInput('region','Região',u.region||linked.region||'')}<label class="field"><span>Permissão atual</span><input value="${attr(state.role||u.role||'admin')}" disabled></label><label class="field"><span>ID do usuário</span><input value="${attr(u.id||'')}" disabled></label><label class="field full"><span>Assinatura / apresentação curta</span><textarea name="bio" placeholder="Ex.: Gerente comercial responsável pela região Norte de SC.">${escapeHtml(u.bio||'')}</textarea></label></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-primary" type="submit">Salvar meus dados</button></div></div></div></form>`;
     }
-    if(tab==='company')return `<div class="notice" style="margin-bottom:14px"><strong>Configuração compartilhada</strong><br>Tudo que o administrador salvar aqui será aplicado automaticamente aos demais usuários autorizados da empresa.<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px"><span class="status ${sharedSettingsLastError?'red':'green'}">${sharedSettingsLastError?'Falha de sincronização':`Fonte: ${escapeHtml(sharedSettingsLastSource)}`}</span>${state.role==='admin'?'<button class="btn btn-ghost btn-sm" id="forceCompanySettingsSync" type="button">↻ Sincronizar agora</button>':''}</div>${sharedSettingsLastError?`<small style="display:block;margin-top:8px">${escapeHtml(sharedSettingsLastError)}</small>`:''}</div><form id="companySettingsForm"><div class="form-grid">${settingsInput('name','Razão social',c.name)}${settingsInput('tradeName','Nome fantasia',c.tradeName)}${settingsInput('document','CNPJ',c.document)}${settingsInput('city','Cidade / sede',c.city)}${settingsInput('phone','Telefone',c.phone)}${settingsInput('email','E-mail',c.email,'email')}${settingsInput('website','Site',c.website)}${settingsInput('proposalValidityDays','Validade padrão da proposta (dias)',c.proposalValidityDays,'number')}${settingsInput('clientsCount','Quantidade de clientes',c.clientsCount,'number')}${settingsInput('installedPowerMW','Potência instalada (MW)',c.installedPowerMW,'number')}${settingsInput('defaultCommissionPercent','Comissão padrão (%)',c.defaultCommissionPercent,'number')}<label class="field full"><span>História da empresa</span><textarea name="history">${escapeHtml(c.history)}</textarea></label><label class="field full"><span>Certificações (separadas por vírgula)</span><input name="certifications" value="${attr(c.certifications)}"></label><label class="field full"><span>Parceiros</span><input name="partners" value="${attr(c.partners)}"></label><label class="field full"><span>Dados bancários</span><input name="bankData" value="${attr(c.bankData)}"></label><label class="field full"><span>Mensagem de envio de proposta</span><textarea name="proposalMessage">${escapeHtml(c.proposalMessage)}</textarea></label><label class="field full"><span>Mensagem de cobrança</span><textarea name="collectionMessage">${escapeHtml(c.collectionMessage)}</textarea></label><label class="field full"><span>Mensagem de NPS</span><textarea name="npsMessage">${escapeHtml(c.npsMessage)}</textarea></label></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-primary" type="submit">Salvar empresa</button></div></form>`;
+    if(tab==='company')return `<div class="notice" style="margin-bottom:14px"><strong>Fonte oficial: Firebase</strong><br>Todos os usuários carregam este cadastro diretamente de <b>companies/${escapeHtml(state.currentCompanyId)}</b>. Cada módulo do sistema é carregado conforme as permissões definidas no perfil do usuário.<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px"><span class="status ${sharedSettingsSyncBusy?'yellow':sharedSettingsLastError?'red':'green'}">${sharedSettingsSyncBusy?'Sincronizando':sharedSettingsLastError?'Falha ao acessar o Firebase':`Fonte: ${escapeHtml(sharedSettingsLastSource)}`}</span>${currentUserIsAdmin()?`<div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn btn-ghost btn-sm" id="downloadFirestoreRulesBtn" type="button">Baixar regras</button><button class="btn btn-ghost btn-sm" id="copyFirestoreRulesBtn" type="button">Copiar regras</button><button class="btn btn-ghost btn-sm" id="forceCompanySettingsSync" type="button" ${sharedSettingsSyncBusy?'disabled':''}>${sharedSettingsSyncBusy?'Sincronizando...':'↻ Gravar no Firebase'}</button></div>`:''}</div>${sharedSettingsLastError?`<small style="display:block;margin-top:8px">${escapeHtml(sharedSettingsLastError)}</small><small style="display:block;margin-top:5px">Publique o firestore.rules desta versão para aplicar as permissões por módulo.</small>`:''}</div><form id="companySettingsForm"><div class="form-grid">${settingsInput('name','Razão social',c.name)}${settingsInput('tradeName','Nome fantasia',c.tradeName)}${settingsInput('document','CNPJ',c.document)}${settingsInput('city','Cidade / sede',c.city)}${settingsInput('phone','Telefone',c.phone)}${settingsInput('email','E-mail',c.email,'email')}${settingsInput('website','Site',c.website)}${settingsInput('proposalValidityDays','Validade padrão da proposta (dias)',c.proposalValidityDays,'number')}${settingsInput('clientsCount','Quantidade de clientes',c.clientsCount,'number')}${settingsInput('installedPowerMW','Potência instalada (MW)',c.installedPowerMW,'number')}${settingsInput('defaultCommissionPercent','Comissão padrão (%)',c.defaultCommissionPercent,'number')}<label class="field full"><span>História da empresa</span><textarea name="history">${escapeHtml(c.history)}</textarea></label><label class="field full"><span>Certificações (separadas por vírgula)</span><input name="certifications" value="${attr(c.certifications)}"></label><label class="field full"><span>Parceiros</span><input name="partners" value="${attr(c.partners)}"></label><label class="field full"><span>Dados bancários</span><input name="bankData" value="${attr(c.bankData)}"></label><label class="field full"><span>Mensagem de envio de proposta</span><textarea name="proposalMessage">${escapeHtml(c.proposalMessage)}</textarea></label><label class="field full"><span>Mensagem de cobrança</span><textarea name="collectionMessage">${escapeHtml(c.collectionMessage)}</textarea></label><label class="field full"><span>Mensagem de NPS</span><textarea name="npsMessage">${escapeHtml(c.npsMessage)}</textarea></label></div><div style="display:flex;justify-content:flex-end;margin-top:16px"><button class="btn btn-primary" type="submit">Salvar empresa</button></div></form>`;
     if(tab==='branding')return `<div class="form-section"><div class="form-section-head"><div><h3>Logo da empresa</h3><p>Usada na capa e no cabeçalho de todas as páginas.</p></div></div><div class="grid grid-2"><div>${c.logo?`<img class="logo-preview" src="${c.logo}" alt="Logo">`:`<img class="logo-preview" src="${defaultLogoData()}" alt="Logo padrão">`}</div><label class="upload-drop"><div><strong>Selecionar logo</strong><span>Envie PNG da logo. O sistema remove fundo branco das bordas e preserva a transparência na proposta.</span><input id="companyLogoInput" type="file" accept="image/png" style="margin-top:10px"></div></label></div></div><div class="form-section"><div class="form-section-head"><div><h3>Fotos de obras executadas</h3><p>Até quatro imagens na página institucional da proposta.</p></div></div><label class="upload-drop"><div><strong>Adicionar fotos</strong><span>Selecione uma ou várias imagens.</span><input id="workPhotosInput" type="file" accept="image/*" multiple style="margin-top:10px"></div></label><div class="photo-list" style="margin-top:12px">${(c.workPhotos||[]).map((photo,i)=>`<div style="position:relative"><img src="${photo}"><button class="btn btn-danger btn-sm btn-icon" data-remove-work-photo="${i}" style="position:absolute;right:5px;top:5px">×</button></div>`).join('')}</div></div><div class="form-section"><div class="form-section-head"><div><h3>Assinatura do vendedor</h3><p>Imagem opcional utilizada na página de aceite.</p></div></div><div class="grid grid-2"><div>${c.sellerSignature?`<img class="logo-preview" src="${c.sellerSignature}" alt="Assinatura">`:'<div class="upload-drop"><span>Nenhuma assinatura cadastrada.</span></div>'}</div><label class="upload-drop"><div><strong>Enviar assinatura</strong><span>Use PNG com fundo branco ou transparente.</span><input id="sellerSignatureInput" type="file" accept="image/*" style="margin-top:10px"></div></label></div></div>`;
     if(tab==='firebase'){
       const status=getFirebaseUiState();
       const loggedEmail=window.FirebaseCRM?.auth?.currentUser?.email||state.currentUser.email||'';
       const profileActionLabel=firebaseLastDiagnostic?.code==='bootstrap-owner-profile-missing'?'Reparar meu perfil':firebaseLastDiagnostic?.code==='profile-missing-bootstrap-available'?'Ativar meu perfil administrador':'Ativar ou reparar meu perfil';
-      return `<div class="firebase-status"><div><strong>${escapeHtml(status.title)}</strong><span>${escapeHtml(status.detail)}</span></div><span class="status ${status.className}">${escapeHtml(status.badge)}</span></div>${firebaseDiagnosticHtml()}<div class="notice" style="margin-top:14px"><strong>Perfil do banco de dados:</strong> a conta lucas@igenergia.com.br está pré-aprovada como administradora da empresa company-demo. As demais contas continuam dependendo de aprovação em Usuários e permissões.</div><form id="firebaseSettingsForm" style="margin-top:15px"><div class="form-grid">${['apiKey','authDomain','databaseURL','projectId','storageBucket','messagingSenderId','appId','functionsRegion'].map(key=>settingsInput(key,firebaseLabels[key],firebaseConfig[key]||'',key==='apiKey'?'password':'text')).join('')}</div><div class="notice" style="margin-top:12px"><strong>Configuração carregada:</strong> projeto ${escapeHtml(firebaseConfig.projectId||'—')} · chave ${escapeHtml(firebaseKeyPreview(firebaseConfig.apiKey))} · origem ${escapeHtml(location.origin==='null'?location.protocol:location.origin)}.${location.protocol==='file:'?' O arquivo está aberto por file://; se a chave tiver restrição de site, use hospedagem web ou localhost.':''}</div><div style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px"><button class="btn btn-ghost" id="firebaseRestoreConfigBtn" type="button">Restaurar configuração oficial</button><button class="btn btn-ghost" id="firebaseTestBtn" type="button">Testar conexão</button><button class="btn btn-primary" type="submit">Salvar e conectar</button></div></form><div class="form-section" style="margin-top:15px"><div class="form-section-head"><div><h3>Acesso ao banco de dados</h3><p>Use e-mail e senha. No primeiro acesso, o botão de criação prepara automaticamente o administrador inicial e a empresa ativa.</p></div></div><div class="inline-fields"><label class="field"><span>E-mail</span><input id="firebaseLoginEmail" type="email" value="${attr(loggedEmail)}"></label><label class="field"><span>Senha</span><input id="firebaseLoginPassword" type="password" minlength="6"></label><button class="btn btn-secondary" id="firebaseLoginBtn" type="button" style="align-self:end">Entrar</button></div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-primary" id="firebaseRegisterBtn" type="button">Criar conta e primeiro administrador</button><button class="btn btn-ghost" id="firebaseBootstrapBtn" type="button">${escapeHtml(profileActionLabel)}</button><button class="btn btn-ghost" id="firebaseDiagnoseBtn" type="button">Diagnosticar</button><button class="btn btn-ghost" id="firebaseLogoutBtn" type="button">Sair</button></div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost" id="firebasePullBtn" type="button">Carregar dados da nuvem</button><button class="btn btn-primary" id="firebaseSyncBtn" type="button">Enviar dados locais</button></div></div>`;
+      return `<div class="firebase-status"><div><strong>${escapeHtml(status.title)}</strong><span>${escapeHtml(status.detail)}</span></div><span class="status ${status.className}">${escapeHtml(status.badge)}</span></div>${firebaseDiagnosticHtml()}<div class="notice" style="margin-top:14px"><strong>Firebase = dados e permissões:</strong> clientes, propostas, empresa, usuários e permissões são lidos do Firestore conforme o perfil. Arquivos e imagens são armazenados exclusivamente no Google Drive.</div><form id="firebaseSettingsForm" style="margin-top:15px"><div class="form-grid">${['apiKey','authDomain','databaseURL','projectId','messagingSenderId','appId','functionsRegion'].map(key=>settingsInput(key,firebaseLabels[key],firebaseConfig[key]||'',key==='apiKey'?'password':'text')).join('')}</div><div class="notice" style="margin-top:12px"><strong>Configuração carregada:</strong> projeto ${escapeHtml(firebaseConfig.projectId||'—')} · chave ${escapeHtml(firebaseKeyPreview(firebaseConfig.apiKey))} · origem ${escapeHtml(location.origin==='null'?location.protocol:location.origin)}.${location.protocol==='file:'?' O arquivo está aberto por file://; se a chave tiver restrição de site, use hospedagem web ou localhost.':''}</div><div style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px"><button class="btn btn-ghost" id="firebaseRestoreConfigBtn" type="button">Restaurar configuração oficial</button><button class="btn btn-ghost" id="firebaseTestBtn" type="button">Testar conexão</button><button class="btn btn-primary" type="submit">Salvar e conectar</button></div></form><div class="form-section" style="margin-top:15px"><div class="form-section-head"><div><h3>Acesso ao banco de dados</h3><p>Use e-mail e senha. No primeiro acesso, o botão de criação prepara automaticamente o administrador inicial e a empresa ativa.</p></div></div><div class="inline-fields"><label class="field"><span>E-mail</span><input id="firebaseLoginEmail" type="email" value="${attr(loggedEmail)}"></label><label class="field"><span>Senha</span><input id="firebaseLoginPassword" type="password" minlength="6"></label><button class="btn btn-secondary" id="firebaseLoginBtn" type="button" style="align-self:end">Entrar</button></div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-primary" id="firebaseRegisterBtn" type="button">Criar conta e primeiro administrador</button><button class="btn btn-ghost" id="firebaseBootstrapBtn" type="button">${escapeHtml(profileActionLabel)}</button><button class="btn btn-ghost" id="firebaseDiagnoseBtn" type="button">Diagnosticar</button><button class="btn btn-ghost" id="firebaseLogoutBtn" type="button">Sair</button></div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost" id="firebasePullBtn" type="button">Carregar dados da nuvem</button><button class="btn btn-primary" id="firebaseSyncBtn" type="button">Enviar dados locais</button></div></div>`;
     }
     if(tab==='drive')return renderDriveStoragePanel();
     if(tab==='email')return renderEmailServerPanel();
@@ -6375,7 +6714,7 @@ ${company.tradeName||company.name}`:''}`;
     const cfg=driveGatewayConfig();
     const ready=Boolean(cfg.url);
     return `<div class="firebase-status"><div><strong>Google Drive como armazenamento principal</strong><span>Todos os documentos anexados nas etapas do projeto serão enviados para uma pasta do Google Drive.</span></div><span class="status ${ready?'green':'yellow'}">${ready?'Drive configurado':'Configurar Drive'}</span></div>
-      <form id="driveStorageSettingsForm" class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Configuração do Drive</h3><p>Cole a URL do Web App do Apps Script e informe o mesmo token usado no código.</p></div></div><div class="form-grid"><label class="field full"><span>URL do Web App</span><input name="driveScriptUrl" value="${attr(cfg.url)}" placeholder="https://script.google.com/macros/s/.../exec"></label><label class="field"><span>Token do Apps Script</span><input name="driveScriptToken" type="password" value="${attr(cfg.token)}" placeholder="Mesmo valor da constante TOKEN"></label><label class="field"><span>Pasta raiz no Drive</span><input name="driveRootFolderName" value="${attr(cfg.rootFolderName)}" placeholder="Soolarwin CRM"></label><label class="field"><span>Destino dos documentos</span><select name="documentStorageMode"><option value="google-drive" ${(state.company.documentStorageMode||'google-drive')==='google-drive'?'selected':''}>Google Drive principal</option><option value="firebase" ${state.company.documentStorageMode==='firebase'?'selected':''}>Firebase/local técnico</option></select></label></div><div style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px"><button class="btn btn-ghost" id="driveStorageTestBtn" type="button">Testar conexão</button><button class="btn btn-primary" type="submit">Salvar Google Drive</button></div><div class="notice warning" style="margin-top:12px"><strong>Importante:</strong> publique o Apps Script como Web App executando como você. Compartilhe a pasta raiz do Drive com a equipe que precisa abrir os documentos.</div></form>
+      <form id="driveStorageSettingsForm" class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Configuração do Drive</h3><p>Cole a URL do Web App do Apps Script e informe o mesmo token usado no código.</p></div></div><div class="form-grid"><label class="field full"><span>URL do Web App</span><input name="driveScriptUrl" value="${attr(cfg.url)}" placeholder="https://script.google.com/macros/s/.../exec"></label><label class="field"><span>Token do Apps Script</span><input name="driveScriptToken" type="password" value="${attr(cfg.token)}" placeholder="Mesmo valor da constante TOKEN"></label><label class="field"><span>Pasta raiz no Drive</span><input name="driveRootFolderName" value="${attr(cfg.rootFolderName)}" placeholder="Soolarwin CRM"></label><label class="field"><span>Destino dos arquivos</span><input value="Google Drive (exclusivo)" readonly></label></div><div style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px"><button class="btn btn-ghost" id="driveStorageTestBtn" type="button">Testar conexão</button><button class="btn btn-primary" type="submit">Salvar Google Drive</button></div><div class="notice warning" style="margin-top:12px"><strong>Importante:</strong> publique o Apps Script como Web App executando como você. Compartilhe a pasta raiz do Drive com a equipe que precisa abrir os documentos.</div></form>
       <div class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Estrutura criada automaticamente</h3><p>O sistema organiza por projeto, etapa e categoria.</p></div></div><pre style="white-space:pre-wrap;font-size:10px;line-height:1.6;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px;color:var(--text-soft)">${escapeHtml(`${cfg.rootFolderName}\n└── Projetos\n    └── Cliente - ID do projeto\n        └── Etapa\n            └── Categoria\n                └── arquivo.pdf`)}</pre></div>`;
   }
 
@@ -6471,9 +6810,6 @@ function doPost(e) {
     try{
       const [users,requests]=await Promise.all([window.FirebaseCRM.listUsers(state.currentCompanyId),window.FirebaseCRM.listAccessRequests(state.currentCompanyId)]);
       permissionUsers=users;permissionRequests=requests;permissionUsersLoaded=true;
-      const payload=buildSharedCompanyPayload();
-      const outdated=users.filter(item=>String(item.status||'').toLowerCase()==='ativo'&&Number(item.sharedCompanySettingsVersion||0)<Number(payload.sharedSettingsVersion||4));
-      if(outdated.length)await Promise.allSettled(outdated.map(item=>window.FirebaseCRM.saveCompanySettingsSnapshotForUser(item.id,state.currentCompanyId,payload)));
     }catch(error){toast('Não foi possível carregar os usuários',error.message||String(error),'error');}
     finally{permissionUsersLoading=false;if(settingsTab==='users')renderSettings();}
   }
@@ -6481,7 +6817,7 @@ function doPost(e) {
     const request=permissionRequests.find(item=>item.id===uid);if(!request)return;
     const role=document.querySelector(`[data-request-role="${CSS.escape(uid)}"]`)?.value||'seller';
     const permissions=permissionDrafts[permissionDraftKey('request',uid)]?.permissions||defaultPermissionMatrix(role);
-    try{await window.FirebaseCRM.approveAccessRequest(uid,{role,permissions,permissionArrays:permissionArraysFromMatrix(permissions),companyId:state.currentCompanyId,companyName:state.company.tradeName||state.company.name||'',sharedCompanySettings:buildSharedCompanyPayload()});delete permissionDrafts[permissionDraftKey('request',uid)];toast('Usuário aprovado',`${request.email||request.name} · ${permissionRoleLabel(role)} · ${permissionSummary(permissions)}`,'success');permissionUsersLoaded=false;await loadUserPermissionData(true);}catch(error){toast('Aprovação não concluída',error.message||String(error),'error');}
+    try{await window.FirebaseCRM.approveAccessRequest(uid,{role,permissions,permissionArrays:permissionArraysFromMatrix(permissions),companyId:state.currentCompanyId,companyName:state.company.tradeName||state.company.name||''});delete permissionDrafts[permissionDraftKey('request',uid)];toast('Usuário aprovado',`${request.email||request.name} · ${permissionRoleLabel(role)} · ${permissionSummary(permissions)}`,'success');permissionUsersLoaded=false;await loadUserPermissionData(true);}catch(error){toast('Aprovação não concluída',error.message||String(error),'error');}
   }
   async function rejectAccessFromSettings(uid){
     const request=permissionRequests.find(item=>item.id===uid);if(!request)return;
@@ -6494,7 +6830,7 @@ function doPost(e) {
     const role=document.querySelector(`[data-user-role="${CSS.escape(uid)}"]`)?.value||'seller';
     const status=document.querySelector(`[data-user-status="${CSS.escape(uid)}"]`)?.value||'Ativo';
     const permissions=permissionDrafts[permissionDraftKey('user',uid)]?.permissions||normalizePermissionMatrix(item.permissions,role,item);
-    try{await window.FirebaseCRM.updateUserPermissions(uid,{role,status,permissions,permissionArrays:permissionArraysFromMatrix(permissions),companyId:state.currentCompanyId});await window.FirebaseCRM.saveCompanySettingsSnapshotForUser(uid,state.currentCompanyId,buildSharedCompanyPayload());delete permissionDrafts[permissionDraftKey('user',uid)];toast('Acessos atualizados',`${permissionRoleLabel(role)} · ${permissionSummary(permissions)} · ${status}`,'success');permissionUsersLoaded=false;await loadUserPermissionData(true);}catch(error){toast('Alteração não concluída',error.message||String(error),'error');}
+    try{await window.FirebaseCRM.updateUserPermissions(uid,{role,status,permissions,permissionArrays:permissionArraysFromMatrix(permissions),companyId:state.currentCompanyId});delete permissionDrafts[permissionDraftKey('user',uid)];toast('Acessos atualizados',`${permissionRoleLabel(role)} · ${permissionSummary(permissions)} · ${status}`,'success');permissionUsersLoaded=false;await loadUserPermissionData(true);}catch(error){toast('Alteração não concluída',error.message||String(error),'error');}
   }
 
   async function deletePlatformUserFromSettings(uid){
@@ -6520,7 +6856,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     state.company.driveScriptUrl=String(values.driveScriptUrl||'').trim();
     state.company.driveScriptToken=String(values.driveScriptToken||'').trim();
     state.company.driveRootFolderName=String(values.driveRootFolderName||'Soolarwin CRM').trim()||'Soolarwin CRM';
-    state.company.documentStorageMode=String(values.documentStorageMode||'google-drive');
+    state.company.documentStorageMode='google-drive';
     safeStorageSet(DRIVE_SCRIPT_URL_KEY,state.company.driveScriptUrl);
     safeStorageSet(DRIVE_SCRIPT_TOKEN_KEY,state.company.driveScriptToken);
     safeStorageSet(DRIVE_ROOT_FOLDER_KEY,state.company.driveRootFolderName);
@@ -6557,9 +6893,9 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     syncCurrentCompanyRecord();persist();await saveSharedCompanySettings({successTitle:'Servidor de e-mail salvo',successText:'O envio de e-mail foi configurado para todos os usuários.'});renderSettings();
   }
 
-  const firebaseLabels={apiKey:'Chave de acesso',authDomain:'Domínio de autenticação',databaseURL:'URL do banco em tempo real',projectId:'ID do projeto',storageBucket:'Bucket de arquivos',messagingSenderId:'ID de mensagens',appId:'ID do aplicativo',functionsRegion:'Região do backend'};
+  const firebaseLabels={apiKey:'Chave de acesso',authDomain:'Domínio de autenticação',databaseURL:'URL do banco em tempo real',projectId:'ID do projeto',messagingSenderId:'ID de mensagens',appId:'ID do aplicativo',functionsRegion:'Região do backend'};
   function settingsInput(name,label,value,type='text'){return `<label class="field"><span>${escapeHtml(label)}</span><input name="${name}" type="${type}" value="${attr(value)}" ${type==='number'?'step="any"':''}></label>`;}
-  const FIREBASE_CONFIG_FIELDS=['apiKey','authDomain','databaseURL','projectId','storageBucket','messagingSenderId','appId','functionsRegion'];
+  const FIREBASE_CONFIG_FIELDS=['apiKey','authDomain','databaseURL','projectId','messagingSenderId','appId','functionsRegion'];
   function normalizeFirebaseConfig(raw={}){
     const clean={};
     FIREBASE_CONFIG_FIELDS.forEach(key=>{const value=raw?.[key];clean[key]=typeof value==='string'?value.trim():value||'';});
@@ -6598,11 +6934,27 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     return config;
   }
   function firebaseKeyPreview(value){const key=String(value||'');return key.length>10?`${key.slice(0,6)}••••${key.slice(-4)}`:'não informada';}
+  function downloadFirestoreRules(){
+    downloadBlob(new Blob([FIRESTORE_RULES_TEXT],{type:'text/plain;charset=utf-8'}),'firestore.rules');
+    toast('Arquivo de regras gerado','Publique-o em Firestore Database → Regras.','success');
+  }
+  async function copyFirestoreRules(){
+    try{await navigator.clipboard.writeText(FIRESTORE_RULES_TEXT);toast('Regras copiadas','Cole em Firestore Database → Regras e clique em Publicar.','success');}
+    catch(_){downloadFirestoreRules();}
+  }
 
   function bindSettingsEvents(){
     document.getElementById('userProfileForm')?.addEventListener('submit',saveUserProfile);
     document.getElementById('userAvatarInput')?.addEventListener('change',async event=>{const file=event.target.files?.[0];if(!file)return;state.currentUser.avatar=await resizeImage(file,500,500,.9);state.currentUser.initials=initials(state.currentUser.name);persist();updateTopbar();renderSettings();toast('Foto do usuário atualizada');});
-    document.getElementById('forceCompanySettingsSync')?.addEventListener('click',async()=>{const button=document.getElementById('forceCompanySettingsSync');if(button){button.disabled=true;button.textContent='Sincronizando...';}await saveSharedCompanySettings({successTitle:'Configurações republicadas'});renderSettings();});
+    document.getElementById('downloadFirestoreRulesBtn')?.addEventListener('click',downloadFirestoreRules);
+    document.getElementById('copyFirestoreRulesBtn')?.addEventListener('click',copyFirestoreRules);
+    document.getElementById('forceCompanySettingsSync')?.addEventListener('click',async()=>{
+      if(sharedSettingsSyncBusy)return;
+      sharedSettingsSyncBusy=true;renderSettings();
+      try{const saved=await promiseWithTimeout(saveSharedCompanySettings({successTitle:'Configurações gravadas no Firebase'}),18000,'A sincronização demorou além do limite.');if(saved)await loadAuthorizedFirebaseData({silent:true,restartWatchers:true});}
+      catch(error){sharedSettingsLastError=sharedSettingsPermissionMessage(error);toast('Sincronização não concluída',sharedSettingsLastError,'error');}
+      finally{sharedSettingsSyncBusy=false;renderSettings();}
+    });
     document.getElementById('companySettingsForm')?.addEventListener('submit',async e=>{e.preventDefault();const fd=new FormData(e.currentTarget);for(const [k,v] of fd.entries())state.company[k]=['proposalValidityDays','clientsCount','installedPowerMW','defaultCommissionPercent'].includes(k)?Number(v):v;syncCurrentCompanyRecord();persist();renderSidebar();updateTopbar();await saveSharedCompanySettings({successTitle:'Empresa atualizada'});renderSettings();});
     document.getElementById('companyLogoInput')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;if(f.type!=='image/png'){toast('Use PNG sem fundo','A logo da proposta deve ser PNG com fundo transparente.','error');return;}const local=await resizeTransparentPng(f,1000,400);state.company.logo=local;syncCurrentCompanyRecord();persist();renderSettings();try{state.company.logo=await uploadSharedCompanyAsset(local,'branding','logo.png');}catch(error){console.warn(error);}await saveSharedCompanySettings({successTitle:'Logo atualizada'});renderSettings();});
     document.getElementById('sellerSignatureInput')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;const local=await resizeImage(f,900,350,.92);state.company.sellerSignature=local;syncCurrentCompanyRecord();persist();renderSettings();try{state.company.sellerSignature=await uploadSharedCompanyAsset(local,'branding','assinatura-vendedor.png');}catch(error){console.warn(error);}await saveSharedCompanySettings({successTitle:'Assinatura atualizada'});renderSettings();});
@@ -6647,27 +6999,30 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
 
   function applyFirebaseProfile(profile,user=window.FirebaseCRM?.auth?.currentUser){
     if(!profile||!user||String(profile.status||'').toLowerCase()!=='ativo')return false;
-    const {sharedCompanySettings,...profileData}=profile;
     const companyIds=Array.isArray(profile.companyIds)&&profile.companyIds.length?profile.companyIds:(profile.companyId?[profile.companyId]:[]);
-    state.currentUser={...state.currentUser,...profileData,id:user.uid,email:user.email||profile.email||state.currentUser.email,name:profile.name||user.displayName||state.currentUser.name,avatar:profile.avatar||user.photoURL||state.currentUser.avatar||'',initials:initials(profile.name||user.displayName||user.email||'Usuário'),role:profile.role||'seller',companyIds,permissions:normalizePermissionMatrix(profile.permissions,profile.role||'seller',profile)};
+    state.currentUser={
+      ...state.currentUser,
+      ...profile,
+      id:user.uid,
+      email:user.email||profile.email||state.currentUser.email,
+      name:profile.name||user.displayName||state.currentUser.name,
+      avatar:profile.avatar||user.photoURL||state.currentUser.avatar||'',
+      initials:initials(profile.name||user.displayName||user.email||'Usuário'),
+      role:profile.role||'seller',
+      companyIds,
+      permissions:normalizePermissionMatrix(profile.permissions,profile.role||'seller',profile)
+    };
     delete state.currentUser.sharedCompanySettings;
     state.role=state.currentUser.role;
-    const targetCompanyId=(profile.companyId&&companyIds.includes(profile.companyId)?profile.companyId:companyIds[0])||state.currentCompanyId;
-    const previousCompany=state.currentCompanyId===targetCompanyId?{...state.company}:null;
+    const targetCompanyId=(profile.companyId&&companyIds.includes(profile.companyId)?profile.companyId:companyIds[0])||'';
+    if(!targetCompanyId)return false;
+    state.currentCompanyId=targetCompanyId;
     let authorized=state.companies.find(company=>company.id===targetCompanyId);
-    if(!authorized&&targetCompanyId){
+    if(!authorized){
       authorized={...defaultCompany,id:targetCompanyId,companyId:targetCompanyId,name:profile.companyName||'',tradeName:profile.companyName||'',city:''};
       state.companies.push(authorized);
     }
-    if(authorized){
-      state.currentCompanyId=authorized.id;
-      const preferred=previousCompany&&companyConfigurationScore(previousCompany)>=companyConfigurationScore(authorized)?previousCompany:authorized;
-      state.company={...defaultCompany,...preferred,id:authorized.id,companyId:authorized.id};
-    }
-    if(sharedCompanySettings){
-      const snapshotCompanyId=sharedCompanySettings.companyId||sharedCompanySettings.id;
-      if(!snapshotCompanyId||snapshotCompanyId===state.currentCompanyId)applySharedCompanySettings(sharedCompanySettings,{render:false,force:true,source:'perfil'});
-    }
+    state.company={...defaultCompany,...authorized,id:targetCompanyId,companyId:targetCompanyId};
     persist();renderSidebar();updateTopbar();return true;
   }
 
@@ -6718,7 +7073,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     const authUser=window.FirebaseCRM?.auth?.currentUser;
     if(window.FirebaseCRM?.isPreapprovedAdmin(authUser)){
       if(title)title.textContent='Administrador já aprovado';
-      if(text)text.textContent='A conta foi reconhecida. Publique as regras da versão 2.9.6 e clique em verificar para concluir a ativação automática.';
+      if(text)text.textContent='A conta foi reconhecida. Publique o arquivo firestore.rules fornecido com o sistema e clique em verificar para concluir a ativação automática.';
       if(action){action.style.display='inline-flex';action.textContent='Concluir ativação';}
     }else if(code==='profile-missing-bootstrap-available'){
       if(title)title.textContent='Primeiro administrador';if(text)text.textContent='Esta é a primeira conta. Ative-a como administradora para iniciar o sistema.';if(action){action.style.display='inline-flex';action.textContent='Ativar administrador';}
@@ -6739,49 +7094,32 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
       setLoginStatus('Validando perfil',`Verificando as permissões de ${user.email||user.displayName||'sua conta'}.`,'info');
       let profile=window.FirebaseCRM?.profile||null;
       if(profile?.id&&profile.id!==user.uid)profile=null;
-      if(!profile){
-        profile=await promiseWithTimeout(window.FirebaseCRM.refreshProfile(user.uid),8000,'O perfil demorou para responder.').catch(()=>null);
+      if(!profile)profile=await promiseWithTimeout(window.FirebaseCRM.refreshProfile(user.uid),10000,'O perfil demorou para responder.').catch(()=>null);
+      if(!profile&&window.FirebaseCRM.isPreapprovedAdmin(user)){
+        setLoginStatus('Ativando administrador aprovado','Preparando o perfil administrativo no Firebase.','info');
+        profile=await promiseWithTimeout(window.FirebaseCRM.ensurePreapprovedAdminProfile(),10000,'A ativação do administrador demorou para responder.').catch(()=>null);
       }
-      if(!profile && window.FirebaseCRM.isPreapprovedAdmin(user)){
-        setLoginStatus('Ativando administrador aprovado','Esta conta já está autorizada. Preparando o perfil administrativo.','info');
-        profile=await promiseWithTimeout(window.FirebaseCRM.ensurePreapprovedAdminProfile(),8000,'A ativação do administrador demorou para responder.').catch(()=>null);
-      }
-
-      // O perfil ativo libera a interface imediatamente. Configurações da empresa e
-      // diagnóstico continuam em segundo plano para nunca travar a tela de entrada.
       if(profile&&window.FirebaseCRM.syncReady){
         applyFirebaseProfile(profile,user);
+        setLoginStatus('Carregando dados do Firebase','Buscando empresa e módulos liberados para seu perfil.','info');
+        await promiseWithTimeout(loadAuthorizedFirebaseData({silent:true,restartWatchers:true}),30000,'O carregamento dos dados do Firebase demorou além do limite.');
         unlockSystemAfterAuthentication();
-        promiseWithTimeout(initializeSharedCompanySettings(),10000,'As configurações da empresa demoraram para sincronizar.')
-          .then(()=>{renderSidebar();updateTopbar();if(!document.body.classList.contains('auth-locked'))renderView(activeView);})
-          .catch(error=>{console.warn('Sincronização após login:',error);toast('Acesso liberado','As configurações continuam sincronizando em segundo plano.','info');});
-        promiseWithTimeout(window.FirebaseCRM.diagnose(profile.companyId||state.currentCompanyId),8000,'O diagnóstico do banco demorou para responder.')
-          .then(result=>{firebaseLastDiagnostic=result;if(profile.profileWritePending)toast('Acesso administrativo liberado','O CRM está aberto. A gravação do perfil ainda está pendente na nuvem.','info');})
-          .catch(error=>{firebaseLastDiagnostic={code:'cloud-rules-pending',message:error.message||'Acesso liberado; sincronização da nuvem pendente.'};});
+        firebaseLastDiagnostic={code:'ok',message:'Perfil e dados carregados diretamente do Firebase.'};
         return true;
       }
 
       let diagnostic;
-      try{
-        diagnostic=await promiseWithTimeout(window.FirebaseCRM.diagnose(profile?.companyId||state.currentCompanyId),8000,'A validação do acesso demorou para responder.');
-      }catch(error){
-        diagnostic={code:error?.code==='operation-timeout'?'validation-timeout':'permission-denied',message:error.message||'O banco de dados negou a validação do perfil.'};
-      }
-      if(!profile && diagnostic.bootstrapExists && !diagnostic.bootstrapOwner && diagnostic.code!=='access-rejected'){
-        try{await promiseWithTimeout(window.FirebaseCRM.requestAccess({companyId:diagnostic.bootstrapCompanyId||state.currentCompanyId,companyName:state.company.tradeName||state.company.name||''}),8000,'A solicitação de acesso demorou para responder.');}catch(error){console.warn('Solicitação de acesso:',error);}
+      try{diagnostic=await promiseWithTimeout(window.FirebaseCRM.diagnose(profile?.companyId||state.currentCompanyId),10000,'A validação do acesso demorou para responder.');}
+      catch(error){diagnostic={code:error?.code==='operation-timeout'?'validation-timeout':'permission-denied',message:error.message||'O banco de dados negou a validação do perfil.'};}
+      if(!profile&&diagnostic.bootstrapExists&&!diagnostic.bootstrapOwner&&diagnostic.code!=='access-rejected'){
+        try{await promiseWithTimeout(window.FirebaseCRM.requestAccess({companyId:diagnostic.bootstrapCompanyId||state.currentCompanyId,companyName:state.company.tradeName||state.company.name||''}),10000,'A solicitação de acesso demorou para responder.');}catch(error){console.warn('Solicitação de acesso:',error);}
       }
       firebaseLastDiagnostic=diagnostic;showPendingProfile(diagnostic);return false;
     }catch(error){
       console.error(error);
-      if(window.FirebaseCRM?.isPreapprovedAdmin(user)){
-        const fallback=window.FirebaseCRM.buildPreapprovedAdminProfile(user,{virtual:true,profileWritePending:true,activationWarning:error.message||''});
-        window.FirebaseCRM.profile=fallback;window.FirebaseCRM.syncReady=true;
-        applyFirebaseProfile(fallback,user);unlockSystemAfterAuthentication();
-        promiseWithTimeout(initializeSharedCompanySettings(),10000,'As configurações da empresa demoraram para sincronizar.').catch(console.warn);
-        toast('Administrador liberado','A sincronização com o banco de dados ficou pendente, mas o acesso ao CRM foi autorizado.','info');
-        return true;
-      }
-      setLoginStatus('Não foi possível validar o acesso',error.message||'Verifique o autenticação segura e as regras do banco de dados.','error');return false;
+      const message=sharedSettingsPermissionMessage(error);
+      setLoginStatus('Não foi possível carregar os dados',`${message} O sistema não usa dados locais como fonte para este acesso.`,'error');
+      return false;
     }finally{authFlowBusy=false;}
   }
 
@@ -6842,8 +7180,8 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
       try{
         setLoginStatus('Ativando administrador aprovado','Aguarde enquanto o perfil é gravado no banco de dados.','info');
         const profile=await window.FirebaseCRM.ensurePreapprovedAdminProfile();
-        applyFirebaseProfile(profile,user);await initializeSharedCompanySettings();unlockSystemAfterAuthentication();return;
-      }catch(error){setLoginStatus('Perfil não ativado',error.message||'Publique as regras da versão 2.9.6 e tente novamente.','error');return;}
+        applyFirebaseProfile(profile,user);await loadAuthorizedFirebaseData({silent:true,restartWatchers:true});unlockSystemAfterAuthentication();return;
+      }catch(error){setLoginStatus('Perfil não ativado',error.message||'Publique o arquivo firestore.rules fornecido com o sistema e tente novamente.','error');return;}
     }
     if(!['profile-missing-bootstrap-available','bootstrap-owner-profile-missing'].includes(code)){
       await finishAuthenticatedSession(user,{automatic:false});return;
@@ -6853,8 +7191,8 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
       const profile=await window.FirebaseCRM.bootstrapAdmin({name:user.displayName||user.email?.split('@')[0]||'Administrador',email:user.email,companyId:state.currentCompanyId,companyName:state.company.tradeName||state.company.name||''});
       await migrateSharedCompanyAssets();
       await window.FirebaseCRM.saveRecord('companies',buildSharedCompanyPayload());
-      applyFirebaseProfile(profile,user);await initializeSharedCompanySettings();unlockSystemAfterAuthentication();
-    }catch(error){setLoginStatus('Perfil não ativado',error.message||'Publique as regras da versão 2.9.6 e tente novamente.','error');}
+      applyFirebaseProfile(profile,user);await loadAuthorizedFirebaseData({silent:true,restartWatchers:true});unlockSystemAfterAuthentication();
+    }catch(error){setLoginStatus('Perfil não ativado',error.message||'Publique o arquivo firestore.rules fornecido com o sistema e tente novamente.','error');}
   }
 
   function firebaseCredentials(){
@@ -6929,7 +7267,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
       toast('Perfil ativado','A sincronização foi liberada para esta conta.','success');renderSettings();
     }catch(error){
       firebaseLastDiagnostic=await window.FirebaseCRM.diagnose(state.currentCompanyId).catch(()=>firebaseLastDiagnostic);
-      toast('Perfil não ativado',error.message||'Publique as regras da versão 2.9.6 e tente novamente.','error');renderSettings();
+      toast('Perfil não ativado',error.message||'Publique o arquivo firestore.rules fornecido com o sistema e tente novamente.','error');renderSettings();
     }
   }
 
@@ -6949,44 +7287,34 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
 
   async function syncLocalToFirebase(){
     if(!ensureFirebaseSyncReady())return;
-    const collections=['teams','clients','leads','proposals','contracts','works','homologations','tickets','financial','commissions','inventory','aftersales','suppliers','notifications','projectDocuments','tasks','automationRules','automationQueue','public_proposals'];
+    if(!currentUserIsAdmin()){
+      toast('Ação restrita','Somente o administrador pode importar um cache local para o Firebase.','error');
+      return;
+    }
+    const collections=['teams','clients','leads','proposals','contracts','works','homologations','tickets','financial','commissions','inventory','aftersales','suppliers','notifications','projectDocuments','tasks','automationRules','automationQueue','automationLogs','stockMovements','public_proposals'];
     try{
       await migrateSharedCompanyAssets();
-      const sharedPayload=buildSharedCompanyPayload();
-      await window.FirebaseCRM.saveRecord('companies',sharedPayload);
-      await window.FirebaseCRM.saveCompanySettingsMirror(state.currentCompanyId,sharedPayload).catch(console.warn);
-      await window.FirebaseCRM.saveRecord('users',{...state.currentUser,...permissionArraysFromMatrix(normalizePermissionMatrix(state.currentUser.permissions,state.role,state.currentUser)),sharedCompanySettings:sharedPayload,sharedCompanySettingsVersion:Number(sharedPayload.sharedSettingsVersion||4),sharedCompanySettingsUpdatedAt:sharedPayload.settingsUpdatedAt,id:window.FirebaseCRM.auth.currentUser.uid,role:state.role,companyId:state.currentCompanyId,companyIds:state.currentUser.companyIds||[state.currentCompanyId],status:'Ativo'});
-      await publishSharedCompanyFallback(sharedPayload,{silent:true});
-      for(const collection of collections){for(const record of companyRows(collection)){record.companyId=state.currentCompanyId;await window.FirebaseCRM.saveRecord(collection,firestoreSafeRecord(record));}}
+      await window.FirebaseCRM.saveRecord('companies',buildSharedCompanyPayload());
+      for(const collection of collections){
+        const moduleId=permissionModuleForCollection(collection);
+        if(!hasPermission(moduleId,'create')&&!hasPermission(moduleId,'edit'))continue;
+        for(const record of companyRows(collection)){
+          record.companyId=state.currentCompanyId;
+          await window.FirebaseCRM.saveRecord(collection,firestoreSafeRecord(record));
+        }
+      }
+      await loadAuthorizedFirebaseData({silent:true,restartWatchers:true});
       firebaseLastDiagnostic=await window.FirebaseCRM.diagnose(state.currentCompanyId);
-      toast('Sincronização concluída','Empresa e registros locais foram enviados para a nuvem.','success');renderSettings();
-    }catch(error){console.error(error);toast('Sincronização incompleta',error.message||'Verifique regras e autenticação.','error');}
+      toast('Importação concluída','O Firebase foi atualizado e recarregado como fonte oficial.','success');renderSettings();
+    }catch(error){console.error(error);toast('Importação incompleta',error.message||'Verifique regras, permissões e autenticação.','error');}
   }
 
   async function syncFirebaseToLocal(){
     if(!ensureFirebaseSyncReady())return;
-    const collections=['teams','clients','leads','proposals','contracts','works','homologations','tickets','financial','commissions','inventory','aftersales','suppliers','notifications','projectDocuments','tasks','automationRules','automationQueue','public_proposals'];
     try{
-      const [cloudCompanies,mirrorCompany]=await Promise.all([
-        window.FirebaseCRM.listRecords('companies',state.currentCompanyId).catch(()=>[]),
-        window.FirebaseCRM.loadCompanySettingsMirror(state.currentCompanyId).catch(()=>null)
-      ]);
-      const bestCompany=chooseBestCompanySettings([
-        ...(cloudCompanies.length?[{source:'empresa',settings:cloudCompanies[0]}]:[]),
-        ...(mirrorCompany?[{source:'espelho',settings:mirrorCompany}]:[]),
-        ...(window.FirebaseCRM.profile?.sharedCompanySettings?[{source:'perfil',settings:window.FirebaseCRM.profile.sharedCompanySettings}]:[])
-      ]);
-      if(bestCompany)applySharedCompanySettings(bestCompany.settings,{render:false,force:true,source:bestCompany.source});
-      let publicRows=[];
-      for(const collection of collections){
-        const rows=await window.FirebaseCRM.listRecords(collection,state.currentCompanyId);
-        if(collection==='public_proposals')publicRows=rows;
-        if(rows.length)state[collection]=[...(state[collection]||[]).filter(r=>(r.companyId||state.currentCompanyId)!==state.currentCompanyId),...rows];
-      }
-      const acceptedApplied=applyPublicProposalAcceptances(publicRows);
-      persist();startSharedCompanyWatcher();renderSidebar();renderView(activeView);updateTopbar();renderSettings();
-      toast('Dados carregados',acceptedApplied?`Base atualizada. ${acceptedApplied} aceite(s) foram convertidos automaticamente em contrato, homologação e projeto.`:'A base da empresa ativa e suas configurações compartilhadas foram atualizadas.','success');
-    }catch(error){console.error(error);toast('Falha ao carregar',error.message||'Verifique regras, índices e autenticação.','error');}
+      await loadAuthorizedFirebaseData({silent:false,restartWatchers:true});
+      renderSidebar();renderView(activeView);updateTopbar();renderSettings();
+    }catch(error){console.error(error);toast('Falha ao carregar',error.message||'Verifique as permissões e as regras do Firebase.','error');}
   }
 
   async function runAI(){
@@ -7058,7 +7386,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     return {passed:tests.every(test=>test.passed),total:tests.length,success:tests.filter(test=>test.passed).length,tests};
   }
 
-  window.SolarCRMDebug={SYSTEM_VERSION,calculateProposal,extractBillFields,normalizeState,renderProposalDocument,projectStages,projectDocumentCategories,defaultAutomationRule,executeAutomationRules,queueAutomationRule,ensureProjectStructure,ensureAllProjectStructures,updateProjectStage,runSystemSelfTests,runWorkflowSelfTests,loadFirebaseConfig,clearFirebaseConfig,firebaseApiKeyLooksValid,finishAuthenticatedSession,initializeSharedCompanySettings,saveSharedCompanySettings,publishSharedCompanyFallback,applySharedCompanySettings,chooseBestCompanySettings,companyConfigurationScore,loadUserPermissionData,openPermissionMatrix,defaultPermissionMatrix,normalizePermissionMatrix,permissionArraysFromMatrix,hasPermission,lockSystemForAuthentication,unlockSystemAfterAuthentication,buildClientPortalRecord,publishClientPortalStatus,clientPortalUrl,getState:()=>deepClone(state)};
+  window.SolarCRMDebug={SYSTEM_VERSION,calculateProposal,extractBillFields,normalizeState,renderProposalDocument,projectStages,projectDocumentCategories,defaultAutomationRule,executeAutomationRules,queueAutomationRule,ensureProjectStructure,ensureAllProjectStructures,updateProjectStage,runSystemSelfTests,runWorkflowSelfTests,loadFirebaseConfig,clearFirebaseConfig,firebaseApiKeyLooksValid,finishAuthenticatedSession,initializeSharedCompanySettings,loadAuthorizedFirebaseData,startAuthorizedDataWatchers,saveSharedCompanySettings,applySharedCompanySettings,chooseBestCompanySettings,companyConfigurationScore,loadUserPermissionData,openPermissionMatrix,defaultPermissionMatrix,normalizePermissionMatrix,permissionArraysFromMatrix,hasPermission,lockSystemForAuthentication,unlockSystemAfterAuthentication,buildClientPortalRecord,publishClientPortalStatus,clientPortalUrl,getState:()=>deepClone(state)};
   document.addEventListener('DOMContentLoaded',()=>{init();autoConnectFirebase();});
 })();
 
