@@ -1648,8 +1648,8 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
         const { collection, query, where, limit, getDocs } = this.modules.firestoreMod;
         const usersRef = collection(this.db, 'users');
         const attempts = await Promise.allSettled([
-          getDocs(query(usersRef, where('companyId', '==', companyId), limit(400))),
-          getDocs(query(usersRef, where('companyIds', 'array-contains', companyId), limit(400)))
+          getDocs(query(usersRef, where('companyId', '==', companyId), limit(200))),
+          getDocs(query(usersRef, where('companyIds', 'array-contains', companyId), limit(200)))
         ]);
         const rows = new Map();
         attempts.forEach(result => {
@@ -1661,7 +1661,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
       } catch (error) {
         const wrapped = friendlyError(error, 'Não foi possível carregar os usuários e permissões.');
         if (wrapped.code === 'permission-denied' || wrapped.code === 'firestore/permission-denied') {
-          wrapped.message = 'O banco de dados bloqueou a lista de usuários. Confirme nas regras que administradores podem consultar perfis por companyId e companyIds.';
+          wrapped.message = 'O banco de dados bloqueou a lista de usuários. Publique as regras V9: as consultas usam limite 200 e aceitam companyId ou companyIds.';
         }
         throw wrapped;
       }
@@ -1695,9 +1695,9 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
         const usersRef = collection(this.db, 'users');
         const requestsRef = collection(this.db, 'access_requests');
         const queryResults = await Promise.allSettled([
-          getDocs(query(usersRef, where('companyId', '==', companyId), limit(400))),
-          getDocs(query(usersRef, where('companyIds', 'array-contains', companyId), limit(400))),
-          getDocs(query(requestsRef, where('companyId', '==', companyId), limit(400)))
+          getDocs(query(usersRef, where('companyId', '==', companyId), limit(200))),
+          getDocs(query(usersRef, where('companyIds', 'array-contains', companyId), limit(200))),
+          getDocs(query(requestsRef, where('companyId', '==', companyId), limit(200)))
         ]);
         const ids = new Set((knownUserIds || []).filter(Boolean));
         queryResults.forEach((result,index) => {
@@ -2171,7 +2171,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   const FIREBASE_CONFIG_KEY = 'solarcrm-firebase-config-v2-9-2';
   const LEGACY_FIREBASE_CONFIG_KEYS = ['solarcrm-firebase-config-v2-8','solarcrm-firebase-config-v2-7','solarcrm-firebase-config-v2-6','solarcrm-firebase-config'];
   const DEFAULT_FIREBASE_CONFIG = Object.freeze({"apiKey":"AIzaSyCYSQfnPLyV9B6osiZhsLYYrF64YLhGkMA","authDomain":"energiasolar-67b14.firebaseapp.com","databaseURL":"https://energiasolar-67b14-default-rtdb.firebaseio.com","projectId":"energiasolar-67b14","messagingSenderId":"394822890491","appId":"1:394822890491:web:5afc55e01902bbf142915e","functionsRegion":"southamerica-east1"});
-  const FIRESTORE_RULES_TEXT = `// SolarCRM Pro v19 sem Storage — leitura da empresa para todos os usuários autorizados — permissões granulares + proposta pública + aceite digital
+  const FIRESTORE_RULES_TEXT = `// SolarCRM Pro v20 sem Storage — leitura da empresa para todos os usuários autorizados — permissões granulares + proposta pública + aceite digital
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -2271,12 +2271,24 @@ service cloud.firestore {
     match /users/{userId} {
       allow get: if signedIn() && (
         request.auth.uid == userId
-        || (isPreapprovedAdminAuth() && resource.data.companyId == 'company-demo')
-        || (isAdminProfile() && resource.data.companyId in profile().companyIds)
+        || (isPreapprovedAdminAuth() && (
+          resource.data.companyId == 'company-demo'
+          || (resource.data.keys().hasAny(['companyIds']) && resource.data.companyIds.hasAny(['company-demo']))
+        ))
+        || (isAdminProfile() && (
+          resource.data.companyId in profile().companyIds
+          || (resource.data.keys().hasAny(['companyIds']) && resource.data.companyIds.hasAny(profile().companyIds))
+        ))
       );
       allow list: if request.query.limit <= 200 && (
-        (isPreapprovedAdminAuth() && resource.data.companyId == 'company-demo')
-        || (isAdminProfile() && resource.data.companyId in profile().companyIds)
+        (isPreapprovedAdminAuth() && (
+          resource.data.companyId == 'company-demo'
+          || (resource.data.keys().hasAny(['companyIds']) && resource.data.companyIds.hasAny(['company-demo']))
+        ))
+        || (isAdminProfile() && (
+          resource.data.companyId in profile().companyIds
+          || (resource.data.keys().hasAny(['companyIds']) && resource.data.companyIds.hasAny(profile().companyIds))
+        ))
       );
       allow create: if (
         isPreapprovedAdminAuth()
@@ -2681,7 +2693,7 @@ service cloud.firestore {
   const DRIVE_SCRIPT_TOKEN_KEY = 'solarcrm-drive-script-token-v1';
   const DRIVE_ROOT_FOLDER_KEY = 'solarcrm-drive-root-folder-v1';
   const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-2';
-  const SYSTEM_VERSION = '3.6.0-firebase-autosync';
+  const SYSTEM_VERSION = '3.6.1-firebase-users';
   let storageWarningShown = false;
   let draftSaveTimer = null;
   let firebaseLastDiagnostic = null;
