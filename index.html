@@ -2057,7 +2057,17 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
       try {
         const mapped = collectionMap[collectionName] || collectionName;
         const id = record.id || crypto.randomUUID();
-        const payload = { ...record, id, companyId: record.companyId, updatedAt: new Date().toISOString(), updatedBy: this.user.uid };
+        const companyId = record.companyId || this.profile?.companyId || this.profile?.companyIds?.[0] || '';
+        if (!companyId && !['users','access_requests'].includes(mapped)) {
+          throw new Error('Não foi possível identificar a empresa do registro compartilhado.');
+        }
+        const payload = {
+          ...record,
+          id,
+          ...(companyId ? { companyId } : {}),
+          updatedAt: new Date().toISOString(),
+          updatedBy: this.user.uid
+        };
         const ref = this.modules.firestoreMod.doc(this.db, mapped, id);
         await this.modules.firestoreMod.setDoc(ref, payload, { merge: true });
         return payload;
@@ -2176,7 +2186,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   const FIREBASE_CONFIG_KEY = 'solarcrm-firebase-config-v2-9-2';
   const LEGACY_FIREBASE_CONFIG_KEYS = ['solarcrm-firebase-config-v2-8','solarcrm-firebase-config-v2-7','solarcrm-firebase-config-v2-6','solarcrm-firebase-config'];
   const DEFAULT_FIREBASE_CONFIG = Object.freeze({"apiKey":"AIzaSyCYSQfnPLyV9B6osiZhsLYYrF64YLhGkMA","authDomain":"energiasolar-67b14.firebaseapp.com","databaseURL":"https://energiasolar-67b14-default-rtdb.firebaseio.com","projectId":"energiasolar-67b14","messagingSenderId":"394822890491","appId":"1:394822890491:web:5afc55e01902bbf142915e","functionsRegion":"southamerica-east1"});
-  const FIRESTORE_RULES_TEXT = `// SolarCRM Pro v21 — catálogo de equipamentos no Firebase sem Storage — leitura da empresa para todos os usuários autorizados — permissões granulares + proposta pública + aceite digital
+  const FIRESTORE_RULES_TEXT = `// SolarCRM Pro v22 — acesso compartilhado em tempo real para todos os usuários ativos da mesma empresa
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -2241,26 +2251,10 @@ service cloud.firestore {
     }
 
     function hasPermission(module, action) {
-      return isAdmin() || (
-        isActiveProfile() && (
-          (hasCustomPermissions() && (
-            (action == 'view' && profile().keys().hasAny(['permissionsView']) && module in profile().permissionsView)
-            || (action == 'create' && profile().keys().hasAny(['permissionsCreate']) && module in profile().permissionsCreate)
-            || (action == 'edit' && profile().keys().hasAny(['permissionsEdit']) && module in profile().permissionsEdit)
-            || (action == 'delete' && profile().keys().hasAny(['permissionsDelete']) && module in profile().permissionsDelete)
-            || (action == 'export' && profile().keys().hasAny(['permissionsExport']) && module in profile().permissionsExport)
-            || (action == 'approve' && profile().keys().hasAny(['permissionsApprove']) && module in profile().permissionsApprove)
-          ))
-          || (!hasCustomPermissions() && (
-            (action == 'view' && legacyView(module))
-            || (action == 'create' && legacyCreate(module))
-            || (action == 'edit' && legacyEdit(module))
-            || (action == 'delete' && legacyDelete(module))
-            || (action == 'export' && legacyExport(module))
-            || (action == 'approve' && legacyApprove(module))
-          ))
-        )
-      );
+      // Modo compartilhado: todo perfil ativo pode visualizar e alterar os
+      // cadastros e configurações operacionais da empresa à qual pertence.
+      // Gestão de usuários e bootstrap continuam protegidos em regras próprias.
+      return isAdmin() || isActiveProfile();
     }
 
     function belongsTo(companyId) {
@@ -2410,7 +2404,7 @@ service cloud.firestore {
       allow read: if belongsTo(id) && resource.data.companyId == id;
       allow create: if belongsTo(id) && request.resource.data.companyId == id && hasPermission('settings','edit');
       allow update: if belongsTo(id) && resource.data.companyId == id && request.resource.data.companyId == id && hasPermission('settings','edit');
-      allow delete: if belongsTo(id) && hasPermission('settings','delete');
+      allow delete: if belongsTo(id) && isAdmin();
     }
 
     match /team_members/{id} {
@@ -2707,7 +2701,8 @@ service cloud.firestore {
   const DRIVE_SCRIPT_TOKEN_KEY = 'solarcrm-drive-script-token-v1';
   const DRIVE_ROOT_FOLDER_KEY = 'solarcrm-drive-root-folder-v1';
   const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-2';
-  const SYSTEM_VERSION = '3.6.2-firebase-login-fix';
+  const SYSTEM_VERSION = '3.7.0-acesso-compartilhado';
+  const COMPANY_WIDE_SHARED_ACCESS = true;
   let storageWarningShown = false;
   let draftSaveTimer = null;
   let firebaseLastDiagnostic = null;
@@ -2972,6 +2967,7 @@ service cloud.firestore {
 
   function hasPermission(module,action='view'){
     if(currentUserIsAdmin())return true;
+    if(COMPANY_WIDE_SHARED_ACCESS && window.FirebaseCRM?.syncReady)return true;
     const role=state?.role||state?.currentUser?.role||'seller';
     const matrix=normalizePermissionMatrix(state?.currentUser?.permissions,role,state?.currentUser||{});
     return Boolean(matrix[module]?.[action]);
@@ -3313,7 +3309,7 @@ service cloud.firestore {
   }
 
   async function migrateSharedCompanyAssets() {
-    if(!window.FirebaseCRM?.syncReady||state.role!=='admin')return;
+    if(!window.FirebaseCRM?.syncReady)return;
     if(String(state.company.logo||'').startsWith('data:')){
       state.company.logoDataUrl=state.company.logo;
       state.company.logo=await uploadSharedCompanyAsset(state.company.logoDataUrl,'branding','logo.png');
@@ -3357,7 +3353,7 @@ service cloud.firestore {
     return raw||'Não foi possível gravar as configurações compartilhadas.';
   }
 
-  async function saveSharedCompanySettings({silent=false,successTitle='Configurações sincronizadas',successText='As alterações foram gravadas no Firebase para todos os usuários autorizados.'}={}) {
+  async function saveSharedCompanySettings({silent=false,successTitle='Configurações sincronizadas',successText='As alterações foram gravadas no Firebase e distribuídas em tempo real para todos os usuários ativos da empresa.'}={}) {
     if(!window.FirebaseCRM?.syncReady){
       if(!silent)toast('Banco de dados indisponível','Entre com um usuário aprovado para salvar as configurações.','error');
       return false;
@@ -3414,7 +3410,7 @@ service cloud.firestore {
       detail.textContent=sharedSettingsLastError
         ? sharedSettingsLastError
         : hasPermission('settings','edit')
-          ? 'Cada alteração é gravada automaticamente no Firestore e aparece para os demais usuários autorizados.'
+          ? 'Cada alteração é gravada automaticamente no Firestore e aparece em tempo real para todos os usuários ativos da empresa.'
           : 'Os dados são carregados diretamente do Firestore. Seu perfil não possui permissão para alterar a empresa.';
     }
   }
@@ -3544,8 +3540,9 @@ service cloud.firestore {
   }
 
   function hasCloudReadAccess(item){
-    if(item.stateKey==='equipmentCatalog')return hasPermission('proposals','view')||hasPermission('inventory','view');
-    return hasPermission(item.module,'view');
+    // O perfil já foi validado por FirebaseCRM.syncReady. A consulta continua
+    // limitada pelo companyId, portanto todos da mesma empresa recebem a mesma base.
+    return Boolean(window.FirebaseCRM?.syncReady);
   }
 
   function clearUnauthorizedCollections(){
@@ -3697,7 +3694,7 @@ service cloud.firestore {
       sharedSettingsLastError='';
       persist();
       if(restartWatchers){startSharedCompanyWatcher();startAuthorizedDataWatchers();}
-      if(!silent)toast('Dados carregados do Firebase','Foram carregados somente os módulos liberados para este usuário.','success');
+      if(!silent)toast('Dados carregados do Firebase','Todos os cadastros compartilhados da empresa foram carregados e estão em atualização em tempo real.','success');
       return true;
     }catch(error){
       sharedSettingsLastError=sharedSettingsPermissionMessage(error);
@@ -3832,7 +3829,9 @@ service cloud.firestore {
   }
   function addNotification(title,text,type='info'){
     const record={id:newId('n'),companyId:state.currentCompanyId,title,text,type,read:false,createdAt:new Date().toISOString()};
-    state.notifications.unshift(record);return record;
+    state.notifications.unshift(record);
+    syncRecordToFirebase('notifications',record);
+    return record;
   }
   function templateText(template,values={}){
     return String(template||'').replace(/\{([a-zA-Z0-9_]+)\}/g,(_,key)=>values[key]??'');
@@ -3851,13 +3850,16 @@ service cloud.firestore {
     const existing=dedupeKey&&companyRows('automationLogs').find(log=>log.dedupeKey===dedupeKey);
     if(existing)return existing;
     const log={id:newId('log'),companyId:state.currentCompanyId,type,channel,title,text,status,recipient,recordId,dedupeKey,createdAt:new Date().toISOString()};
-    state.automationLogs.unshift(log);state.automationLogs=state.automationLogs.slice(0,500);return log;
+    state.automationLogs.unshift(log);state.automationLogs=state.automationLogs.slice(0,500);
+    syncRecordToFirebase('automationLogs',log);
+    return log;
   }
   function queueAutomation({type='manual',channel='internal',recipient='',subject='',message='',recordId='',dedupeKey='',scheduledAt='',ruleId='',useAI=false,aiPrompt='',context={},automatic=false}){
     const existing=dedupeKey&&companyRows('automationQueue').find(job=>job.dedupeKey===dedupeKey&&job.status!=='Cancelado');
     if(existing)return existing;
     const job={id:newId('job'),companyId:state.currentCompanyId,type,channel,recipient,subject,message,recordId,dedupeKey,ruleId,useAI:Boolean(useAI),aiPrompt,context,automatic:Boolean(automatic),status:'Pendente',scheduledAt:scheduledAt||new Date().toISOString(),createdAt:new Date().toISOString()};
     state.automationQueue.unshift(job);
+    syncRecordToFirebase('automationQueue',job);
     recordAutomation({type,channel,title:'Automação adicionada à fila',text:`${recipient||'Destinatário interno'} · ${message.slice(0,100)}`,status:'Pendente',recipient,recordId,dedupeKey:`log-${dedupeKey||job.id}`});
     return job;
   }
@@ -3872,7 +3874,7 @@ service cloud.firestore {
   }
   function refreshOverdueFinancial(){
     const today=todayISO();let changed=false;
-    companyRows('financial').forEach(row=>{if(row.status==='Pendente'&&row.dueDate&&row.dueDate<today){row.status='Vencido';row.updatedAt=new Date().toISOString();changed=true;}});
+    companyRows('financial').forEach(row=>{if(row.status==='Pendente'&&row.dueDate&&row.dueDate<today){row.status='Vencido';row.updatedAt=new Date().toISOString();syncRecordToFirebase('financial',row);changed=true;}});
     if(changed)persist();
   }
   function safeOpen(url){
@@ -5195,7 +5197,9 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     }
     if(id){const idx=state[collection].findIndex(r=>r.id===id);state[collection][idx]={...state[collection][idx],...record};record.id=id;}else state[collection].unshift(record);
     if(collection==='inventory'&&previous&&Number(previous.quantity)!==Number(record.quantity)){
-      state.stockMovements.unshift({id:newId('mov'),companyId:state.currentCompanyId,productId:record.id,productName:record.name,previousQuantity:Number(previous.quantity||0),newQuantity:Number(record.quantity||0),difference:Number(record.quantity||0)-Number(previous.quantity||0),createdAt:new Date().toISOString(),user:state.currentUser.name});
+      const movement={id:newId('mov'),companyId:state.currentCompanyId,productId:record.id,productName:record.name,previousQuantity:Number(previous.quantity||0),newQuantity:Number(record.quantity||0),difference:Number(record.quantity||0)-Number(previous.quantity||0),createdAt:new Date().toISOString(),user:state.currentUser.name};
+      state.stockMovements.unshift(movement);
+      syncRecordToFirebase('stockMovements',movement);
     }
     if(collection==='leads'&&record.stage==='Fechado'){
       ensureLeadClosedWorkflows(state.leads.find(item=>item.id===record.id)||record,previous?.stage||'');
@@ -5451,7 +5455,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
   function duplicateProposal(id){
     if(!hasPermission('proposals','create')){denyPermission('proposals','create');return;}
     const p=state.proposals.find(x=>x.id===id); if(!p)return;
-    const copy=deepClone(p);copy.id=newId('prop');copy.number=`PROP-${String(state.proposals.length+1).padStart(4,'0')}`;copy.status='Rascunho';copy.createdAt=todayISO();copy.acceptance=null;copy.updatedAt=new Date().toISOString();state.proposals.unshift(copy);persist();renderView('proposals');toast('Proposta duplicada',copy.number);
+    const copy=deepClone(p);copy.id=newId('prop');copy.number=`PROP-${String(state.proposals.length+1).padStart(4,'0')}`;copy.status='Rascunho';copy.createdAt=todayISO();copy.acceptance=null;copy.updatedAt=new Date().toISOString();state.proposals.unshift(copy);persist();syncRecordToFirebase('proposals',copy);renderView('proposals');toast('Proposta duplicada',copy.number);
   }
 
   async function deleteProposal(id){
@@ -7472,7 +7476,7 @@ ${company.tradeName||company.name}`:''}`;
     if(tab==='company'){
       const canEditCompany=hasPermission('settings','edit');
       const autoStatus=companyAutoSaveStatusModel();
-      return `<div class="notice" style="margin-bottom:14px"><strong>Cadastro central da empresa</strong><br>Todos os usuários autorizados carregam estes dados diretamente de <b>companies/${escapeHtml(state.currentCompanyId)}</b>. Os demais módulos também são lidos do Firebase conforme as permissões do perfil.<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px"><span id="companyAutoSaveStatus" class="status ${autoStatus.className}">${escapeHtml(autoStatus.text)}</span><small id="companyAutoSaveDetail" style="color:var(--muted)">${canEditCompany?'Cada alteração é gravada automaticamente. Não é necessário clicar em sincronizar.':'Seu perfil pode consultar os dados, mas não pode alterá-los.'}</small></div>${sharedSettingsLastError?`<small style="display:block;margin-top:8px;color:var(--red)">${escapeHtml(sharedSettingsLastError)}</small>`:''}</div><form id="companySettingsForm" autocomplete="off"><fieldset ${canEditCompany?'':'disabled'} style="border:0;padding:0;margin:0;min-width:0"><div class="form-grid">${settingsInput('name','Razão social',c.name)}${settingsInput('tradeName','Nome fantasia',c.tradeName)}${settingsInput('document','CNPJ',c.document)}${settingsInput('city','Cidade / sede',c.city)}${settingsInput('phone','Telefone',c.phone)}${settingsInput('email','E-mail',c.email,'email')}${settingsInput('website','Site',c.website)}${settingsInput('proposalValidityDays','Validade padrão da proposta (dias)',c.proposalValidityDays,'number')}${settingsInput('clientsCount','Quantidade de clientes',c.clientsCount,'number')}${settingsInput('installedPowerMW','Potência instalada (MW)',c.installedPowerMW,'number')}${settingsInput('defaultCommissionPercent','Comissão padrão (%)',c.defaultCommissionPercent,'number')}<label class="field full"><span>História da empresa</span><textarea name="history">${escapeHtml(c.history)}</textarea></label><label class="field full"><span>Certificações (separadas por vírgula)</span><input name="certifications" value="${attr(c.certifications)}"></label><label class="field full"><span>Parceiros</span><input name="partners" value="${attr(c.partners)}"></label><label class="field full"><span>Dados bancários</span><input name="bankData" value="${attr(c.bankData)}"></label><label class="field full"><span>Mensagem de envio de proposta</span><textarea name="proposalMessage">${escapeHtml(c.proposalMessage)}</textarea></label><label class="field full"><span>Mensagem de cobrança</span><textarea name="collectionMessage">${escapeHtml(c.collectionMessage)}</textarea></label><label class="field full"><span>Mensagem de NPS</span><textarea name="npsMessage">${escapeHtml(c.npsMessage)}</textarea></label></div></fieldset><div class="notice" style="margin-top:16px"><strong>${canEditCompany?'Salvamento automático ativo':'Modo de consulta'}</strong><br>${canEditCompany?'Ao parar de digitar, o sistema salva no Firestore e atualiza os demais usuários em tempo real.':'As informações exibidas vieram diretamente do banco de dados da empresa.'}</div></form>`;
+      return `<div class="notice" style="margin-bottom:14px"><strong>Cadastro central da empresa</strong><br>Todos os usuários autorizados carregam estes dados diretamente de <b>companies/${escapeHtml(state.currentCompanyId)}</b>. Os demais módulos também são lidos do Firebase conforme as permissões do perfil.<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px"><span id="companyAutoSaveStatus" class="status ${autoStatus.className}">${escapeHtml(autoStatus.text)}</span><small id="companyAutoSaveDetail" style="color:var(--muted)">${canEditCompany?'Cada alteração é gravada automaticamente. Não é necessário clicar em sincronizar.':'Seu perfil pode consultar os dados, mas não pode alterá-los.'}</small></div>${sharedSettingsLastError?`<small style="display:block;margin-top:8px;color:var(--red)">${escapeHtml(sharedSettingsLastError)}</small>`:''}</div><form id="companySettingsForm" autocomplete="off"><fieldset ${canEditCompany?'':'disabled'} style="border:0;padding:0;margin:0;min-width:0"><div class="form-grid">${settingsInput('name','Razão social',c.name)}${settingsInput('tradeName','Nome fantasia',c.tradeName)}${settingsInput('document','CNPJ',c.document)}${settingsInput('city','Cidade / sede',c.city)}${settingsInput('phone','Telefone',c.phone)}${settingsInput('email','E-mail',c.email,'email')}${settingsInput('website','Site',c.website)}${settingsInput('proposalValidityDays','Validade padrão da proposta (dias)',c.proposalValidityDays,'number')}${settingsInput('clientsCount','Quantidade de clientes',c.clientsCount,'number')}${settingsInput('installedPowerMW','Potência instalada (MW)',c.installedPowerMW,'number')}${settingsInput('defaultCommissionPercent','Comissão padrão (%)',c.defaultCommissionPercent,'number')}<label class="field full"><span>História da empresa</span><textarea name="history">${escapeHtml(c.history)}</textarea></label><label class="field full"><span>Certificações (separadas por vírgula)</span><input name="certifications" value="${attr(c.certifications)}"></label><label class="field full"><span>Parceiros</span><input name="partners" value="${attr(c.partners)}"></label><label class="field full"><span>Dados bancários</span><input name="bankData" value="${attr(c.bankData)}"></label><label class="field full"><span>Mensagem de envio de proposta</span><textarea name="proposalMessage">${escapeHtml(c.proposalMessage)}</textarea></label><label class="field full"><span>Mensagem de cobrança</span><textarea name="collectionMessage">${escapeHtml(c.collectionMessage)}</textarea></label><label class="field full"><span>Mensagem de NPS</span><textarea name="npsMessage">${escapeHtml(c.npsMessage)}</textarea></label></div></fieldset><div class="notice" style="margin-top:16px"><strong>${canEditCompany?'Salvamento automático ativo':'Modo de consulta'}</strong><br>${canEditCompany?'Ao parar de digitar, o sistema salva no Firestore e atualiza todos os usuários ativos em tempo real.':'As informações exibidas vieram diretamente do banco de dados da empresa.'}</div></form>`;
     }
     if(tab==='branding')return `<div class="form-section"><div class="form-section-head"><div><h3>Logo da empresa</h3><p>Usada na capa e no cabeçalho de todas as páginas.</p></div></div><div class="grid grid-2"><div>${customCompanyLogoSource(c)?`<img class="logo-preview" src="${companyLogoSource(c)}" alt="Logo">`:`<img class="logo-preview" src="${defaultLogoData()}" alt="Logo padrão">`}</div><label class="upload-drop"><div><strong>Selecionar logo</strong><span>Envie PNG da logo. O sistema remove fundo branco das bordas e preserva a transparência na proposta.</span><input id="companyLogoInput" type="file" accept="image/png" style="margin-top:10px"></div></label></div></div><div class="form-section"><div class="form-section-head"><div><h3>Fotos de obras executadas</h3><p>Até quatro imagens na página institucional da proposta.</p></div></div><label class="upload-drop"><div><strong>Adicionar fotos</strong><span>Selecione uma ou várias imagens.</span><input id="workPhotosInput" type="file" accept="image/*" multiple style="margin-top:10px"></div></label><div class="photo-list" style="margin-top:12px">${(c.workPhotos||[]).map((photo,i)=>`<div style="position:relative"><img src="${photo}"><button class="btn btn-danger btn-sm btn-icon" data-remove-work-photo="${i}" style="position:absolute;right:5px;top:5px">×</button></div>`).join('')}</div></div><div class="form-section"><div class="form-section-head"><div><h3>Assinatura do vendedor</h3><p>Imagem opcional utilizada na página de aceite.</p></div></div><div class="grid grid-2"><div>${c.sellerSignature?`<img class="logo-preview" src="${c.sellerSignature}" alt="Assinatura">`:'<div class="upload-drop"><span>Nenhuma assinatura cadastrada.</span></div>'}</div><label class="upload-drop"><div><strong>Enviar assinatura</strong><span>Use PNG com fundo branco ou transparente.</span><input id="sellerSignatureInput" type="file" accept="image/*" style="margin-top:10px"></div></label></div></div>`;
     if(tab==='firebase'){
@@ -7480,7 +7484,7 @@ ${company.tradeName||company.name}`:''}`;
       const status=getFirebaseUiState();
       const loggedEmail=window.FirebaseCRM?.auth?.currentUser?.email||state.currentUser.email||'';
       const profileActionLabel=firebaseLastDiagnostic?.code==='bootstrap-owner-profile-missing'?'Reparar meu perfil':firebaseLastDiagnostic?.code==='profile-missing-bootstrap-available'?'Ativar meu perfil administrador':'Ativar ou reparar meu perfil';
-      return `<div class="firebase-status"><div><strong>${escapeHtml(status.title)}</strong><span>${escapeHtml(status.detail)}</span></div><span class="status ${status.className}">${escapeHtml(status.badge)}</span></div>${firebaseDiagnosticHtml()}<div class="notice" style="margin-top:14px"><strong>Firebase = dados e permissões:</strong> clientes, propostas, empresa, usuários e permissões são lidos do Firestore conforme o perfil. Arquivos e imagens são armazenados exclusivamente no Google Drive.</div><form id="firebaseSettingsForm" style="margin-top:15px"><div class="form-grid">${['apiKey','authDomain','databaseURL','projectId','messagingSenderId','appId','functionsRegion'].map(key=>settingsInput(key,firebaseLabels[key],firebaseConfig[key]||'',key==='apiKey'?'password':'text')).join('')}</div><div class="notice" style="margin-top:12px"><strong>Configuração carregada:</strong> projeto ${escapeHtml(firebaseConfig.projectId||'—')} · chave ${escapeHtml(firebaseKeyPreview(firebaseConfig.apiKey))} · origem ${escapeHtml(location.origin==='null'?location.protocol:location.origin)}.${location.protocol==='file:'?' O arquivo está aberto por file://; se a chave tiver restrição de site, use hospedagem web ou localhost.':''}</div><div style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px"><button class="btn btn-ghost" id="firebaseRestoreConfigBtn" type="button">Restaurar configuração oficial</button><button class="btn btn-ghost" id="firebaseTestBtn" type="button">Testar conexão</button><button class="btn btn-primary" type="submit">Salvar e conectar</button></div></form><div class="form-section" style="margin-top:15px"><div class="form-section-head"><div><h3>Acesso ao banco de dados</h3><p>Use e-mail e senha. No primeiro acesso, o botão de criação prepara automaticamente o administrador inicial e a empresa ativa.</p></div></div><div class="inline-fields"><label class="field"><span>E-mail</span><input id="firebaseLoginEmail" type="email" value="${attr(loggedEmail)}"></label><label class="field"><span>Senha</span><input id="firebaseLoginPassword" type="password" minlength="6"></label><button class="btn btn-secondary" id="firebaseLoginBtn" type="button" style="align-self:end">Entrar</button></div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-primary" id="firebaseRegisterBtn" type="button">Criar conta e primeiro administrador</button><button class="btn btn-ghost" id="firebaseBootstrapBtn" type="button">${escapeHtml(profileActionLabel)}</button><button class="btn btn-ghost" id="firebaseDiagnoseBtn" type="button">Diagnosticar</button><button class="btn btn-ghost" id="firebaseLogoutBtn" type="button">Sair</button></div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost" id="firebasePullBtn" type="button">Carregar dados da nuvem</button><button class="btn btn-primary" id="firebaseSyncBtn" type="button">Enviar dados locais</button></div></div>`;
+      return `<div class="firebase-status"><div><strong>${escapeHtml(status.title)}</strong><span>${escapeHtml(status.detail)}</span></div><span class="status ${status.className}">${escapeHtml(status.badge)}</span></div>${firebaseDiagnosticHtml()}<div class="notice" style="margin-top:14px"><strong>Firebase = base compartilhada:</strong> clientes, propostas, projetos e configurações operacionais são sincronizados em tempo real para todos os usuários ativos da empresa. Usuários e permissões administrativas continuam protegidos. Arquivos e imagens são armazenados exclusivamente no Google Drive.</div><form id="firebaseSettingsForm" style="margin-top:15px"><div class="form-grid">${['apiKey','authDomain','databaseURL','projectId','messagingSenderId','appId','functionsRegion'].map(key=>settingsInput(key,firebaseLabels[key],firebaseConfig[key]||'',key==='apiKey'?'password':'text')).join('')}</div><div class="notice" style="margin-top:12px"><strong>Configuração carregada:</strong> projeto ${escapeHtml(firebaseConfig.projectId||'—')} · chave ${escapeHtml(firebaseKeyPreview(firebaseConfig.apiKey))} · origem ${escapeHtml(location.origin==='null'?location.protocol:location.origin)}.${location.protocol==='file:'?' O arquivo está aberto por file://; se a chave tiver restrição de site, use hospedagem web ou localhost.':''}</div><div style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:16px"><button class="btn btn-ghost" id="firebaseRestoreConfigBtn" type="button">Restaurar configuração oficial</button><button class="btn btn-ghost" id="firebaseTestBtn" type="button">Testar conexão</button><button class="btn btn-primary" type="submit">Salvar e conectar</button></div></form><div class="form-section" style="margin-top:15px"><div class="form-section-head"><div><h3>Acesso ao banco de dados</h3><p>Use e-mail e senha. No primeiro acesso, o botão de criação prepara automaticamente o administrador inicial e a empresa ativa.</p></div></div><div class="inline-fields"><label class="field"><span>E-mail</span><input id="firebaseLoginEmail" type="email" value="${attr(loggedEmail)}"></label><label class="field"><span>Senha</span><input id="firebaseLoginPassword" type="password" minlength="6"></label><button class="btn btn-secondary" id="firebaseLoginBtn" type="button" style="align-self:end">Entrar</button></div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-primary" id="firebaseRegisterBtn" type="button">Criar conta e primeiro administrador</button><button class="btn btn-ghost" id="firebaseBootstrapBtn" type="button">${escapeHtml(profileActionLabel)}</button><button class="btn btn-ghost" id="firebaseDiagnoseBtn" type="button">Diagnosticar</button><button class="btn btn-ghost" id="firebaseLogoutBtn" type="button">Sair</button></div><div style="display:flex;gap:9px;flex-wrap:wrap;margin-top:10px"><button class="btn btn-ghost" id="firebasePullBtn" type="button">Carregar dados da nuvem</button><button class="btn btn-primary" id="firebaseSyncBtn" type="button">Enviar dados locais</button></div></div>`;
     }
     if(tab==='drive')return renderDriveStoragePanel();
     if(tab==='email')return renderEmailServerPanel();
@@ -7579,7 +7583,7 @@ function doPost(e) {
     const currentUid=window.FirebaseCRM?.auth?.currentUser?.uid||'';
     const userRows=permissionUsers.length?permissionUsers.map(item=>{const self=item.id===currentUid;const role=item.role||'seller';return `<tr><td><strong>${escapeHtml(item.name||'Usuário')}</strong>${self?' <span class="status blue">Você</span>':''}</td><td>${escapeHtml(item.email||'')}</td><td><select class="compact-select" data-user-role="${item.id}" ${self?'disabled':''}>${permissionRoleOptions(role)}</select></td><td>${self?'<span class="permission-chip">Acesso administrativo total</span>':permissionSummaryButton('user',item,role)}</td><td><select class="compact-select" data-user-status="${item.id}" ${self?'disabled':''}><option value="Ativo" ${item.status==='Ativo'?'selected':''}>Ativo</option><option value="Inativo" ${item.status==='Inativo'?'selected':''}>Inativo</option></select></td><td>${escapeHtml((item.companyIds||[]).join(', ')||item.companyId||'')}</td><td>${self?'—':`<div style="display:flex;gap:6px;flex-wrap:wrap"><button class="btn btn-primary btn-sm" data-save-user-access="${item.id}" type="button">Salvar acesso</button><button class="btn btn-danger btn-sm" data-delete-platform-user="${item.id}" type="button">Bloquear usuário</button></div>`}</td></tr>`;}).join(''):`<tr><td colspan="7"><div class="empty-state"><strong>Nenhum usuário aprovado</strong><span>O primeiro administrador aparecerá após a inicialização.</span></div></td></tr>`;
     const reviewedHtml=reviewed.length?`<div class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Histórico recente</h3><p>Solicitações já analisadas.</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Usuário</th><th>E-mail</th><th>Status</th><th>Perfil</th></tr></thead><tbody>${reviewed.map(item=>`<tr><td>${escapeHtml(item.name||'')}</td><td>${escapeHtml(item.email||'')}</td><td><span class="status ${item.status==='Aprovado'?'green':'red'}">${escapeHtml(item.status||'')}</span></td><td>${escapeHtml(permissionRoleLabel(item.approvedRole||item.requestedRole))}</td></tr>`).join('')}</tbody></table></div></div>`:'';
-    return `<div class="notice"><strong>Liberação detalhada</strong><br>Escolha o perfil-base e clique em “Acessos” para definir exatamente os módulos e ações disponíveis ao usuário.</div><div style="display:flex;justify-content:flex-end;margin:12px 0"><button class="btn btn-ghost" id="refreshUserPermissions" type="button">↻ Atualizar lista</button></div><div class="form-section"><div class="form-section-head"><div><h3>Solicitações pendentes</h3><p>Defina perfil e acessos antes de aprovar.</p></div><span class="status yellow">${pending.length} pendente(s)</span></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Usuário</th><th>E-mail</th><th>Solicitado em</th><th>Perfil-base</th><th>Acessos</th><th>Ações</th></tr></thead><tbody>${pendingRows}</tbody></table></div></div><div class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Usuários aprovados</h3><p>Altere o perfil, selecione módulos e determine o que cada pessoa pode fazer.</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Nome</th><th>E-mail</th><th>Perfil-base</th><th>Acessos liberados</th><th>Status</th><th>Empresa</th><th>Ações</th></tr></thead><tbody>${userRows}</tbody></table></div></div>${reviewedHtml}`;
+    return `<div class="notice"><strong>Modo compartilhado ativo</strong><br>Todos os usuários com status Ativo e vinculados à empresa podem visualizar, criar, editar e excluir os cadastros e configurações operacionais. A matriz de acessos abaixo foi mantida para compatibilidade, mas não restringe os dados enquanto este modo estiver ativo. O administrador continua responsável por aprovar, bloquear e vincular contas às empresas.</div><div style="display:flex;justify-content:flex-end;margin:12px 0"><button class="btn btn-ghost" id="refreshUserPermissions" type="button">↻ Atualizar lista</button></div><div class="form-section"><div class="form-section-head"><div><h3>Solicitações pendentes</h3><p>Defina perfil e acessos antes de aprovar.</p></div><span class="status yellow">${pending.length} pendente(s)</span></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Usuário</th><th>E-mail</th><th>Solicitado em</th><th>Perfil-base</th><th>Acessos</th><th>Ações</th></tr></thead><tbody>${pendingRows}</tbody></table></div></div><div class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Usuários aprovados</h3><p>Altere o perfil, selecione módulos e determine o que cada pessoa pode fazer.</p></div></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th>Nome</th><th>E-mail</th><th>Perfil-base</th><th>Acessos liberados</th><th>Status</th><th>Empresa</th><th>Ações</th></tr></thead><tbody>${userRows}</tbody></table></div></div>${reviewedHtml}`;
   }
   async function loadUserPermissionData(force=false){
     if(state.role!=='admin'||!window.FirebaseCRM?.syncReady||permissionUsersLoading)return;
