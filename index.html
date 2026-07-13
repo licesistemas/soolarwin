@@ -3743,6 +3743,18 @@ service cloud.firestore {
   function clamp(v,min,max){ return Math.min(max,Math.max(min,Number(v)||0)); }
   function sum(arr){ return arr.reduce((a,b)=>a+Number(b||0),0); }
   function average(arr){ return arr.length ? sum(arr)/arr.length : 0; }
+  function consumptionStats(values=[]){
+    const informed=(Array.isArray(values)?values:[])
+      .map(value=>Number(value))
+      .filter(value=>Number.isFinite(value)&&value>0);
+    const averageConsumption=informed.length?sum(informed)/informed.length:0;
+    return {
+      informedMonths:informed.length,
+      averageConsumption,
+      annualConsumption:averageConsumption*12,
+      informedConsumption:sum(informed)
+    };
+  }
   function slugify(value='arquivo'){ return value.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/(^-|-$)/g,''); }
   function deepClone(obj){ return JSON.parse(JSON.stringify(obj)); }
 
@@ -5473,8 +5485,10 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
   function calculateProposal(p){
     p=p||defaultProposal();
     const cons=(p.consumption||Array(12).fill(0)).map(Number);
-    const avgConsumption=average(cons);
-    const annualConsumption=sum(cons);
+    const consumptionInfo=consumptionStats(cons);
+    const avgConsumption=consumptionInfo.averageConsumption;
+    const annualConsumption=consumptionInfo.annualConsumption;
+    const informedMonths=consumptionInfo.informedMonths;
     const moduleItem=findModuleCatalogItem(p.technical?.moduleId);
     const inverter=findInverterCatalogItem(p.technical?.inverterId);
     const specificYield=Math.max(1,Number(p.technical?.specificYield||120));
@@ -5517,7 +5531,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     const installment=monthlyRate===0?principal/monthsCount:principal*(monthlyRate*Math.pow(1+monthlyRate,monthsCount))/(Math.pow(1+monthlyRate,monthsCount)-1);
     const netMonthlyEconomy=monthlySaving-installment;
     const billAfter=Math.max(residual,billBefore-monthlySaving);
-    return {avgConsumption,annualConsumption,requiredPower,moduleQty,actualPower,annualGeneration,monthlyGeneration,occupiedArea,totalWeight,inverterQty,moduleItem,inverter,billBefore,billAfter,monthlySaving,annualSaving,total25,netSavings25,payback,roi,npv,irr,down,principal,monthsCount,monthlyRate,installment,netMonthlyEconomy,cashflows};
+    return {avgConsumption,annualConsumption,informedMonths,requiredPower,moduleQty,actualPower,annualGeneration,monthlyGeneration,occupiedArea,totalWeight,inverterQty,moduleItem,inverter,billBefore,billAfter,monthlySaving,annualSaving,total25,netSavings25,payback,roi,npv,irr,down,principal,monthsCount,monthlyRate,installment,netMonthlyEconomy,cashflows};
   }
 
   function computeIRR(cashflows){
@@ -5610,9 +5624,10 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
       <div class="form-section">${heading('Dados identificados','Revise os campos antes de continuar.')}
         <div class="form-grid">${proposalField('client.consumerUnit','Unidade consumidora','text')}${proposalField('client.className','Classe','text')}${proposalField('client.tariffGroup','Grupo tarifário','text')}${proposalField('client.distributor','Distribuidora','text')}${proposalField('currentTariff','Tarifa atual (R$/kWh)','number')}${proposalField('technical.targetCoverage','Cobertura desejada (%)','number')}</div>
       </div>
-      <div class="form-section">${heading('Histórico de consumo','Informe os últimos 12 meses em kWh.')}
+      <div class="form-section">${heading('Histórico de consumo','Informe os últimos 12 meses em kWh. A média é atualizada automaticamente durante a digitação ou após a leitura da fatura.')}
         <div class="month-grid">${months.map((m,i)=>`<label class="month-field"><span>${m}</span><input type="number" min="0" step="1" data-consumption-index="${i}" value="${Number(p.consumption?.[i]||0)}"></label>`).join('')}</div>
-        <div class="calc-highlight" style="margin-top:14px"><div class="calc-box"><span>Consumo médio</span><strong>${number(calc.avgConsumption)} kWh</strong></div><div class="calc-box"><span>Consumo anual</span><strong>${number(calc.annualConsumption)} kWh</strong></div><div class="calc-box"><span>Fatura estimada</span><strong>${currency(calc.billBefore)}</strong></div><div class="calc-box"><span>Distribuidora</span><strong>${escapeHtml(p.client.distributor||'—')}</strong></div></div>
+        <div class="calc-highlight" style="margin-top:14px"><div class="calc-box"><span>Consumo médio</span><strong id="proposalAvgConsumption">${number(calc.avgConsumption)} kWh</strong></div><div class="calc-box"><span>Consumo anual projetado</span><strong id="proposalAnnualConsumption">${number(calc.annualConsumption)} kWh</strong></div><div class="calc-box"><span>Fatura média</span><strong id="proposalAverageBill">${currency(calc.billBefore)}</strong></div><div class="calc-box"><span>Meses considerados</span><strong id="proposalInformedMonths">${calc.informedMonths} de 12</strong></div></div>
+        <div id="proposalAverageHint" class="notice" style="margin-top:10px">${calc.informedMonths?`Média calculada com ${calc.informedMonths} mês(es) preenchido(s).`:'Preencha pelo menos um mês ou importe uma fatura para calcular a média.'}</div>
       </div>${nav}`;
     if(step===2)return `
       <div class="calc-highlight"><div class="calc-box"><span>Potência necessária</span><strong>${number(calc.requiredPower,2)} kWp</strong></div><div class="calc-box"><span>Potência proposta</span><strong>${number(calc.actualPower,2)} kWp</strong></div><div class="calc-box"><span>Geração mensal</span><strong>${number(calc.monthlyGeneration)} kWh</strong></div><div class="calc-box"><span>Produção anual</span><strong>${number(calc.annualGeneration)} kWh</strong></div></div>
@@ -5674,13 +5689,45 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     return `<label class="field"><span>${escapeHtml(label)}${required?' *':''}</span><input data-proposal-path="${path}" type="${type}" value="${attr(value)}" ${type==='number'?'step="any"':''} ${required?'required':''}></label>`;
   }
   function companyField(path,label,type='text'){return `<label class="field"><span>${escapeHtml(label)}</span><input data-company-path="${path}" type="${type}" value="${attr(state.company[path]??'')}" ${type==='number'?'step="any"':''}></label>`;}
+  function updateProposalConsumptionCalculations(){
+    if(!activeProposal)return;
+    const calc=calculateProposal(activeProposal);
+    const avg=document.getElementById('proposalAvgConsumption');
+    const annual=document.getElementById('proposalAnnualConsumption');
+    const bill=document.getElementById('proposalAverageBill');
+    const monthsEl=document.getElementById('proposalInformedMonths');
+    const hint=document.getElementById('proposalAverageHint');
+    if(avg)avg.textContent=`${number(calc.avgConsumption)} kWh`;
+    if(annual)annual.textContent=`${number(calc.annualConsumption)} kWh`;
+    if(bill)bill.textContent=currency(calc.billBefore);
+    if(monthsEl)monthsEl.textContent=`${calc.informedMonths} de 12`;
+    if(hint)hint.textContent=calc.informedMonths
+      ?`Média calculada automaticamente com ${calc.informedMonths} mês(es) preenchido(s).`
+      :'Preencha pelo menos um mês ou importe uma fatura para calcular a média.';
+  }
   function bindProposalStepEvents(){
     document.querySelectorAll('[data-proposal-path]').forEach(input=>{
-      const handler=()=>{const numeric=input.type==='number';setPath(activeProposal,input.dataset.proposalPath,numeric?(input.value===''?'':Number(input.value)):input.value);activeProposal.updatedAt=new Date().toISOString();renderProposalSummary();scheduleProposalDraftSave();};
+      const handler=()=>{const numeric=input.type==='number';setPath(activeProposal,input.dataset.proposalPath,numeric?(input.value===''?'':Number(input.value)):input.value);activeProposal.updatedAt=new Date().toISOString();updateProposalConsumptionCalculations();renderProposalSummary();scheduleProposalDraftSave();};
       input.addEventListener('input',handler);input.addEventListener('change',()=>{handler(); if(['technical.moduleId','technical.inverterId'].includes(input.dataset.proposalPath))renderProposalBuilder();});
     });
     document.querySelectorAll('[data-company-path]').forEach(input=>input.addEventListener('input',()=>{state.company[input.dataset.companyPath]=input.type==='number'?Number(input.value):input.value;syncCurrentCompanyRecord();persist();}));
-    document.querySelectorAll('[data-consumption-index]').forEach(input=>input.addEventListener('input',()=>{activeProposal.consumption[Number(input.dataset.consumptionIndex)]=Number(input.value||0);renderProposalSummary();scheduleProposalDraftSave();}));
+    document.querySelectorAll('[data-consumption-index]').forEach(input=>input.addEventListener('input',()=>{
+      activeProposal.consumption[Number(input.dataset.consumptionIndex)]=Number(input.value||0);
+      const stats=consumptionStats(activeProposal.consumption);
+      const calc=calculateProposal(activeProposal);
+      activeProposal.billAnalysis={
+        ...(activeProposal.billAnalysis||{}),
+        source:'manual',
+        analyzedAt:new Date().toISOString(),
+        averageConsumption:stats.averageConsumption,
+        annualConsumption:stats.annualConsumption,
+        averageBill:calc.billBefore,
+        informedMonths:stats.informedMonths
+      };
+      updateProposalConsumptionCalculations();
+      renderProposalSummary();
+      scheduleProposalDraftSave();
+    }));
     document.querySelectorAll('[data-select-module]').forEach(el=>el.addEventListener('click',()=>{activeProposal.technical.moduleId=el.dataset.selectModule;scheduleProposalDraftSave();renderProposalBuilder();}));
     document.querySelectorAll('[data-select-inverter]').forEach(el=>el.addEventListener('click',()=>{activeProposal.technical.inverterId=el.dataset.selectInverter;scheduleProposalDraftSave();renderProposalBuilder();}));
     document.querySelectorAll('[data-schedule]').forEach(input=>input.addEventListener('input',()=>{const [i,j]=input.dataset.schedule.split('.').map(Number);activeProposal.schedule[i][j]=input.value;scheduleProposalDraftSave();}));
@@ -6427,7 +6474,8 @@ ${result?.data?.text||''}`;
       'ocr-pdf':'OCR de PDF',
       'ocr-historico':'OCR do histórico de consumo',
       'texto-historico+ocr':'Texto do histórico + OCR',
-      'texto+ocr':'Texto + OCR'
+      'texto+ocr':'Texto + OCR',
+      'manual':'Preenchimento manual'
     };
     return map[source]||source||'automática';
   }
@@ -6447,7 +6495,10 @@ ${result?.data?.text||''}`;
     if(tariff>0&&tariff<20)activeProposal.currentTariff=tariff;
     const consumption=normalizeConsumption(data.consumption||[]);
     if(consumption.length)activeProposal.consumption=consumption;
-    activeProposal.billAnalysis={source,confidence:normalizeBillConfidence(data.confidence),warnings:Array.isArray(data.warnings)?data.warnings.slice(0,8):[],analyzedAt:new Date().toISOString(),averageConsumption:Number(data.averageConsumption||average(consumption)||0),annualConsumption:Number(data.annualConsumption||sum(consumption)||0)};
+    const stats=consumptionStats(activeProposal.consumption||consumption);
+    const calc=calculateProposal(activeProposal);
+    activeProposal.billAnalysis={source,confidence:normalizeBillConfidence(data.confidence),warnings:Array.isArray(data.warnings)?data.warnings.slice(0,8):[],analyzedAt:new Date().toISOString(),averageConsumption:stats.averageConsumption,annualConsumption:stats.annualConsumption,averageBill:calc.billBefore,informedMonths:stats.informedMonths,totalAmount:Number(data.totalAmount||0)};
+    updateProposalConsumptionCalculations();
     scheduleProposalDraftSave();
   }
 
@@ -6840,7 +6891,8 @@ ${historyText}`.trim(),historyText);
     if(!addressInfo.address)warnings.push('Endereço da fatura não identificado.');
     if(consumption.filter(Boolean).length<6)warnings.push('Histórico de consumo incompleto; revise os 12 meses.');
     if(!tariff)warnings.push('Tarifa não identificada; informe o valor manualmente.');
-    return {client:{consumerUnit:uc,className,tariffGroup:group,distributor,address:addressInfo.address,city:addressInfo.city},consumerUnit:uc,className,tariffGroup:group,distributor,address:addressInfo.address,city:addressInfo.city,currentTariff:tariff,consumption,averageConsumption:average(consumption)||0,annualConsumption:sum(consumption)||0,totalAmount,confidence,warnings};
+    const stats=consumptionStats(consumption);
+    return {client:{consumerUnit:uc,className,tariffGroup:group,distributor,address:addressInfo.address,city:addressInfo.city},consumerUnit:uc,className,tariffGroup:group,distributor,address:addressInfo.address,city:addressInfo.city,currentTariff:tariff,consumption,averageConsumption:stats.averageConsumption,annualConsumption:stats.annualConsumption,informedMonths:stats.informedMonths,totalAmount,confidence,warnings};
   }
 
   async function analyzeBillLocally(){
