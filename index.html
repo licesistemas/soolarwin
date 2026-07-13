@@ -2186,7 +2186,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   const FIREBASE_CONFIG_KEY = 'solarcrm-firebase-config-v2-9-2';
   const LEGACY_FIREBASE_CONFIG_KEYS = ['solarcrm-firebase-config-v2-8','solarcrm-firebase-config-v2-7','solarcrm-firebase-config-v2-6','solarcrm-firebase-config'];
   const DEFAULT_FIREBASE_CONFIG = Object.freeze({"apiKey":"AIzaSyCYSQfnPLyV9B6osiZhsLYYrF64YLhGkMA","authDomain":"energiasolar-67b14.firebaseapp.com","databaseURL":"https://energiasolar-67b14-default-rtdb.firebaseio.com","projectId":"energiasolar-67b14","messagingSenderId":"394822890491","appId":"1:394822890491:web:5afc55e01902bbf142915e","functionsRegion":"southamerica-east1"});
-  const FIRESTORE_RULES_TEXT = `// SolarCRM Pro v23 — empresa, configurações e cadastros compartilhados em tempo real
+  const FIRESTORE_RULES_TEXT = `// SolarCRM Pro v24 — empresa, configurações e cadastros compartilhados em tempo real
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -3169,6 +3169,7 @@ service cloud.firestore {
   let permissionUsersLoading = false;
   let permissionDrafts = {};
   let sharedCompanyUnsubscribe = null;
+  let sharedCompanyMirrorUnsubscribe = null;
   let cloudCollectionUnsubscribes = [];
   let cloudDataLoadBusy = false;
   let sharedProfileUnsubscribe = null;
