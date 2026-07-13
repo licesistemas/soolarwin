@@ -2186,7 +2186,7 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
   const FIREBASE_CONFIG_KEY = 'solarcrm-firebase-config-v2-9-2';
   const LEGACY_FIREBASE_CONFIG_KEYS = ['solarcrm-firebase-config-v2-8','solarcrm-firebase-config-v2-7','solarcrm-firebase-config-v2-6','solarcrm-firebase-config'];
   const DEFAULT_FIREBASE_CONFIG = Object.freeze({"apiKey":"AIzaSyCYSQfnPLyV9B6osiZhsLYYrF64YLhGkMA","authDomain":"energiasolar-67b14.firebaseapp.com","databaseURL":"https://energiasolar-67b14-default-rtdb.firebaseio.com","projectId":"energiasolar-67b14","messagingSenderId":"394822890491","appId":"1:394822890491:web:5afc55e01902bbf142915e","functionsRegion":"southamerica-east1"});
-  const FIRESTORE_RULES_TEXT = `// SolarCRM Pro v22 — acesso compartilhado em tempo real para todos os usuários ativos da mesma empresa
+  const FIRESTORE_RULES_TEXT = `// SolarCRM Pro v23 — empresa, configurações e cadastros compartilhados em tempo real
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -2401,9 +2401,12 @@ service cloud.firestore {
     }
 
     match /companies/{id} {
-      allow read: if belongsTo(id) && resource.data.companyId == id;
+      // O ID do documento é a identidade da empresa. A leitura também aceita
+      // documentos antigos que ainda não possuíam o campo interno companyId.
+      allow read: if belongsTo(id);
       allow create: if belongsTo(id) && request.resource.data.companyId == id && hasPermission('settings','edit');
-      allow update: if belongsTo(id) && resource.data.companyId == id && request.resource.data.companyId == id && hasPermission('settings','edit');
+      // Permite normalizar documentos legados adicionando companyId na primeira gravação.
+      allow update: if belongsTo(id) && request.resource.data.companyId == id && hasPermission('settings','edit');
       allow delete: if belongsTo(id) && isAdmin();
     }
 
@@ -2701,7 +2704,7 @@ service cloud.firestore {
   const DRIVE_SCRIPT_TOKEN_KEY = 'solarcrm-drive-script-token-v1';
   const DRIVE_ROOT_FOLDER_KEY = 'solarcrm-drive-root-folder-v1';
   const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-2';
-  const SYSTEM_VERSION = '3.7.0-acesso-compartilhado';
+  const SYSTEM_VERSION = '3.8.0-configuracoes-compartilhadas';
   const COMPANY_WIDE_SHARED_ACCESS = true;
   let storageWarningShown = false;
   let draftSaveTimer = null;
@@ -3558,8 +3561,10 @@ service cloud.firestore {
 
   function stopSharedCompanyWatcher(){
     try{sharedCompanyUnsubscribe?.();}catch(_){ }
+    try{sharedCompanyMirrorUnsubscribe?.();}catch(_){ }
     try{sharedProfileUnsubscribe?.();}catch(_){ }
     sharedCompanyUnsubscribe=null;
+    sharedCompanyMirrorUnsubscribe=null;
     sharedProfileUnsubscribe=null;
     stopAuthorizedDataWatchers();
   }
@@ -3585,21 +3590,33 @@ service cloud.firestore {
 
   function startSharedCompanyWatcher(){
     try{sharedCompanyUnsubscribe?.();}catch(_){ }
+    try{sharedCompanyMirrorUnsubscribe?.();}catch(_){ }
     try{sharedProfileUnsubscribe?.();}catch(_){ }
     sharedCompanyUnsubscribe=null;
+    sharedCompanyMirrorUnsubscribe=null;
     sharedProfileUnsubscribe=null;
     if(!window.FirebaseCRM?.syncReady)return;
+    const watchedCompanyId=state.currentCompanyId;
     try{
-      sharedCompanyUnsubscribe=window.FirebaseCRM.watchCompany(state.currentCompanyId,cloud=>{
+      sharedCompanyUnsubscribe=window.FirebaseCRM.watchCompany(watchedCompanyId,cloud=>{
         if(cloud)applySharedCompanySettings(cloud,{render:true,force:true,source:'Firebase / companies'});
       });
     }catch(error){console.warn('Acompanhamento da empresa indisponível:',error);}
+    try{
+      sharedCompanyMirrorUnsubscribe=window.FirebaseCRM.watchCompanySettingsMirror(watchedCompanyId,mirror=>{
+        if(mirror)applySharedCompanySettings(mirror,{render:true,force:false,source:'Firebase / espelho legado'});
+      });
+    }catch(error){console.warn('Acompanhamento do espelho da empresa indisponível:',error);}
     try{
       const uid=window.FirebaseCRM?.auth?.currentUser?.uid;
       if(uid)sharedProfileUnsubscribe=window.FirebaseCRM.watchProfile(uid,profile=>{
         if(!profile||String(profile.status||'').toLowerCase()!=='ativo'){
           lockSystemForAuthentication('Acesso suspenso','O perfil foi desativado ou removido pelo administrador.');
           return;
+        }
+        const profileShared=profile.sharedCompanySettings;
+        if(profileShared&&(profileShared.companyId||profileShared.id)===watchedCompanyId){
+          applySharedCompanySettings(profileShared,{render:true,force:false,source:'Firebase / perfil do usuário'});
         }
         const before=JSON.stringify({companyId:state.currentCompanyId,role:state.role,permissions:state.currentUser?.permissions||{}});
         applyFirebaseProfile(profile,window.FirebaseCRM.auth.currentUser);
@@ -3645,32 +3662,92 @@ service cloud.firestore {
     if(cloudDataLoadBusy)return false;
     cloudDataLoadBusy=true;
     try{
-      let company=null;
+      const companyId=state.currentCompanyId;
+      const candidates=[];
+      let canonicalCompany=null;
+      let canonicalReadError=null;
+
+      // 1. Fonte oficial atual: companies/{companyId}.
       try{
         const companyRows=await promiseWithTimeout(
-          window.FirebaseCRM.listRecords('companies',state.currentCompanyId),
+          window.FirebaseCRM.listRecords('companies',companyId),
           12000,
           'Tempo excedido ao carregar a empresa no Firebase.'
         );
-        company=companyRows[0]||null;
+        canonicalCompany=companyRows[0]||null;
+        if(canonicalCompany)candidates.push({source:'Firebase / companies',settings:canonicalCompany});
       }catch(error){
-        console.warn('Cadastro da empresa não pôde ser lido no carregamento inicial:',error);
-        sharedSettingsLastError=sharedSettingsPermissionMessage(error);
+        canonicalReadError=error;
+        console.warn('Cadastro principal da empresa não pôde ser lido:',error);
       }
-      if(company){
-        applySharedCompanySettings(company,{render:false,force:true,source:'Firebase / companies'});
+
+      // 2. Compatibilidade com versões anteriores: configuração replicada no perfil.
+      const profile=window.FirebaseCRM?.profile||null;
+      const profileShared=profile?.sharedCompanySettings;
+      if(profileShared&&((profileShared.companyId||profileShared.id||companyId)===companyId)){
+        candidates.push({source:'Firebase / perfil do usuário',settings:{...profileShared,id:companyId,companyId}});
+      }
+
+      // 3. Compatibilidade com versões anteriores: espelho salvo em automation_rules.
+      try{
+        const mirror=await promiseWithTimeout(
+          window.FirebaseCRM.loadCompanySettingsMirror(companyId),
+          8000,
+          'Tempo excedido ao carregar o espelho das configurações.'
+        );
+        if(mirror)candidates.push({source:'Firebase / espelho legado',settings:mirror});
+      }catch(error){
+        console.warn('Espelho legado das configurações não pôde ser lido:',error);
+      }
+
+      // 4. Cache local é somente a última alternativa, nunca substitui uma configuração melhor da nuvem.
+      const cached=state.companies.find(item=>item.id===companyId)||state.company||null;
+      if(cached)candidates.push({source:'Cache local',settings:{...cached,id:companyId,companyId}});
+
+      // Mescla fontes antigas para preencher campos ausentes, mantendo o documento
+      // companies/{companyId} como autoridade final quando ele já possuir o campo.
+      const sourcePriority={
+        'Cache local':0,
+        'Firebase / perfil do usuário':1,
+        'Firebase / espelho legado':2,
+        'Firebase / companies':3
+      };
+      const orderedCandidates=[...candidates].sort((a,b)=>(sourcePriority[a.source]??0)-(sourcePriority[b.source]??0));
+      const mergedCompany=orderedCandidates.reduce((merged,item)=>({...merged,...item.settings}),{...defaultCompany,id:companyId,companyId});
+      const bestCompany=orderedCandidates.length?{
+        source:canonicalCompany?'Firebase / companies':orderedCandidates[orderedCandidates.length-1].source,
+        settings:{...mergedCompany,id:companyId,companyId}
+      }:null;
+      if(bestCompany){
+        applySharedCompanySettings(bestCompany.settings,{render:false,force:true,source:bestCompany.source});
       }else{
-        // Não cria registros automaticamente durante o login. Isso evita
-        // bloquear o sistema quando as regras permitem leitura, mas não escrita.
-        const cached=state.companies.find(item=>item.id===state.currentCompanyId)||state.company||{};
-        state.company={...defaultCompany,...cached,id:state.currentCompanyId,companyId:state.currentCompanyId};
+        state.company={...defaultCompany,id:companyId,companyId};
         syncCurrentCompanyRecord();
+      }
+
+      // Migra automaticamente uma configuração antiga para o documento oficial sem apagar dados existentes.
+      if(!canonicalCompany&&bestCompany&&bestCompany.source!=='Cache local'&&companyConfigurationScore(bestCompany.settings)>0){
+        try{
+          const migrated=await promiseWithTimeout(
+            window.FirebaseCRM.saveRecord('companies',firestoreSafeRecord({...bestCompany.settings,id:companyId,companyId})),
+            12000,
+            'Tempo excedido ao consolidar o cadastro da empresa.'
+          );
+          applySharedCompanySettings(migrated,{render:false,force:true,source:'Firebase / companies'});
+          canonicalCompany=migrated;
+        }catch(error){
+          console.warn('A configuração foi carregada, mas não pôde ser consolidada em companies:',error);
+        }
+      }
+
+      if(!bestCompany&&canonicalReadError){
+        sharedSettingsLastError=sharedSettingsPermissionMessage(canonicalReadError);
       }
 
       clearUnauthorizedCollections();
       const allowed=cloudCollectionPlan.filter(hasCloudReadAccess);
       const results=await Promise.allSettled(allowed.map(item=>promiseWithTimeout(
-        window.FirebaseCRM.listRecords(item.remote,state.currentCompanyId),
+        window.FirebaseCRM.listRecords(item.remote,companyId),
         15000,
         `Tempo excedido ao carregar ${item.remote}.`
       )));
@@ -3681,20 +3758,18 @@ service cloud.firestore {
         else failures.push(`${item.remote}: ${result.reason?.message||result.reason}`);
       });
       if(failures.length){
-        // Um módulo sem permissão não deve bloquear todo o CRM. Mantemos os
-        // dados já carregados para esse módulo e liberamos os demais.
         sharedSettingsLastError=`Alguns módulos não foram atualizados pelo Firebase: ${failures.join(' | ')}`;
         console.warn(sharedSettingsLastError);
       }
       await ensureDefaultEquipmentCatalog({saveToCloud:false});
       refreshEquipmentCatalog();
 
-      sharedSettingsLastSource='Firebase / companies';
+      sharedSettingsLastSource=bestCompany?.source||'Firebase / companies';
       sharedSettingsLastLoadedAt=new Date().toISOString();
-      sharedSettingsLastError='';
+      if(!failures.length)sharedSettingsLastError='';
       persist();
       if(restartWatchers){startSharedCompanyWatcher();startAuthorizedDataWatchers();}
-      if(!silent)toast('Dados carregados do Firebase','Todos os cadastros compartilhados da empresa foram carregados e estão em atualização em tempo real.','success');
+      if(!silent)toast('Dados carregados do Firebase','Empresa, identidade visual, integrações, mensagens, automações e cadastros compartilhados foram carregados.','success');
       return true;
     }catch(error){
       sharedSettingsLastError=sharedSettingsPermissionMessage(error);
