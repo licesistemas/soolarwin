@@ -2707,7 +2707,7 @@ service cloud.firestore {
   const DRIVE_SCRIPT_TOKEN_KEY = 'solarcrm-drive-script-token-v1';
   const DRIVE_ROOT_FOLDER_KEY = 'solarcrm-drive-root-folder-v1';
   const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-2';
-  const SYSTEM_VERSION = '3.6.1-firebase-users';
+  const SYSTEM_VERSION = '3.6.2-firebase-login-fix';
   let storageWarningShown = false;
   let draftSaveTimer = null;
   let firebaseLastDiagnostic = null;
@@ -3625,12 +3625,21 @@ service cloud.firestore {
     ]).finally(()=>clearTimeout(timer));
   }
 
-  async function ensureDefaultEquipmentCatalog(){
+  async function ensureDefaultEquipmentCatalog({saveToCloud=false}={}){
     const existing=(state.equipmentCatalog||[]).filter(item=>(item.companyId||state.currentCompanyId)===state.currentCompanyId);
-    if(existing.length||!currentUserIsAdmin()||!window.FirebaseCRM?.syncReady)return existing;
+    if(existing.length)return existing;
     const records=defaultEquipmentCatalogRecords(state.currentCompanyId);
-    for(const record of records)await window.FirebaseCRM.saveRecord('equipmentCatalog',firestoreSafeRecord(record));
     replaceCompanyCollection('equipmentCatalog',records);
+    // O carregamento inicial nunca deve exigir uma gravação no Firebase.
+    // O catálogo padrão fica disponível localmente e só é enviado à nuvem
+    // quando uma ação administrativa explícita solicitar isso.
+    if(saveToCloud&&currentUserIsAdmin()&&window.FirebaseCRM?.syncReady){
+      const results=await Promise.allSettled(
+        records.map(record=>window.FirebaseCRM.saveRecord('equipmentCatalog',firestoreSafeRecord(record)))
+      );
+      const failed=results.filter(result=>result.status==='rejected');
+      if(failed.length)console.warn('Alguns equipamentos padrão não puderam ser gravados no Firebase:',failed);
+    }
     return records;
   }
 
@@ -3639,22 +3648,27 @@ service cloud.firestore {
     if(cloudDataLoadBusy)return false;
     cloudDataLoadBusy=true;
     try{
-      const companyRows=await promiseWithTimeout(
-        window.FirebaseCRM.listRecords('companies',state.currentCompanyId),
-        12000,
-        'Tempo excedido ao carregar a empresa no Firebase.'
-      );
-      let company=companyRows[0]||null;
-      if(!company&&currentUserIsAdmin()){
-        const initialPayload=buildSharedCompanyPayload();
-        company=await promiseWithTimeout(
-          window.FirebaseCRM.saveRecord('companies',initialPayload),
+      let company=null;
+      try{
+        const companyRows=await promiseWithTimeout(
+          window.FirebaseCRM.listRecords('companies',state.currentCompanyId),
           12000,
-          'A empresa ainda não existe e não pôde ser criada no Firebase.'
+          'Tempo excedido ao carregar a empresa no Firebase.'
         );
+        company=companyRows[0]||null;
+      }catch(error){
+        console.warn('Cadastro da empresa não pôde ser lido no carregamento inicial:',error);
+        sharedSettingsLastError=sharedSettingsPermissionMessage(error);
       }
-      if(!company)throw new Error('O cadastro da empresa não foi encontrado no Firebase. Peça ao administrador para preencher e salvar a empresa.');
-      applySharedCompanySettings(company,{render:false,force:true,source:'Firebase / companies'});
+      if(company){
+        applySharedCompanySettings(company,{render:false,force:true,source:'Firebase / companies'});
+      }else{
+        // Não cria registros automaticamente durante o login. Isso evita
+        // bloquear o sistema quando as regras permitem leitura, mas não escrita.
+        const cached=state.companies.find(item=>item.id===state.currentCompanyId)||state.company||{};
+        state.company={...defaultCompany,...cached,id:state.currentCompanyId,companyId:state.currentCompanyId};
+        syncCurrentCompanyRecord();
+      }
 
       clearUnauthorizedCollections();
       const allowed=cloudCollectionPlan.filter(hasCloudReadAccess);
@@ -3669,8 +3683,13 @@ service cloud.firestore {
         if(result.status==='fulfilled')replaceCompanyCollection(item.stateKey,result.value||[]);
         else failures.push(`${item.remote}: ${result.reason?.message||result.reason}`);
       });
-      if(failures.length)throw new Error(`O Firebase não liberou todos os módulos autorizados. ${failures.join(' | ')}`);
-      await ensureDefaultEquipmentCatalog();
+      if(failures.length){
+        // Um módulo sem permissão não deve bloquear todo o CRM. Mantemos os
+        // dados já carregados para esse módulo e liberamos os demais.
+        sharedSettingsLastError=`Alguns módulos não foram atualizados pelo Firebase: ${failures.join(' | ')}`;
+        console.warn(sharedSettingsLastError);
+      }
+      await ensureDefaultEquipmentCatalog({saveToCloud:false});
       refreshEquipmentCatalog();
 
       sharedSettingsLastSource='Firebase / companies';
@@ -7861,9 +7880,25 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
       if(profile&&window.FirebaseCRM.syncReady){
         applyFirebaseProfile(profile,user);
         setLoginStatus('Carregando dados do Firebase','Buscando empresa e módulos liberados para seu perfil.','info');
-        await promiseWithTimeout(loadAuthorizedFirebaseData({silent:true,restartWatchers:true}),30000,'O carregamento dos dados do Firebase demorou além do limite.');
+        let partialLoadError=null;
+        try{
+          await promiseWithTimeout(loadAuthorizedFirebaseData({silent:true,restartWatchers:true}),30000,'O carregamento dos dados do Firebase demorou além do limite.');
+        }catch(error){
+          // O perfil já foi autenticado e aprovado. Uma falha em um módulo de
+          // dados não deve impedir a entrada; o sistema usa o último cache
+          // disponível e continua sincronizando o que estiver autorizado.
+          partialLoadError=error;
+          sharedSettingsLastError=sharedSettingsPermissionMessage(error);
+          console.warn('Firebase parcialmente indisponível durante o login:',error);
+          try{startSharedCompanyWatcher();startAuthorizedDataWatchers();}catch(watcherError){console.warn(watcherError);}
+        }
         unlockSystemAfterAuthentication();
-        firebaseLastDiagnostic={code:'ok',message:'Perfil e dados carregados diretamente do Firebase.'};
+        if(partialLoadError){
+          toast('Acesso liberado','Alguns dados não puderam ser atualizados agora. O sistema abriu com as informações já disponíveis.','info');
+          firebaseLastDiagnostic={code:'ok-partial',message:sharedSettingsLastError};
+        }else{
+          firebaseLastDiagnostic={code:'ok',message:'Perfil e dados carregados diretamente do Firebase.'};
+        }
         return true;
       }
 
