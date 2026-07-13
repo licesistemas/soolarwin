@@ -5423,9 +5423,51 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     const copy=deepClone(p);copy.id=newId('prop');copy.number=`PROP-${String(state.proposals.length+1).padStart(4,'0')}`;copy.status='Rascunho';copy.createdAt=todayISO();copy.acceptance=null;copy.updatedAt=new Date().toISOString();state.proposals.unshift(copy);persist();renderView('proposals');toast('Proposta duplicada',copy.number);
   }
 
-  function deleteProposal(id){
+  async function deleteProposal(id){
     if(!hasPermission('proposals','delete')){denyPermission('proposals','delete');return;}
-    const p=state.proposals.find(x=>x.id===id);if(!p)return;if(!confirm(`Excluir a proposta ${p.number}?`))return;state.proposals=state.proposals.filter(x=>x.id!==id);persist();renderView('proposals');toast('Proposta excluída','','info');
+    const p=state.proposals.find(x=>x.id===id);
+    if(!p)return;
+    if(!confirm(`Excluir definitivamente a proposta ${p.number}?\n\nEla será removida do sistema e também do Firebase.`))return;
+
+    if(!window.FirebaseCRM?.syncReady){
+      toast('Banco de dados desconectado','Entre no Firebase antes de excluir. Assim a proposta não voltará ao recarregar o sistema.','error');
+      return;
+    }
+
+    const publicRows=companyRows('public_proposals').filter(row=>row.id===id||row.proposalId===id);
+    const publicIds=[...new Set([id,...publicRows.map(row=>row.id).filter(Boolean)])];
+
+    try{
+      // O Firebase é a fonte oficial: excluímos primeiro na nuvem e somente
+      // depois retiramos a proposta do cache local. Isso impede que o watcher
+      // ou um novo carregamento restaure o registro excluído.
+      await window.FirebaseCRM.deleteRecord('proposals',id);
+
+      const publicResults=await Promise.allSettled(
+        publicIds.map(publicId=>window.FirebaseCRM.deleteRecord('public_proposals',publicId))
+      );
+      const publicFailures=publicResults.filter(result=>result.status==='rejected');
+
+      state.proposals=state.proposals.filter(row=>row.id!==id);
+      state.public_proposals=(state.public_proposals||[]).filter(row=>row.id!==id&&row.proposalId!==id);
+      if(activeProposal?.id===id)activeProposal=null;
+      safeStorageRemove(ACTIVE_DRAFT_KEY);
+      persist();
+      renderSidebar();
+      if(activeView==='proposals')renderView('proposals');
+
+      if(publicFailures.length){
+        toast('Proposta excluída','O registro principal foi removido, mas o link público não pôde ser apagado. Verifique as regras do Firebase.','error');
+      }else{
+        toast('Proposta excluída',`${p.number} foi removida definitivamente do Firebase.`,'info');
+      }
+    }catch(error){
+      console.error('Falha ao excluir proposta do Firebase:',error);
+      toast('Não foi possível excluir',error?.message||'A proposta continua salva no Firebase. Verifique sua conexão e as permissões.','error');
+      // Recarrega a coleção oficial para manter a interface consistente caso
+      // alguma atualização em tempo real tenha ocorrido durante a tentativa.
+      loadAuthorizedFirebaseData({silent:true,restartWatchers:false}).catch(console.warn);
+    }
   }
   // ---------- PROPOSTAS E DIMENSIONAMENTO ----------
   function calculateProposal(p){
