@@ -985,6 +985,12 @@ body[data-theme="light"] .login-benefit {
 .vp-diagnosis-reading .vp-reason h4{font-size:14px!important;line-height:1.08!important;margin:0 0 5px!important}
 .vp-diagnosis-reading .vp-reason p{font-size:10px!important;line-height:1.24!important;margin:0!important}
 
+/* ---------- PÁGINA OPCIONAL: ESTAÇÃO DE RECARGA VEICULAR ---------- */
+.proposal-option-card{padding:16px;border:1px solid var(--line);border-radius:15px;background:linear-gradient(135deg,var(--panel-2),rgba(90,169,255,.07));display:flex;align-items:center;justify-content:space-between;gap:18px}
+.proposal-option-card strong{display:block;font-size:12px}.proposal-option-card p{margin:5px 0 0;color:var(--muted);font-size:10px;line-height:1.45}.proposal-option-status{display:inline-flex;align-items:center;gap:7px;margin-top:9px;font-size:9px;font-weight:850;color:var(--muted)}.proposal-option-status i{width:8px;height:8px;border-radius:50%;background:var(--muted);box-shadow:0 0 0 4px rgba(126,141,165,.12)}.proposal-option-status.enabled{color:var(--green)}.proposal-option-status.enabled i{background:var(--green);box-shadow:0 0 0 4px var(--green-soft)}
+.vp-ev-page .vp-header{margin-bottom:25px}.vp-ev-page .vp-header h2{font-size:38px;margin-top:16px}.vp-ev-page .vp-header p{font-size:15px}.vp-ev-page .vp-metric-grid{gap:18px;margin-bottom:22px}.vp-ev-page .vp-metric{min-height:112px;padding:18px 20px}.vp-ev-page .vp-metric strong{font-size:26px;margin-top:9px}.vp-ev-page .vp-metric p{font-size:12px;margin-top:7px}
+.vp-ev-hero{min-height:180px;border-radius:28px;padding:28px 30px;margin-bottom:22px;background:linear-gradient(135deg,#102b46,#145575);color:#fff;display:grid;grid-template-columns:1fr 190px;gap:24px;align-items:center;overflow:hidden;position:relative}.vp-ev-hero:after{content:"";position:absolute;width:360px;height:360px;border-radius:50%;right:-160px;top:-130px;background:rgba(90,169,255,.18)}.vp-ev-hero-copy{position:relative;z-index:2}.vp-ev-hero-copy span{display:inline-flex;padding:6px 10px;border-radius:999px;background:rgba(255,183,3,.18);border:1px solid rgba(255,209,102,.38);color:#ffd166;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.08em}.vp-ev-hero-copy h3{margin:14px 0 9px;color:#fff;font-size:28px;line-height:1.02}.vp-ev-hero-copy p{margin:0;color:#d8e6f4;font-size:14px;line-height:1.42;max-width:460px}.vp-ev-visual{position:relative;z-index:2;display:flex;align-items:center;justify-content:center}.vp-ev-charger{width:104px;height:138px;border-radius:22px;background:#fff;box-shadow:0 20px 42px rgba(0,0,0,.28);padding:15px 13px;position:relative}.vp-ev-screen{height:42px;border-radius:10px;background:linear-gradient(135deg,#112b45,#1f6e97);display:grid;place-items:center;color:#7ee8b8;font-size:19px;font-weight:950}.vp-ev-light{width:10px;height:10px;border-radius:50%;background:#35d07f;box-shadow:0 0 0 5px rgba(53,208,127,.14);margin:16px auto}.vp-ev-port{width:36px;height:36px;border-radius:50%;margin:auto;border:8px solid #dbe5ef;background:#102b46}.vp-ev-cable{position:absolute;width:68px;height:86px;border:6px solid #172638;border-left:0;border-top:0;border-radius:0 0 42px 0;right:-53px;bottom:-38px}.vp-ev-grid{gap:18px!important;grid-template-columns:.9fr 1.1fr!important}.vp-ev-grid .vp-dark-list,.vp-ev-grid .vp-card{padding:22px;border-radius:24px}.vp-ev-grid .vp-dark-list h3,.vp-ev-grid .vp-card h3{font-size:23px;margin-bottom:15px}.vp-ev-grid .vp-data-row{padding-bottom:8px;margin-bottom:8px;border-bottom-width:1px}.vp-ev-grid .vp-data-row span{font-size:9px}.vp-ev-grid .vp-data-row strong{font-size:14px;margin-top:3px}.vp-ev-scope{display:flex;flex-direction:column;gap:10px}.vp-ev-scope-row{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:flex-start;padding:10px;border-radius:14px;background:#f4f8fb;border:1px solid #dce7f0}.vp-ev-scope-icon{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:#e7f8ef;color:#168a56;font-size:13px;font-weight:950}.vp-ev-scope-row strong{display:block;color:#10273d;font-size:12px}.vp-ev-scope-row span{display:block;margin-top:3px;color:#65768a;font-size:10px;line-height:1.3}.vp-ev-note{margin-top:10px;padding:10px 12px;border-radius:12px;background:#fff7dc;border:1px solid #f0d88e;color:#6f5a18;font-size:10px;line-height:1.35}
+
 
 
 /* Correção de exportação PDF premium v3 */
@@ -3107,6 +3113,24 @@ service cloud.firestore {
     };
   }
 
+  function defaultEvChargerData() {
+    return {
+      enabled:false,
+      quantity:1,
+      brand:'',
+      model:'',
+      power:7.4,
+      connector:'Tipo 2',
+      supply:'Monofásica 220 V',
+      installationType:'Parede',
+      cableLength:5,
+      connectivity:'Wi-Fi / Aplicativo',
+      accessControl:'Livre',
+      commercialNote:'Inclusa no investimento total da proposta',
+      notes:'Fornecimento, instalação, proteções elétricas, configuração e orientação de uso conforme condições do local.'
+    };
+  }
+
   function createSampleProposal(id, clientName, city, consumption, price, status) {
     const moduleItem = moduleCatalog[0] || defaultModuleCatalog[0];
     const inverter = inverterCatalog[0] || defaultInverterCatalog[0];
@@ -3117,6 +3141,7 @@ service cloud.firestore {
       technical: { specificYield:120, targetCoverage:100, systemLosses:17, moduleId:moduleItem.id, inverterId:inverter.id, inverterOverload:1.3, structureType:'Telhado cerâmico', orientation:'Norte', areaExtra:15, projectImage:'' },
       commercial: { price, annualTariffIncrease:7, discountRate:10, annualMaintenance:450, moduleDegradation:0.5, residualBill:75, paymentMethod:'Financiamento', notes:'Instalação completa, homologação e monitoramento inclusos.' },
       financing: { bank:'Sicredi', downPayment:price*0.2, months:60, monthlyRate:1.25 },
+      evCharger: defaultEvChargerData(),
       schedule: [
         ['Projeto','Levantamento e projeto executivo','2 dias'], ['Homologação','Protocolo junto à distribuidora','15 a 30 dias'], ['Compras','Aquisição e separação dos equipamentos','5 dias'], ['Instalação','Montagem mecânica e elétrica','2 dias'], ['Vistoria','Inspeção da distribuidora','7 a 15 dias'], ['Troca do medidor','Substituição por medidor bidirecional','Até 7 dias'], ['Operação','Ativação, treinamento e monitoramento','Imediato']
       ],
@@ -3195,6 +3220,14 @@ service cloud.firestore {
     recordCollections.forEach(collection => {
       data[collection] = (Array.isArray(data[collection]) ? data[collection] : []).map(record => ({ ...record, companyId: record.companyId || data.currentCompanyId }));
     });
+    data.proposals = data.proposals.map(proposal => ({
+      ...proposal,
+      evCharger:{
+        ...defaultEvChargerData(),
+        ...(proposal.evCharger || {}),
+        enabled:Boolean(proposal.evCharger?.enabled)
+      }
+    }));
     data.automations = { whatsappLead:true, emailProposal:true, followup:true, reminders:true, collections:false, nps:true, lastRunAt:'', ...(data.automations || {}) };
     data.automationRules = (Array.isArray(data.automationRules) ? data.automationRules : []).map(rule => ({
       enabled:true, trigger:'project_stage_enter', stage:'Qualquer etapa', channel:'email', recipient:'client', execution:'approval', delayMinutes:0, thresholdDays:3, useAI:false,
@@ -5660,6 +5693,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     }
 
     activeProposal=deepClone(found||defaultProposal());
+    activeProposal.evCharger={...defaultEvChargerData(),...(activeProposal.evCharger||{}),enabled:Boolean(activeProposal.evCharger?.enabled)};
     activeProposal.companyId=state.currentCompanyId;
     if(!found){
       activeProposal.number=`PROP-${String(companyRows('proposals').length+1).padStart(4,'0')}`;
@@ -5779,6 +5813,13 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
       <div class="form-section">${heading('Conferência final','Revise os dados antes de visualizar ou gerar o PDF.')}
         <div class="detail-grid"><div class="detail-item"><span>Proposta</span><strong>${escapeHtml(p.number)}</strong></div><div class="detail-item"><span>Validade</span><strong>${dateBR(p.validUntil)}</strong></div><div class="detail-item"><span>Consumo médio</span><strong>${number(calc.avgConsumption)} kWh</strong></div><div class="detail-item"><span>Geração prevista</span><strong>${number(calc.monthlyGeneration)} kWh/mês</strong></div><div class="detail-item"><span>Equipamentos</span><strong>${escapeHtml(calc.moduleItem.brand)} + ${escapeHtml(calc.inverter.brand)}</strong></div><div class="detail-item"><span>Financiamento</span><strong>${escapeHtml(p.financing.bank)} · ${calc.monthsCount}x ${currency(calc.installment)}</strong></div></div>
         <div class="notice warning" style="margin-top:14px">Os cálculos são estimativas comerciais e devem ser validados por profissional habilitado, considerando irradiação local, sombreamento, orientação, padrão de entrada, regras da distribuidora e condições reais da instalação.</div>
+      </div>
+      <div class="form-section">${heading('Página opcional da proposta','Habilite esta página somente quando o projeto contemplar estação de recarga para veículo elétrico.')}
+        <div class="proposal-option-card">
+          <div><strong>Estação de recarga veicular</strong><p>Ao ativar, uma página técnica e comercial será incluída automaticamente antes do retorno financeiro.</p><span class="proposal-option-status ${p.evCharger?.enabled?'enabled':''}"><i></i>${p.evCharger?.enabled?'Página habilitada · proposta com 7 páginas':'Página desabilitada · proposta com 6 páginas'}</span></div>
+          <label class="switch" title="Incluir página da estação de recarga"><input type="checkbox" data-proposal-path="evCharger.enabled" ${p.evCharger?.enabled?'checked':''}><span></span></label>
+        </div>
+        ${p.evCharger?.enabled?`<div class="form-grid" style="margin-top:14px">${proposalField('evCharger.quantity','Quantidade','number')}${proposalField('evCharger.power','Potência por carregador (kW)','number')}${proposalField('evCharger.brand','Marca','text')}${proposalField('evCharger.model','Modelo','text')}${proposalField('evCharger.connector','Conector','select',['Tipo 2','Tipo 1','CCS2','GB/T','Outro'])}${proposalField('evCharger.supply','Alimentação','select',['Monofásica 220 V','Bifásica 220 V','Trifásica 220 V','Trifásica 380 V','Conforme projeto elétrico'])}${proposalField('evCharger.installationType','Tipo de instalação','select',['Parede','Pedestal','Totem','Carport','Conforme projeto'])}${proposalField('evCharger.cableLength','Comprimento do cabo (m)','number')}${proposalField('evCharger.connectivity','Conectividade','select',['Wi-Fi / Aplicativo','Ethernet','4G','Sem conectividade','Conforme modelo'])}${proposalField('evCharger.accessControl','Controle de acesso','select',['Livre','Aplicativo','RFID','Aplicativo + RFID','Conforme modelo'])}<label class="field full"><span>Condição comercial</span><input data-proposal-path="evCharger.commercialNote" value="${attr(p.evCharger?.commercialNote||'')}"></label><label class="field full"><span>Observações e escopo</span><textarea data-proposal-path="evCharger.notes">${escapeHtml(p.evCharger?.notes||'')}</textarea></label></div>`:''}
       </div>${nav}`;
   }
 
@@ -5806,8 +5847,10 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
   }
   function bindProposalStepEvents(){
     document.querySelectorAll('[data-proposal-path]').forEach(input=>{
-      const handler=()=>{const numeric=input.type==='number';setPath(activeProposal,input.dataset.proposalPath,numeric?(input.value===''?'':Number(input.value)):input.value);activeProposal.updatedAt=new Date().toISOString();updateProposalConsumptionCalculations();renderProposalSummary();scheduleProposalDraftSave();};
-      input.addEventListener('input',handler);input.addEventListener('change',()=>{handler(); if(['technical.moduleId','technical.inverterId'].includes(input.dataset.proposalPath))renderProposalBuilder();});
+      const path=input.dataset.proposalPath;
+      const handler=()=>{const numeric=input.type==='number';const value=input.type==='checkbox'?input.checked:(numeric?(input.value===''?'':Number(input.value)):input.value);setPath(activeProposal,path,value);activeProposal.updatedAt=new Date().toISOString();updateProposalConsumptionCalculations();renderProposalSummary();scheduleProposalDraftSave();};
+      if(input.type==='checkbox')input.addEventListener('change',()=>{handler();if(path==='evCharger.enabled')renderProposalBuilder();});
+      else{input.addEventListener('input',handler);input.addEventListener('change',()=>{handler();if(['technical.moduleId','technical.inverterId'].includes(path))renderProposalBuilder();});}
     });
     document.querySelectorAll('[data-company-path]').forEach(input=>input.addEventListener('input',()=>{state.company[input.dataset.companyPath]=input.type==='number'?Number(input.value):input.value;syncCurrentCompanyRecord();persist();}));
     document.querySelectorAll('[data-consumption-index]').forEach(input=>input.addEventListener('input',()=>{
@@ -5842,7 +5885,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
   function renderProposalSummary(){
     const root=document.getElementById('proposalSummary');if(!root||!activeProposal)return;
     const c=calculateProposal(activeProposal);
-    root.innerHTML=`<div class="summary-sticky"><h3 class="summary-title">Resumo da proposta</h3><div class="summary-kpi"><span>Investimento</span><strong>${currency(activeProposal.commercial?.price)}</strong></div><div class="summary-kpi"><span>Potência instalada</span><strong>${number(c.actualPower,2)} kWp</strong></div><div class="summary-mini-grid"><div class="summary-mini"><span>Módulos</span><strong>${c.moduleQty} × ${c.moduleItem.power} W</strong></div><div class="summary-mini"><span>Inversores</span><strong>${c.inverterQty} × ${c.inverter.power} kW</strong></div><div class="summary-mini"><span>Geração/mês</span><strong>${number(c.monthlyGeneration)} kWh</strong></div><div class="summary-mini"><span>Economia/mês</span><strong>${currency(c.monthlySaving)}</strong></div><div class="summary-mini"><span>Payback</span><strong>${number(c.payback,1)} anos</strong></div><div class="summary-mini"><span>ROI 25 anos</span><strong>${number(c.roi,0)}%</strong></div></div><div class="notice warning" style="margin-top:12px">Cálculo automático. Faça a validação técnica antes do envio.</div></div>`;
+    root.innerHTML=`<div class="summary-sticky"><h3 class="summary-title">Resumo da proposta</h3><div class="summary-kpi"><span>Investimento</span><strong>${currency(activeProposal.commercial?.price)}</strong></div><div class="summary-kpi"><span>Potência instalada</span><strong>${number(c.actualPower,2)} kWp</strong></div><div class="summary-mini-grid"><div class="summary-mini"><span>Módulos</span><strong>${c.moduleQty} × ${c.moduleItem.power} W</strong></div><div class="summary-mini"><span>Inversores</span><strong>${c.inverterQty} × ${c.inverter.power} kW</strong></div><div class="summary-mini"><span>Geração/mês</span><strong>${number(c.monthlyGeneration)} kWh</strong></div><div class="summary-mini"><span>Economia/mês</span><strong>${currency(c.monthlySaving)}</strong></div><div class="summary-mini"><span>Payback</span><strong>${number(c.payback,1)} anos</strong></div><div class="summary-mini"><span>ROI 25 anos</span><strong>${number(c.roi,0)}%</strong></div><div class="summary-mini"><span>Recarga veicular</span><strong>${activeProposal.evCharger?.enabled?'Incluída':'Não incluída'}</strong></div></div><div class="notice warning" style="margin-top:12px">Cálculo automático. Faça a validação técnica antes do envio.</div></div>`;
   }
 
   async function resizeImage(file,maxW=1600,maxH=1200,quality=.84){
@@ -7317,7 +7360,8 @@ ${company.tradeName||company.name}`:''}`;
     const c=calculateProposal(p);const company=state.company||{};const companyName=company.tradeName||company.name||'Solar Prime';
     const cover=p.coverPhoto||defaultCoverImage();const logo=companyLogoSource(company);const projectImage=p.technical?.projectImage||'';const acceptance=p.acceptance;
     const acPower=c.inverterQty*c.inverter.power;const annualMwh=c.annualGeneration/1000;
-    const totalPages=6;const safe=v=>escapeHtml(v||'—');
+    const charger={...defaultEvChargerData(),...(p.evCharger||{})};const hasEvCharger=Boolean(charger.enabled);
+    const totalPages=hasEvCharger?7:6;const financialPage=hasEvCharger?6:5;const safe=v=>escapeHtml(v||'—');
     const footer=page=>`<div class="vp-footer"><span>${safe(companyName)} · ${safe(company.website||company.email||'')}</span><span>Proposta comercial confidencial · ${page}/${totalPages}</span></div>`;
     const header=(page,title,subtitle)=>`<div class="vp-bg-blob top"></div><div class="vp-bg-blob bottom"></div><div class="vp-inner"><div class="vp-header"><div><span class="vp-kicker">Proposta comercial</span><h2>${escapeHtml(title)}</h2><p>${escapeHtml(subtitle)}</p></div><div class="vp-page-badge">PÁGINA ${page}</div></div>`;
     const metric=(label,value,caption,accent='#ffb703')=>`<div class="vp-metric" style="--accent:${accent}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong><p>${escapeHtml(caption)}</p></div>`;
@@ -7334,7 +7378,13 @@ ${company.tradeName||company.name}`:''}`;
       ['Base econômica','A tarifa e a fatura atual servem como referência para calcular economia, payback e retorno.'],
       ['Potencial solar','A solução proposta busca compensar parte relevante do consumo com geração própria e previsibilidade.']
     ].map((item,index)=>`<div class="vp-reason"><div class="vp-reason-number" style="background:${index===0?'#ffb703':index===1?'#25a5bd':'#168a56'};color:${index===0?'#10273d':'#fff'}">${index+1}</div><h4>${item[0]}</h4><p>${item[1]}</p></div>`).join('');
-    const schedule=(p.schedule||[]).slice(0,6);
+    const chargerQty=Math.max(1,Number(charger.quantity||1));const chargerPower=Math.max(0,Number(charger.power||0));const chargerTotalPower=chargerQty*chargerPower;
+    const evChargerPage=hasEvCharger?`
+      <section class="proposal-page vp-page vp-ev-page">${header(5,'Estação de recarga veicular','Infraestrutura de recarga integrada ao projeto, preparada para conveniência, controle e mobilidade elétrica.')}
+        <div class="vp-ev-hero"><div class="vp-ev-hero-copy"><span>Mobilidade elétrica</span><h3>Recarregue seu veículo com inteligência</h3><p>A estação de recarga complementa a geração solar e transforma a unidade em uma estrutura preparada para a nova mobilidade.</p></div><div class="vp-ev-visual"><div class="vp-ev-charger"><div class="vp-ev-screen">⚡</div><div class="vp-ev-light"></div><div class="vp-ev-port"></div><div class="vp-ev-cable"></div></div></div></div>
+        <div class="vp-metric-grid">${metric('Potência de recarga',`${number(chargerTotalPower,1)} kW`,'Potência total considerando a quantidade prevista.','#ffb703')}${metric('Quantidade',`${number(chargerQty,0)} unidade${chargerQty===1?'':'s'}`,'Estações contempladas neste escopo.','#25a5bd')}${metric('Conector',safe(charger.connector),'Padrão de conexão informado para o equipamento.','#168a56')}</div>
+        <div class="vp-grid-2 vp-ev-grid"><div class="vp-dark-list"><h3>Configuração prevista</h3>${dataRow('Marca / modelo',[charger.brand,charger.model].filter(Boolean).join(' · ')||'A definir')}${dataRow('Potência unitária',`${number(chargerPower,1)} kW`)}${dataRow('Alimentação',charger.supply)}${dataRow('Instalação',charger.installationType)}${dataRow('Cabo',`${number(charger.cableLength||0,1)} m`)}${dataRow('Conectividade',charger.connectivity)}${dataRow('Controle de acesso',charger.accessControl)}</div><div class="vp-card"><h3>Escopo da solução</h3><div class="vp-ev-scope"><div class="vp-ev-scope-row"><div class="vp-ev-scope-icon">✓</div><div><strong>Fornecimento e instalação</strong><span>Posicionamento, fixação e montagem conforme condições técnicas do local.</span></div></div><div class="vp-ev-scope-row"><div class="vp-ev-scope-icon">✓</div><div><strong>Infraestrutura elétrica</strong><span>Proteções, circuitos e aterramento dimensionados conforme o projeto executivo.</span></div></div><div class="vp-ev-scope-row"><div class="vp-ev-scope-icon">✓</div><div><strong>Configuração e orientação</strong><span>Parametrização inicial e instruções para uso seguro da estação.</span></div></div></div><div class="vp-ev-note"><strong>${safe(charger.commercialNote)}</strong><br>${safe(charger.notes)}</div></div></div>
+        ${footer(5)}</div></section>`:'';
     return `
       <section class="proposal-page vp-cover">
         <img class="vp-cover-bg" src="${cover}" alt="Projeto solar"><div class="vp-cover-overlay"></div>
@@ -7359,10 +7409,11 @@ ${company.tradeName||company.name}`:''}`;
         <div class="vp-metric-grid">${metric('Potência DC',`${number(c.actualPower,2)} kWp`,'Potência total instalada em módulos.','#ffb703')}${metric('Potência AC',`${number(acPower,0)} kW`,'Capacidade nominal dos inversores.','#25a5bd')}${metric('Área estimada',`${number(c.occupiedArea,0)} m²`,'Área estimada para instalação dos módulos.','#168a56')}</div>
         <div class="vp-grid-2"><div class="vp-card"><h3>Ajuste conceitual do arranjo</h3><div class="vp-project-wrap">${projectImage?`<img src="${projectImage}" alt="Projeto do cliente com placas">`:`<div class="vp-project-placeholder"><div><strong>Ajuste conceitual do arranjo</strong><span>Envie na etapa Dimensionamento uma foto/render com as placas no telhado, solo ou carport.</span></div></div>`}</div></div><div class="vp-card"><h3>Equipamentos principais</h3><table class="vp-table"><tbody><tr><th>Item</th><th>Especificação</th></tr><tr><td>Módulos</td><td>${c.moduleQty} × ${number(c.moduleItem.power,0)} Wp · ${safe(c.moduleItem.brand)}</td></tr><tr><td>Inversores</td><td>${c.inverterQty} × ${number(c.inverter.power,0)} kW · ${safe(c.inverter.brand)}</td></tr><tr><td>Estrutura</td><td>${safe(p.technical?.structureType)}</td></tr><tr><td>Orientação</td><td>${safe(p.technical?.orientation)}</td></tr><tr><td>Perdas</td><td>${number(p.technical?.systemLosses||0,0)}%</td></tr><tr><td>Monitoramento</td><td>Incluso</td></tr></tbody></table></div></div>
         ${footer(4)}</div></section>
-      <section class="proposal-page vp-page">${header(5,'Retorno financeiro','Visualização do investimento, economia e comparação acumulada ao longo do tempo.')}
+      ${evChargerPage}
+      <section class="proposal-page vp-page">${header(financialPage,'Retorno financeiro','Visualização do investimento, economia e comparação acumulada ao longo do tempo.')}
         <div class="vp-metric-grid">${metric('Investimento',shortCurrency(p.commercial.price),'Valor total considerado na proposta.','#ffb703')}${metric('Economia anual',shortCurrency(c.annualSaving),'Com base na tarifa de referência adotada.','#168a56')}${metric('VPL estimado',shortCurrency(c.npv),'Indicador financeiro no horizonte analisado.','#25a5bd')}</div>
         <div class="vp-grid-2"><div class="vp-card"><h3>Indicadores financeiros</h3><table class="vp-table"><tbody><tr><th>Indicador</th><th>Valor</th></tr><tr><td>Economia mensal</td><td>${shortCurrency(c.monthlySaving)}</td></tr><tr><td>Economia anual</td><td>${shortCurrency(c.annualSaving)}</td></tr><tr><td>Payback simples</td><td>${number(c.payback,1)} anos</td></tr><tr><td>ROI 25 anos</td><td>${number(c.roi,0)}%</td></tr><tr><td>Condição comercial</td><td>${safe(p.commercial.paymentMethod)}</td></tr><tr><td>Vida útil do ativo</td><td>25 anos ou mais</td></tr></tbody></table><p style="color:#65768a;font-size:15px;margin:18px 0 0">Premissas: reajuste tarifário anual de ${number(p.commercial.annualTariffIncrease||0,1)}%, degradação dos módulos de ${number(p.commercial.moduleDegradation||0,1)}% ao ano.</p></div><div class="vp-card"><h3>Custo acumulado</h3><div class="vp-chart"><canvas id="pdfSavingsChart"></canvas></div></div></div>
-        ${footer(5)}</div></section>
+        ${footer(financialPage)}</div></section>
       <section class="proposal-page vp-final-cover">
         <img class="vp-final-bg" src="${cover}" alt="Encerramento da proposta"><div class="vp-final-overlay"></div>
         <div class="vp-final-inner">
@@ -7415,7 +7466,7 @@ ${company.tradeName||company.name}`:''}`;
     await ensureEmbeddedCompanyLogo();
     applyProposalLogoSource(document.getElementById('proposalPages'));
     const {jsPDF}=window.jspdf||{};if(!jsPDF||!window.html2canvas)throw new Error('Bibliotecas de PDF indisponíveis.');
-    const totalPages=6;let sourceRoot=null;let pages=[];
+    const totalPages=activeProposal.evCharger?.enabled?7:6;let sourceRoot=null;let pages=[];
     const previewOpen=document.getElementById('proposalPreviewModal')?.classList.contains('open');
     const previewPages=[...document.querySelectorAll('#proposalPages .proposal-page')];
     if(previewOpen&&previewPages.length===totalPages)pages=previewPages;
@@ -8226,7 +8277,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
       check('Economia e payback válidos',calc.monthlySaving>0&&Number.isFinite(calc.payback),`${calc.monthlySaving}/${calc.payback}`);
       check('Financiamento calcula parcela',calc.installment>=0&&Number.isFinite(calc.installment),String(calc.installment));
       const documentHtml=renderProposalDocument(proposal);const pages=(documentHtml.match(/class="proposal-page(?:\s|")/g)||[]).length;
-      check('Proposta contém 6 páginas',pages===6,`${pages} páginas`);
+      check('Proposta sem recarga contém 6 páginas',pages===6,`${pages} páginas`);proposal.evCharger.enabled=true;const evPages=(renderProposalDocument(proposal).match(/class="proposal-page(?:\s|")/g)||[]).length;check('Proposta com recarga contém 7 páginas',evPages===7,`${evPages} páginas`);
       const bill=extractBillFields('CELESC_HEADER_UC 123456789\nClasse: Residencial Grupo tarifário: B1 Tarifa 0,92345 600 kWh 620 kWh 640 kWh 660 kWh 680 kWh 700 kWh 720 kWh 740 kWh 760 kWh 780 kWh 800 kWh 820 kWh');
       check('Leitura local identifica UC pelo cabeçalho',bill.client.consumerUnit==='123456789',bill.client.consumerUnit);
       check('Leitura local identifica distribuidora',bill.client.distributor==='CELESC',bill.client.distributor);
