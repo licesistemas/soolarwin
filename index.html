@@ -371,6 +371,7 @@ body[data-theme="light"] .kanban-column { background:rgba(255,255,255,.45); }
 .equipment-option span { display:block; margin-top:4px; color:var(--muted); font-size:9px; }
 .equipment-option .equipment-tags { display:flex; flex-wrap:wrap; gap:5px; margin-top:9px; }
 .equipment-tags b { font-size:8px; font-weight:700; color:var(--text-soft); padding:4px 6px; border-radius:7px; background:var(--panel-3); }
+.inverter-editor-list{display:flex;flex-direction:column;gap:10px}.inverter-row-editor{padding:13px;border:1px solid var(--line);border-radius:14px;background:var(--panel-2)}.inverter-row-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:11px}.inverter-row-head strong{font-size:11px}.inverter-row-grid{display:grid;grid-template-columns:1.2fr 1.2fr .8fr .7fr;gap:9px}.equipment-add-hint{display:block;margin-top:9px;color:var(--primary)!important;font-weight:850}.module-manual-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}@media(max-width:820px){.inverter-row-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:560px){.inverter-row-grid,.module-manual-grid{grid-template-columns:1fr}}
 .calc-highlight { display:grid; grid-template-columns:repeat(4,1fr); gap:9px; margin-bottom:14px; }
 .calc-box { padding:12px; border-radius:13px; border:1px solid var(--line); background:linear-gradient(145deg,var(--panel-2),var(--panel-3)); }
 .calc-box span { display:block; color:var(--muted); font-size:8px; text-transform:uppercase; }
@@ -3138,7 +3139,7 @@ service cloud.firestore {
       id, companyId:state?.currentCompanyId||defaultCompany.id, number:`PROP-${String(id).replace(/[^a-zA-Z0-9]/g,'').slice(-6).toUpperCase()}`, status, createdAt: todayISO(), validUntil:addDaysISO(10),
       client: { name: clientName, document:'', phone:'47999999999', email:'cliente@email.com', city, address:'', consumerUnit:'123456789', className:'Residencial', tariffGroup:'B1', distributor:'CELESC' },
       coverPhoto:'', billFileName:'', billText:'', consumption, currentTariff:0.92, tariffHistory:consumption.map((_,i)=>+(0.76+i*0.014).toFixed(3)),
-      technical: { specificYield:120, targetCoverage:100, systemLosses:17, moduleId:moduleItem.id, inverterId:inverter.id, inverterOverload:1.3, inverterManualQty:null, inverterManualPower:null, inverterManualBrand:'', structureType:'Telhado cerâmico', orientation:'Norte', areaExtra:15, projectImage:'' },
+      technical: { specificYield:120, targetCoverage:100, systemLosses:17, moduleId:moduleItem.id, moduleManualQty:null, moduleManualPower:null, inverterId:inverter.id, inverterOverload:1.3, inverters:[], structureType:'Telhado cerâmico', orientation:'Norte', areaExtra:15, projectImage:'' },
       commercial: { price, annualTariffIncrease:7, discountRate:10, annualMaintenance:450, moduleDegradation:0.5, residualBill:75, paymentMethod:'Financiamento', notes:'Instalação completa, homologação e monitoramento inclusos.' },
       financing: { bank:'Sicredi', downPayment:price*0.2, months:60, monthlyRate:1.25 },
       evCharger: defaultEvChargerData(),
@@ -4812,8 +4813,8 @@ service cloud.firestore {
     const shortCurrency=v=>currency(v,0).replace(',00','');
     const presentation={
       clientName:client.name||'', city:client.city||'', document:normalizeCpfCnpj(client.document||''), number:proposal.number||'', validUntil:proposal.validUntil||'',
-      actualPower:Number(c.actualPower||0), acPower:Number((c.inverterQty*c.inverter.power)||0), moduleQty:Number(c.moduleQty||0), modulePower:Number(c.moduleItem?.power||0), moduleBrand:c.moduleItem?.brand||'',
-      inverterQty:Number(c.inverterQty||0), inverterPower:Number(c.inverter?.power||0), inverterBrand:c.inverter?.brand||'', structureType:proposal.technical?.structureType||'', orientation:proposal.technical?.orientation||'',
+      actualPower:Number(c.actualPower||0), acPower:Number(c.inverterPowerTotal||0), moduleQty:Number(c.moduleQty||0), modulePower:Number(c.moduleItem?.power||0), moduleBrand:c.moduleItem?.brand||'',
+      inverterQty:Number(c.inverterQty||0), inverterPower:Number(c.inverterPowerTotal||0), inverterBrand:c.inverters.map(item=>item.brand).filter(Boolean).join(' + '), inverters:c.inverters.map(item=>({...item})), inverterSummary:c.inverterSummary||'', structureType:proposal.technical?.structureType||'', orientation:proposal.technical?.orientation||'',
       annualGeneration:Number(c.annualGeneration||0), monthlyGeneration:Number(c.monthlyGeneration||0), avgConsumption:Number(c.avgConsumption||0), currentTariff:Number(proposal.currentTariff||0),
       investment:Number(proposal.commercial?.price||0), monthlySaving:Number(c.monthlySaving||0), annualSaving:Number(c.annualSaving||0), payback:Number(c.payback||0), roi:Number(c.roi||0), paymentMethod:proposal.commercial?.paymentMethod||'',
       coverTitle:'Projeto Solar Fotovoltaico',
@@ -5431,8 +5432,8 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     const modulePower=Number(calc?.moduleItem?.power||proposal.technical?.modulePower||0);
     const moduleModel=[calc?.moduleItem?.model,calc?.moduleItem?.brand].filter(Boolean).join(' - ')||proposal.technical?.moduleModel||'Módulo fotovoltaico conforme proposta';
     const inverterQty=Number(calc?.inverterQty||proposal.technical?.inverterQty||1);
-    const inverterPower=Number(calc?.inverter?.power||proposal.technical?.inverterPower||0);
-    const inverterModel=[calc?.inverter?.model,calc?.inverter?.brand].filter(Boolean).join(' - ')||proposal.technical?.inverterModel||'Inversor conforme projeto';
+    const inverterPower=Number(calc?.inverterPowerTotal||proposal.technical?.inverterPower||0);
+    const inverterModel=calc?.inverterSummary||[calc?.inverter?.model,calc?.inverter?.brand].filter(Boolean).join(' - ')||proposal.technical?.inverterModel||'Inversor conforme projeto';
     const annualGeneration=Number(calc?.annualGeneration||proposal.annualGeneration||0);
     const monthlyGeneration=Number(calc?.monthlyGeneration||0);
     const area=proposal.technical?.area||proposal.technical?.installationArea||'';
@@ -5442,7 +5443,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     const guarantees=proposal.guarantees||{};
     const equipmentRows=[
       ['Módulo fotovoltaico',moduleQty||'Conforme projeto',moduleModel],
-      ['Inversor fotovoltaico',inverterQty||'Conforme projeto',inverterModel],
+      ['Inversores fotovoltaicos',inverterQty||'Conforme projeto',inverterModel],
       ['Estrutura de fixação','1 conjunto',structure],
       ['Cabos, conectores e proteções','Conforme projeto','Materiais elétricos compatíveis com o sistema'],
       ['Projeto, homologação e comissionamento','1 serviço','Escopo técnico e documental conforme concessionária']
@@ -5469,7 +5470,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     const clause=(title,text)=>`<article class="cw-clause"><strong>${escapeHtml(title)}</strong><p>${escapeHtml(text)}</p></article>`;
     const cover=`<div class="cw-cover-logo"><img src="${attr(contractLogoWhite)}" alt="SoolarWin"></div><div class="cw-cover-title"><span>Contrato comercial</span><h1>Fornecimento de Gerador Fotovoltaico com Reserva de Domínio</h1></div><div class="cw-between"><p>Celebrado entre</p><strong>${escapeHtml(companyName)}</strong><small>como CONTRATADA</small><em>e</em><strong>${escapeHtml(clientName)}</strong><small>como CONTRATANTE</small></div><div class="cw-cover-info"><div><span>UC geradora</span><strong>${escapeHtml(consumerUnit||'Não informada')}</strong></div><div><span>Sistema</span><strong>${number(systemPower,2)} kWp</strong></div><div><span>Data</span><strong>${escapeHtml(contractDate)}</strong></div></div>`;
     const p2=`<h3>Contrato de fornecimento de gerador fotovoltaico com reserva de domínio</h3><div class="cw-parties"><div>${dataLine('Contratada',companyName)}${dataLine('CNPJ',companyDoc)}${dataLine('Endereço',companyAddress)}</div><div>${dataLine('Contratante',clientName)}${dataLine('CPF/CNPJ',clientDoc)}${dataLine('Endereço',address||city)}</div></div>${clause('Cláusula Primeira - Do objeto do contrato',`O presente instrumento tem por objeto o fornecimento de Gerador Fotovoltaico por parte da CONTRATADA em favor do CONTRATANTE, consistindo na compra, venda, instalação, acompanhamento documental e prestação de serviços relacionados ao sistema solar fotovoltaico aprovado comercialmente.`)}<p class="cw-text">O sistema será dimensionado conforme dados de consumo, condições do local, projeto executivo e normas aplicáveis da concessionária. A geração média é estimativa técnica e pode variar conforme clima, sombreamento, sujeira, orientação, temperatura, indisponibilidades e demais fatores externos.</p><h3 class="cw-strip">Gerador fotovoltaico - ${number(systemPower,2)} kWp</h3>${table(equipmentRows)}`;
-    const p3=`<h3>2.1 Módulos fotovoltaicos</h3>${table([['Potência',modulePower?`${number(modulePower,0)} W`:'Conforme proposta'],['Quantidade',moduleQty?`${number(moduleQty,0)} unidade(s)`:'Conforme projeto'],['Modelo',moduleModel],['Tipo de célula','Módulo monocristalino ou tecnologia equivalente conforme disponibilidade técnica']],['Característica','Descrição'])}<h3>2.2 Inversores</h3>${table([['Potência',inverterPower?`${number(inverterPower,2)} kW`:'Conforme projeto'],['Quantidade',`${inverterQty||1}`],['Modelo',inverterModel]],['Característica','Descrição'])}${clause('Cláusula Terceira - Área estimada',`A área estimada para instalação do sistema é de ${area||'acordo com vistoria técnica'}, podendo sofrer ajustes conforme estrutura, layout final, acessos, normas técnicas e disponibilidade dos equipamentos.`)}${clause('Cláusula Quarta - Geração estimada',`A geração média estimada é meramente exemplificativa e não representa garantia de geração mínima. O desempenho dependerá de fatores climáticos, exposição solar, consumo local, funcionamento da rede, manutenção e condições de operação.`)}${clause('Cláusula Quinta - Substituição técnica',`Na falta de disponibilidade de equipamento especificado, a CONTRATADA poderá fornecer produto similar ou de potência equivalente/superior, desde que preserve a finalidade técnica do sistema, sem prejuízo ao CONTRATANTE.`)}`;
+    const p3=`<h3>2.1 Módulos fotovoltaicos</h3>${table([['Potência',modulePower?`${number(modulePower,0)} W`:'Conforme proposta'],['Quantidade',moduleQty?`${number(moduleQty,0)} unidade(s)`:'Conforme projeto'],['Modelo',moduleModel],['Tipo de célula','Módulo monocristalino ou tecnologia equivalente conforme disponibilidade técnica']],['Característica','Descrição'])}<h3>2.2 Inversores</h3>${table([['Potência AC total',inverterPower?`${number(inverterPower,2)} kW`:'Conforme projeto'],['Quantidade total',`${inverterQty||1}`],['Configuração',inverterModel]],['Característica','Descrição'])}${clause('Cláusula Terceira - Área estimada',`A área estimada para instalação do sistema é de ${area||'acordo com vistoria técnica'}, podendo sofrer ajustes conforme estrutura, layout final, acessos, normas técnicas e disponibilidade dos equipamentos.`)}${clause('Cláusula Quarta - Geração estimada',`A geração média estimada é meramente exemplificativa e não representa garantia de geração mínima. O desempenho dependerá de fatores climáticos, exposição solar, consumo local, funcionamento da rede, manutenção e condições de operação.`)}${clause('Cláusula Quinta - Substituição técnica',`Na falta de disponibilidade de equipamento especificado, a CONTRATADA poderá fornecer produto similar ou de potência equivalente/superior, desde que preserve a finalidade técnica do sistema, sem prejuízo ao CONTRATANTE.`)}`;
     const p4=`<h2>Do valor do contrato e condições de pagamento</h2>${clause('Cláusula Sexta - Valor',`Pelos serviços e equipamentos contratados, o CONTRATANTE pagará à CONTRATADA a importância de ${currency(investment)}, conforme condição comercial: ${paymentMethod}.`) }${clause('Parágrafo Primeiro',`Os pagamentos deverão ser realizados por meio indicado pela CONTRATADA, podendo incluir depósito, transferência, PIX, boleto bancário, financiamento ou outra condição expressamente aprovada entre as partes.`)}${clause('Parágrafo Segundo',`Parcelas não pagas nos respectivos vencimentos poderão ficar sujeitas a multa, correção monetária, juros de mora e demais encargos previstos em proposta, boleto, contrato ou legislação aplicável.`)}<h2>Do prazo de execução</h2>${clause('Cláusula Sétima - Prazo',`O prazo de execução será contado a partir da liberação comercial, faturamento/recebimento dos equipamentos, documentação completa, acesso ao local e condições adequadas para instalação.`)}${clause('Parágrafo Único',`Prazos poderão ser prorrogados por fatores externos, incluindo chuvas, força maior, indisponibilidade de rede, exigências da concessionária, falta de documentos, necessidade de adequações técnicas ou paralisações não atribuíveis à CONTRATADA.`)}<h2>Reserva de domínio</h2>${clause('Cláusula Oitava',`Fica estabelecida a reserva de domínio em favor da CONTRATADA até o integral pagamento das obrigações pactuadas neste instrumento.`)}`;
     const p5=`<h2>Do local da entrega e instalação</h2>${clause('Cláusula Nona',`O local de entrega e instalação será ${address||city||'o endereço informado pelo CONTRATANTE'}, vinculado à unidade consumidora ${consumerUnit||'não informada'}.`) }<h2>Responsabilidades e obrigações do contratante</h2>${['Disponibilizar local de trabalho, acesso, documentos e condições adequadas para montagem e operação dos equipamentos.','Responsabilizar-se pela integridade da edificação, telhado, estrutura ou local onde será instalado o sistema fotovoltaico.','Executar adequações estruturais, elétricas, civis ou de padrão de entrada quando forem necessárias para viabilizar a instalação/homologação.','Disponibilizar internet ou meio de comunicação quando necessário para monitoramento dos inversores.','Não alterar o projeto por conta própria sem avaliação técnica, sob pena de custos adicionais e perda de garantia.'].map((t,i)=>clause(`${String.fromCharCode(97+i)})`,t)).join('')}<h2>Responsabilidades e obrigações da contratada</h2>${['Executar a instalação de forma técnica, dentro das normas e especificações aplicáveis.','Fornecer materiais, acessórios, equipamentos e mão de obra necessários ao escopo contratado.','Responsabilizar-se pela segurança dos empregados próprios ou subcontratados durante a execução.','Fornecer orientação documental e acompanhamento das etapas de homologação previstas no escopo.'].map((t,i)=>clause(`${String.fromCharCode(97+i)})`,t)).join('')}`;
     const p6=`<h2>Da garantia de produtos</h2><p class="cw-text">As garantias seguem as condições dos fabricantes e da proposta comercial aprovada. A CONTRATADA poderá intermediar suporte, análise e encaminhamento de garantia quando aplicável.</p>${table(warrantyRows,['Família','Condição de garantia'])}${clause('Cláusula Décima Terceira',`Em caso de não funcionamento ou funcionamento inadequado de produto em garantia, os serviços serão realizados a critério técnico da CONTRATADA, nas instalações do CONTRATANTE ou por procedimento indicado pelo fabricante.`)}${clause('Cláusula Décima Quarta',`A garantia não cobre mau uso, alterações por terceiros, surtos, descargas atmosféricas, falta de manutenção, danos por animais, danos estruturais, eventos climáticos extremos ou condições externas não controladas pela CONTRATADA.`)}${clause('Cláusula Décima Quinta',`A manutenção preventiva é recomendada periodicamente, podendo ter custos adicionais quando não estiver expressamente incluída na proposta comercial.`)}`;
@@ -5621,29 +5622,54 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     const avgConsumption=consumptionInfo.averageConsumption;
     const annualConsumption=consumptionInfo.annualConsumption;
     const informedMonths=consumptionInfo.informedMonths;
-    const moduleItem=findModuleCatalogItem(p.technical?.moduleId);
-    const catalogInverter=findInverterCatalogItem(p.technical?.inverterId);
-    const manualInverterPower=Number(p.technical?.inverterManualPower||0);
-    const manualInverterBrand=String(p.technical?.inverterManualBrand||'').trim();
-    const inverter={
-      ...catalogInverter,
-      power:manualInverterPower>0?manualInverterPower:Number(catalogInverter.power||0),
-      brand:manualInverterBrand||catalogInverter.brand
+
+    const moduleCatalogItem=findModuleCatalogItem(p.technical?.moduleId);
+    const manualModulePower=Number(p.technical?.moduleManualPower||0);
+    const moduleItem={
+      ...moduleCatalogItem,
+      power:manualModulePower>0?manualModulePower:Number(moduleCatalogItem.power||0)
     };
     const specificYield=Math.max(1,Number(p.technical?.specificYield||120));
     const coverage=Math.max(1,Number(p.technical?.targetCoverage||100))/100;
     const requiredPower=avgConsumption*coverage/specificYield;
-    const moduleQty=Math.max(1,Math.ceil(requiredPower*1000/moduleItem.power));
+    const automaticModuleQty=Math.max(1,Math.ceil(requiredPower*1000/Math.max(1,moduleItem.power)));
+    const manualModuleQty=Number(p.technical?.moduleManualQty||0);
+    const moduleQty=manualModuleQty>0?Math.max(1,Math.round(manualModuleQty)):automaticModuleQty;
     const actualPower=moduleQty*moduleItem.power/1000;
     const annualGeneration=actualPower*specificYield*12;
     const monthlyGeneration=annualGeneration/12;
-    const moduleArea=moduleItem.width*moduleItem.height;
+    const moduleArea=Number(moduleItem.width||0)*Number(moduleItem.height||0);
     const occupiedArea=moduleQty*moduleArea*(1+Number(p.technical?.areaExtra||15)/100);
-    const totalWeight=moduleQty*moduleItem.weight;
+    const totalWeight=moduleQty*Number(moduleItem.weight||0);
+
+    const catalogInverter=findInverterCatalogItem(p.technical?.inverterId);
     const overload=Math.max(1,Number(p.technical?.inverterOverload||1.3));
-    const automaticInverterQty=Math.max(1,Math.ceil(actualPower/(Math.max(.01,inverter.power)*overload)));
-    const manualInverterQty=Number(p.technical?.inverterManualQty||0);
-    const inverterQty=manualInverterQty>0?Math.max(1,Math.round(manualInverterQty)):automaticInverterQty;
+    const legacyPower=Number(p.technical?.inverterManualPower||0);
+    const fallbackPower=legacyPower>0?legacyPower:Number(catalogInverter.power||0);
+    const automaticInverterQty=Math.max(1,Math.ceil(actualPower/(Math.max(.01,fallbackPower)*overload)));
+    const legacyQty=Number(p.technical?.inverterManualQty||0);
+    const legacyBrand=String(p.technical?.inverterManualBrand||'').trim();
+    const storedInverters=Array.isArray(p.technical?.inverters)?p.technical.inverters.filter(Boolean):[];
+    const rawInverters=storedInverters.length?storedInverters:[{
+      id:'automatic-inverter',catalogId:catalogInverter.id,brand:legacyBrand||catalogInverter.brand,model:catalogInverter.model,
+      power:fallbackPower,quantity:legacyQty>0?Math.max(1,Math.round(legacyQty)):automaticInverterQty
+    }];
+    const inverters=rawInverters.map((row,index)=>{
+      const rowCatalog=(row.catalogId||row.inverterId)?findInverterCatalogItem(row.catalogId||row.inverterId):{};
+      return {
+        id:row.id||`inverter-${index+1}`,
+        catalogId:row.catalogId||rowCatalog.id||'',
+        brand:String(row.brand||rowCatalog.brand||'').trim()||'Marca não informada',
+        model:String(row.model||rowCatalog.model||'').trim(),
+        power:Math.max(.01,Number(row.power||rowCatalog.power||1)),
+        quantity:Math.max(1,Math.round(Number(row.quantity||row.qty||1)))
+      };
+    });
+    const inverterQty=inverters.reduce((total,row)=>total+row.quantity,0);
+    const inverterPowerTotal=inverters.reduce((total,row)=>total+(row.quantity*row.power),0);
+    const inverter=inverters[0]||{...catalogInverter,power:fallbackPower,quantity:automaticInverterQty};
+    const inverterSummary=inverters.map(row=>`${row.quantity} × ${number(row.power,2)} kW · ${row.brand}${row.model?` ${row.model}`:''}`).join(' | ');
+
     const tariff=Math.max(0,Number(p.currentTariff||0.9));
     const residual=Math.max(0,Number(p.commercial?.residualBill||0));
     const billBefore=avgConsumption*tariff;
@@ -5672,7 +5698,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     const installment=monthlyRate===0?principal/monthsCount:principal*(monthlyRate*Math.pow(1+monthlyRate,monthsCount))/(Math.pow(1+monthlyRate,monthsCount)-1);
     const netMonthlyEconomy=monthlySaving-installment;
     const billAfter=Math.max(residual,billBefore-monthlySaving);
-    return {avgConsumption,annualConsumption,informedMonths,requiredPower,moduleQty,actualPower,annualGeneration,monthlyGeneration,occupiedArea,totalWeight,inverterQty,automaticInverterQty,moduleItem,inverter,catalogInverter,billBefore,billAfter,monthlySaving,annualSaving,total25,netSavings25,payback,roi,npv,irr,down,principal,monthsCount,monthlyRate,installment,netMonthlyEconomy,cashflows};
+    return {avgConsumption,annualConsumption,informedMonths,requiredPower,moduleQty,automaticModuleQty,actualPower,annualGeneration,monthlyGeneration,occupiedArea,totalWeight,inverterQty,automaticInverterQty,inverterPowerTotal,inverterSummary,inverters,moduleItem,moduleCatalogItem,inverter,catalogInverter,billBefore,billAfter,monthlySaving,annualSaving,total25,netSavings25,payback,roi,npv,irr,down,principal,monthsCount,monthlyRate,installment,netMonthlyEconomy,cashflows};
   }
 
   function computeIRR(cashflows){
@@ -5741,29 +5767,62 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     bindProposalStepEvents();renderProposalSummary();
   }
 
+  function clearManualModuleOverrides(proposal=activeProposal){
+    if(!proposal?.technical)return;
+    delete proposal.technical.moduleManualQty;
+    delete proposal.technical.moduleManualPower;
+  }
+
   function clearManualInverterOverrides(proposal=activeProposal){
     if(!proposal?.technical)return;
+    proposal.technical.inverters=[];
     delete proposal.technical.inverterManualQty;
     delete proposal.technical.inverterManualPower;
     delete proposal.technical.inverterManualBrand;
   }
 
-  function renderManualInverterEditor(p,calc){
-    const manualQty=Number(p.technical?.inverterManualQty||0);
-    const manualPower=Number(p.technical?.inverterManualPower||0);
-    const manualBrand=String(p.technical?.inverterManualBrand||'').trim();
-    const displayQty=manualQty>0?Math.round(manualQty):calc.automaticInverterQty;
-    const displayPower=manualPower>0?manualPower:calc.catalogInverter.power;
-    const displayBrand=manualBrand||calc.catalogInverter.brand;
-    const hasManual=manualQty>0||manualPower>0||Boolean(manualBrand);
-    return `<div class="form-section" style="border:2px solid rgba(90,169,255,.34);box-shadow:0 14px 32px rgba(90,169,255,.08)">
-      <div class="form-section-head"><div><h3>Configuração final dos inversores</h3><p>Antes de finalizar, você pode alterar manualmente quantidade, potência unitária e marca. Os dados abaixo serão usados no resumo e no PDF.</p></div><button class="btn btn-ghost btn-sm" data-reset-inverter-manual type="button">↻ Usar cálculo automático</button></div>
-      <div class="form-grid">
-        <label class="field"><span>Quantidade de inversores</span><input data-proposal-path="technical.inverterManualQty" type="number" min="1" step="1" value="${attr(displayQty)}"></label>
-        <label class="field"><span>Potência unitária (kW)</span><input data-proposal-path="technical.inverterManualPower" type="number" min="0.01" step="any" value="${attr(displayPower)}"></label>
-        <label class="field full"><span>Marca do inversor</span><input data-proposal-path="technical.inverterManualBrand" type="text" value="${attr(displayBrand)}"></label>
+  function ensureProposalInverterRows(proposal=activeProposal,calc=null){
+    if(!proposal)return [];
+    proposal.technical=proposal.technical||{};
+    if(!Array.isArray(proposal.technical.inverters)||!proposal.technical.inverters.length){
+      const c=calc||calculateProposal(proposal);
+      proposal.technical.inverters=c.inverters.map(row=>({...row,id:newId('inv')}));
+    }
+    return proposal.technical.inverters;
+  }
+
+  function renderManualModuleEditor(p,calc){
+    const manualQty=Number(p.technical?.moduleManualQty||0);
+    const manualPower=Number(p.technical?.moduleManualPower||0);
+    const displayQty=manualQty>0?Math.round(manualQty):calc.automaticModuleQty;
+    const displayPower=manualPower>0?manualPower:calc.moduleCatalogItem.power;
+    const hasManual=manualQty>0||manualPower>0;
+    return `<div class="form-section" style="border:2px solid rgba(255,183,3,.35);box-shadow:0 14px 32px rgba(255,183,3,.07)">
+      <div class="form-section-head"><div><h3>Configuração final dos módulos</h3><p>Altere manualmente a quantidade de placas e a potência unitária. A potência DC, geração, área e peso serão recalculados.</p></div><button class="btn btn-ghost btn-sm" data-reset-module-manual type="button">↻ Usar cálculo automático</button></div>
+      <div class="module-manual-grid">
+        <label class="field"><span>Quantidade de placas</span><input data-proposal-path="technical.moduleManualQty" type="number" min="1" step="1" value="${attr(displayQty)}"></label>
+        <label class="field"><span>Potência de cada placa (W)</span><input data-proposal-path="technical.moduleManualPower" type="number" min="1" step="any" value="${attr(displayPower)}"></label>
       </div>
-      <div class="notice ${hasManual?'warning':''}" style="margin-top:12px"><strong>${hasManual?'Configuração manual ativa':'Sugestão automática ativa'}</strong><br>${displayQty} inversor(es) de ${number(displayPower,2)} kW · ${escapeHtml(displayBrand)}. Potência AC total: ${number(displayQty*displayPower,2)} kW.</div>
+      <div class="notice ${hasManual?'warning':''}" style="margin-top:12px"><strong>${hasManual?'Configuração manual ativa':'Sugestão automática ativa'}</strong><br>${displayQty} placa(s) de ${number(displayPower,0)} W = ${number(displayQty*displayPower/1000,2)} kWp.</div>
+    </div>`;
+  }
+
+  function renderManualInverterEditor(p,calc){
+    const storedRows=Array.isArray(p.technical?.inverters)?p.technical.inverters.filter(Boolean):[];
+    const rows=storedRows.length?storedRows:calc.inverters;
+    const rowHtml=rows.map((row,index)=>`<div class="inverter-row-editor">
+      <div class="inverter-row-head"><strong>Inversor ${index+1}</strong><button class="btn btn-danger btn-sm" data-remove-inverter-row="${index}" type="button" ${rows.length===1?'disabled':''}>Remover</button></div>
+      <div class="inverter-row-grid">
+        <label class="field"><span>Marca</span><input data-inverter-index="${index}" data-inverter-field="brand" type="text" value="${attr(row.brand||'')}"></label>
+        <label class="field"><span>Modelo</span><input data-inverter-index="${index}" data-inverter-field="model" type="text" value="${attr(row.model||'')}"></label>
+        <label class="field"><span>Potência unitária (kW)</span><input data-inverter-index="${index}" data-inverter-field="power" type="number" min="0.01" step="any" value="${attr(row.power||'')}"></label>
+        <label class="field"><span>Quantidade</span><input data-inverter-index="${index}" data-inverter-field="quantity" type="number" min="1" step="1" value="${attr(row.quantity||1)}"></label>
+      </div>
+    </div>`).join('');
+    return `<div class="form-section" style="border:2px solid rgba(90,169,255,.34);box-shadow:0 14px 32px rgba(90,169,255,.08)">
+      <div class="form-section-head"><div><h3>Configuração final dos inversores</h3><p>Inclua quantos tipos de inversores forem necessários. Cada linha pode ter marca, modelo, potência e quantidade diferentes.</p></div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="btn btn-secondary btn-sm" data-add-manual-inverter type="button">＋ Incluir inversor</button><button class="btn btn-ghost btn-sm" data-reset-inverter-manual type="button">↻ Usar cálculo automático</button></div></div>
+      <div class="inverter-editor-list">${rowHtml}</div>
+      <div class="notice warning" style="margin-top:12px"><strong>${calc.inverterQty} inversor(es) em ${calc.inverters.length} configuração(ões)</strong><br>Potência AC total: ${number(calc.inverterPowerTotal,2)} kW.<br>${escapeHtml(calc.inverterSummary)}</div>
     </div>`;
   }
 
@@ -5802,18 +5861,20 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
       <div class="form-section">${heading('Premissas de dimensionamento','Ajuste os parâmetros técnicos conforme a região e o projeto.')}
         <div class="form-grid">${proposalField('technical.specificYield','Geração específica (kWh/kWp/mês)','number')}${proposalField('technical.targetCoverage','Cobertura do consumo (%)','number')}${proposalField('technical.systemLosses','Perdas globais (%)','number')}${proposalField('technical.areaExtra','Margem adicional de área (%)','number')}${proposalField('technical.structureType','Tipo de estrutura','select',['Telhado cerâmico','Telhado metálico','Fibrocimento','Laje','Solo','Carport'])}${proposalField('technical.orientation','Orientação predominante','select',['Norte','Nordeste','Noroeste','Leste','Oeste','Sul'])}${proposalField('technical.inverterOverload','Overload permitido do inversor','number')}</div>
       </div>
+      ${renderManualModuleEditor(p,calc)}
       <div class="form-section" style="border:2px solid rgba(255,183,3,.45);box-shadow:0 16px 36px rgba(255,183,3,.10)">${heading('Ajuste conceitual do arranjo','Este é o campo da imagem que aparece na página técnica da proposta, no lugar do layout padrão.')}
         <div class="grid grid-2"><label class="upload-drop" style="background:linear-gradient(135deg,rgba(255,183,3,.14),rgba(90,169,255,.08));border-color:rgba(255,183,3,.45)"><div><strong>📷 Subir foto/render do projeto com placas</strong><span>JPG ou PNG. Envie a imagem do cliente já com as placas posicionadas no telhado, solo ou carport.</span><input id="technicalProjectImageInput" type="file" accept="image/*" style="margin-top:10px"></div></label><div>${p.technical?.projectImage?`<img class="upload-preview" src="${p.technical.projectImage}" alt="Ajuste conceitual do arranjo">`:`<div class="upload-drop"><div><strong>Pré-visualização do ajuste</strong><span>Nenhuma imagem selecionada. Se não subir imagem, a proposta mostra o layout conceitual padrão.</span></div></div>`}</div></div>
       </div>
       <div class="form-section">${heading('Resultado técnico','Valores calculados automaticamente com o equipamento selecionado.')}
-        <div class="detail-grid"><div class="detail-item"><span>Quantidade de módulos</span><strong>${calc.moduleQty}</strong></div><div class="detail-item"><span>Quantidade de inversores</span><strong>${calc.inverterQty}</strong></div><div class="detail-item"><span>Área ocupada</span><strong>${number(calc.occupiedArea,1)} m²</strong></div><div class="detail-item"><span>Peso total</span><strong>${number(calc.totalWeight)} kg</strong></div><div class="detail-item"><span>Módulo</span><strong>${escapeHtml(calc.moduleItem.brand)} ${calc.moduleItem.power} W</strong></div><div class="detail-item"><span>Inversor</span><strong>${escapeHtml(calc.inverter.brand)} ${calc.inverter.power} kW</strong></div></div>
+        <div class="detail-grid"><div class="detail-item"><span>Quantidade de módulos</span><strong>${calc.moduleQty}</strong></div><div class="detail-item"><span>Potência dos módulos</span><strong>${number(calc.moduleItem.power,0)} W cada · ${number(calc.actualPower,2)} kWp</strong></div><div class="detail-item"><span>Quantidade de inversores</span><strong>${calc.inverterQty}</strong></div><div class="detail-item"><span>Potência AC total</span><strong>${number(calc.inverterPowerTotal,2)} kW</strong></div><div class="detail-item"><span>Área ocupada</span><strong>${number(calc.occupiedArea,1)} m²</strong></div><div class="detail-item"><span>Peso total</span><strong>${number(calc.totalWeight)} kg</strong></div><div class="detail-item"><span>Módulo</span><strong>${escapeHtml(calc.moduleItem.brand)} ${number(calc.moduleItem.power,0)} W</strong></div><div class="detail-item"><span>Inversores</span><strong>${escapeHtml(calc.inverterSummary)}</strong></div></div>
       </div>${nav}`;
     if(step===3)return `
       <div class="form-section">${heading('Selecione o módulo','O banco pode ser ampliado no módulo de estoque/equipamentos.')}
         <div class="equipment-select-grid">${moduleCatalog.map(m=>`<article class="equipment-option ${p.technical.moduleId===m.id?'selected':''}" data-select-module="${m.id}"><strong>${escapeHtml(m.brand)} · ${escapeHtml(m.model)}</strong><span>${m.power} W · ${m.efficiency}% eficiência</span><div class="equipment-tags"><b>${m.productWarranty} anos produto</b><b>${m.performanceWarranty} anos desempenho</b><b>${escapeHtml(m.certification)}</b></div></article>`).join('')}</div>
       </div>
-      <div class="form-section">${heading('Selecione o inversor','Escolha um equipamento do catálogo como base. Depois, ajuste os dados finais manualmente se necessário.')}
-        <div class="equipment-select-grid">${inverterCatalog.map(i=>`<article class="equipment-option ${p.technical.inverterId===i.id?'selected':''}" data-select-inverter="${i.id}"><strong>${escapeHtml(i.brand)} · ${escapeHtml(i.model)}</strong><span>${i.power} kW · ${escapeHtml(i.phases)}</span><div class="equipment-tags"><b>${i.mppt} MPPT</b><b>${i.warranty} anos garantia</b><b>${escapeHtml(i.certification)}</b></div></article>`).join('')}</div>
+      ${renderManualModuleEditor(p,calc)}
+      <div class="form-section">${heading('Adicionar inversor do catálogo','Clique em qualquer equipamento para acrescentá-lo à proposta. Você pode adicionar modelos e marcas diferentes.')}
+        <div class="equipment-select-grid">${inverterCatalog.map(i=>`<article class="equipment-option" data-add-inverter-catalog="${i.id}"><strong>${escapeHtml(i.brand)} · ${escapeHtml(i.model)}</strong><span>${i.power} kW · ${escapeHtml(i.phases)}</span><div class="equipment-tags"><b>${i.mppt} MPPT</b><b>${i.warranty} anos garantia</b><b>${escapeHtml(i.certification)}</b></div><span class="equipment-add-hint">＋ Adicionar à proposta</span></article>`).join('')}</div>
       </div>
       ${renderManualInverterEditor(p,calc)}${nav}`;
     if(step===4)return `
@@ -5847,9 +5908,10 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     return `
       <div class="calc-highlight"><div class="calc-box"><span>Cliente</span><strong>${escapeHtml(p.client.name||'—')}</strong></div><div class="calc-box"><span>Sistema</span><strong>${number(calc.actualPower,2)} kWp</strong></div><div class="calc-box"><span>Investimento</span><strong>${currency(p.commercial.price)}</strong></div><div class="calc-box"><span>Payback</span><strong>${number(calc.payback,1)} anos</strong></div></div>
       <div class="form-section">${heading('Conferência final','Revise os dados antes de visualizar ou gerar o PDF.')}
-        <div class="detail-grid"><div class="detail-item"><span>Proposta</span><strong>${escapeHtml(p.number)}</strong></div><div class="detail-item"><span>Validade</span><strong>${dateBR(p.validUntil)}</strong></div><div class="detail-item"><span>Consumo médio</span><strong>${number(calc.avgConsumption)} kWh</strong></div><div class="detail-item"><span>Geração prevista</span><strong>${number(calc.monthlyGeneration)} kWh/mês</strong></div><div class="detail-item"><span>Equipamentos</span><strong>${escapeHtml(calc.moduleItem.brand)} + ${escapeHtml(calc.inverter.brand)}</strong></div><div class="detail-item"><span>Inversores</span><strong>${calc.inverterQty} × ${number(calc.inverter.power,2)} kW · ${escapeHtml(calc.inverter.brand)}</strong></div><div class="detail-item"><span>Financiamento</span><strong>${escapeHtml(p.financing.bank)} · ${calc.monthsCount}x ${currency(calc.installment)}</strong></div></div>
+        <div class="detail-grid"><div class="detail-item"><span>Proposta</span><strong>${escapeHtml(p.number)}</strong></div><div class="detail-item"><span>Validade</span><strong>${dateBR(p.validUntil)}</strong></div><div class="detail-item"><span>Consumo médio</span><strong>${number(calc.avgConsumption)} kWh</strong></div><div class="detail-item"><span>Geração prevista</span><strong>${number(calc.monthlyGeneration)} kWh/mês</strong></div><div class="detail-item"><span>Módulos</span><strong>${calc.moduleQty} × ${number(calc.moduleItem.power,0)} W · ${number(calc.actualPower,2)} kWp</strong></div><div class="detail-item"><span>Inversores</span><strong>${escapeHtml(calc.inverterSummary)}</strong></div><div class="detail-item"><span>Potência AC total</span><strong>${number(calc.inverterPowerTotal,2)} kW</strong></div><div class="detail-item"><span>Financiamento</span><strong>${escapeHtml(p.financing.bank)} · ${calc.monthsCount}x ${currency(calc.installment)}</strong></div></div>
         <div class="notice warning" style="margin-top:14px">Os cálculos são estimativas comerciais e devem ser validados por profissional habilitado, considerando irradiação local, sombreamento, orientação, padrão de entrada, regras da distribuidora e condições reais da instalação.</div>
       </div>
+      ${renderManualModuleEditor(p,calc)}
       ${renderManualInverterEditor(p,calc)}
       <div class="form-section">${heading('Página opcional da proposta','Habilite esta página somente quando o projeto contemplar estação de recarga para veículo elétrico.')}
         <div class="proposal-option-card">
@@ -5887,7 +5949,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
       const path=input.dataset.proposalPath;
       const handler=()=>{const numeric=input.type==='number';const value=input.type==='checkbox'?input.checked:(numeric?(input.value===''?'':Number(input.value)):input.value);setPath(activeProposal,path,value);activeProposal.updatedAt=new Date().toISOString();updateProposalConsumptionCalculations();renderProposalSummary();scheduleProposalDraftSave();};
       if(input.type==='checkbox')input.addEventListener('change',()=>{handler();if(path==='evCharger.enabled')renderProposalBuilder();});
-      else{input.addEventListener('input',handler);input.addEventListener('change',()=>{handler();if(['technical.moduleId','technical.inverterId','technical.inverterManualQty','technical.inverterManualPower','technical.inverterManualBrand'].includes(path))renderProposalBuilder();});}
+      else{input.addEventListener('input',handler);input.addEventListener('change',()=>{handler();if(['technical.moduleId','technical.moduleManualQty','technical.moduleManualPower','technical.inverterOverload'].includes(path))renderProposalBuilder();});}
     });
     document.querySelectorAll('[data-company-path]').forEach(input=>input.addEventListener('input',()=>{state.company[input.dataset.companyPath]=input.type==='number'?Number(input.value):input.value;syncCurrentCompanyRecord();persist();}));
     document.querySelectorAll('[data-consumption-index]').forEach(input=>input.addEventListener('input',()=>{
@@ -5907,9 +5969,17 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
       renderProposalSummary();
       scheduleProposalDraftSave();
     }));
-    document.querySelectorAll('[data-select-module]').forEach(el=>el.addEventListener('click',()=>{activeProposal.technical.moduleId=el.dataset.selectModule;scheduleProposalDraftSave();renderProposalBuilder();}));
-    document.querySelectorAll('[data-select-inverter]').forEach(el=>el.addEventListener('click',()=>{activeProposal.technical.inverterId=el.dataset.selectInverter;clearManualInverterOverrides(activeProposal);scheduleProposalDraftSave();renderProposalBuilder();}));
-    document.querySelectorAll('[data-reset-inverter-manual]').forEach(btn=>btn.addEventListener('click',()=>{clearManualInverterOverrides(activeProposal);scheduleProposalDraftSave();renderProposalBuilder();toast('Configuração automática restaurada','Quantidade, potência e marca voltaram a seguir o inversor selecionado e o cálculo de overload.','info');}));
+    document.querySelectorAll('[data-select-module]').forEach(el=>el.addEventListener('click',()=>{activeProposal.technical.moduleId=el.dataset.selectModule;clearManualModuleOverrides(activeProposal);scheduleProposalDraftSave();renderProposalBuilder();}));
+    document.querySelectorAll('[data-reset-module-manual]').forEach(btn=>btn.addEventListener('click',()=>{clearManualModuleOverrides(activeProposal);scheduleProposalDraftSave();renderProposalBuilder();toast('Módulos no cálculo automático','Quantidade e potência voltaram a seguir o módulo selecionado e o dimensionamento.','info');}));
+    document.querySelectorAll('[data-inverter-index][data-inverter-field]').forEach(input=>{
+      const index=Number(input.dataset.inverterIndex);const field=input.dataset.inverterField;
+      const handler=()=>{const rows=ensureProposalInverterRows(activeProposal);if(!rows[index])return;let value=input.value;if(field==='power')value=Math.max(.01,Number(value||0));if(field==='quantity')value=Math.max(1,Math.round(Number(value||1)));rows[index][field]=value;activeProposal.updatedAt=new Date().toISOString();renderProposalSummary();scheduleProposalDraftSave();};
+      input.addEventListener('input',handler);input.addEventListener('change',()=>{handler();renderProposalBuilder();});
+    });
+    document.querySelectorAll('[data-add-inverter-catalog]').forEach(el=>el.addEventListener('click',()=>{const item=findInverterCatalogItem(el.dataset.addInverterCatalog);const rows=ensureProposalInverterRows(activeProposal);rows.push({id:newId('inv'),catalogId:item.id,brand:item.brand,model:item.model,power:Number(item.power||1),quantity:1});activeProposal.technical.inverterId=item.id;scheduleProposalDraftSave();renderProposalBuilder();toast('Inversor incluído',`${item.brand} ${item.model} foi acrescentado à proposta.`,'success');}));
+    document.querySelectorAll('[data-add-manual-inverter]').forEach(btn=>btn.addEventListener('click',()=>{const rows=ensureProposalInverterRows(activeProposal);rows.push({id:newId('inv'),catalogId:'',brand:'',model:'',power:1,quantity:1});scheduleProposalDraftSave();renderProposalBuilder();}));
+    document.querySelectorAll('[data-remove-inverter-row]').forEach(btn=>btn.addEventListener('click',()=>{const rows=ensureProposalInverterRows(activeProposal);if(rows.length<=1)return;rows.splice(Number(btn.dataset.removeInverterRow),1);scheduleProposalDraftSave();renderProposalBuilder();}));
+    document.querySelectorAll('[data-reset-inverter-manual]').forEach(btn=>btn.addEventListener('click',()=>{clearManualInverterOverrides(activeProposal);scheduleProposalDraftSave();renderProposalBuilder();toast('Configuração automática restaurada','A lista voltou para um inversor sugerido pelo catálogo e pelo cálculo de overload.','info');}));
     document.querySelectorAll('[data-schedule]').forEach(input=>input.addEventListener('input',()=>{const [i,j]=input.dataset.schedule.split('.').map(Number);activeProposal.schedule[i][j]=input.value;scheduleProposalDraftSave();}));
     document.querySelector('[data-proposal-prev]')?.addEventListener('click',()=>{proposalStep=Math.max(0,proposalStep-1);renderProposalBuilder();});
     document.querySelector('[data-proposal-next]')?.addEventListener('click',()=>{if(!validateProposalStep(proposalStep))return;if(proposalStep>=proposalStepDefs.length-1)previewProposal(activeProposal);else{proposalStep++;renderProposalBuilder();}});
@@ -5923,7 +5993,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
   function renderProposalSummary(){
     const root=document.getElementById('proposalSummary');if(!root||!activeProposal)return;
     const c=calculateProposal(activeProposal);
-    root.innerHTML=`<div class="summary-sticky"><h3 class="summary-title">Resumo da proposta</h3><div class="summary-kpi"><span>Investimento</span><strong>${currency(activeProposal.commercial?.price)}</strong></div><div class="summary-kpi"><span>Potência instalada</span><strong>${number(c.actualPower,2)} kWp</strong></div><div class="summary-mini-grid"><div class="summary-mini"><span>Módulos</span><strong>${c.moduleQty} × ${c.moduleItem.power} W</strong></div><div class="summary-mini"><span>Inversores</span><strong>${c.inverterQty} × ${number(c.inverter.power,2)} kW · ${escapeHtml(c.inverter.brand)}</strong></div><div class="summary-mini"><span>Geração/mês</span><strong>${number(c.monthlyGeneration)} kWh</strong></div><div class="summary-mini"><span>Economia/mês</span><strong>${currency(c.monthlySaving)}</strong></div><div class="summary-mini"><span>Payback</span><strong>${number(c.payback,1)} anos</strong></div><div class="summary-mini"><span>ROI 25 anos</span><strong>${number(c.roi,0)}%</strong></div><div class="summary-mini"><span>Recarga veicular</span><strong>${activeProposal.evCharger?.enabled?'Incluída':'Não incluída'}</strong></div></div><div class="notice warning" style="margin-top:12px">Cálculo automático. Faça a validação técnica antes do envio.</div></div>`;
+    root.innerHTML=`<div class="summary-sticky"><h3 class="summary-title">Resumo da proposta</h3><div class="summary-kpi"><span>Investimento</span><strong>${currency(activeProposal.commercial?.price)}</strong></div><div class="summary-kpi"><span>Potência instalada</span><strong>${number(c.actualPower,2)} kWp</strong></div><div class="summary-mini-grid"><div class="summary-mini"><span>Módulos</span><strong>${c.moduleQty} × ${number(c.moduleItem.power,0)} W</strong></div><div class="summary-mini"><span>Potência AC</span><strong>${number(c.inverterPowerTotal,2)} kW</strong></div><div class="summary-mini full" style="grid-column:1/-1"><span>Inversores</span><strong>${escapeHtml(c.inverterSummary)}</strong></div><div class="summary-mini"><span>Geração/mês</span><strong>${number(c.monthlyGeneration)} kWh</strong></div><div class="summary-mini"><span>Economia/mês</span><strong>${currency(c.monthlySaving)}</strong></div><div class="summary-mini"><span>Payback</span><strong>${number(c.payback,1)} anos</strong></div><div class="summary-mini"><span>ROI 25 anos</span><strong>${number(c.roi,0)}%</strong></div><div class="summary-mini"><span>Recarga veicular</span><strong>${activeProposal.evCharger?.enabled?'Incluída':'Não incluída'}</strong></div></div><div class="notice warning" style="margin-top:12px">Revise a configuração manual dos equipamentos antes do envio.</div></div>`;
   }
 
   async function resizeImage(file,maxW=1600,maxH=1200,quality=.84){
@@ -7397,7 +7467,7 @@ ${company.tradeName||company.name}`:''}`;
   function renderProposalDocument(p){
     const c=calculateProposal(p);const company=state.company||{};const companyName=company.tradeName||company.name||'Solar Prime';
     const cover=p.coverPhoto||defaultCoverImage();const logo=companyLogoSource(company);const projectImage=p.technical?.projectImage||'';const acceptance=p.acceptance;
-    const acPower=c.inverterQty*c.inverter.power;const annualMwh=c.annualGeneration/1000;
+    const acPower=c.inverterPowerTotal;const annualMwh=c.annualGeneration/1000;
     const charger={...defaultEvChargerData(),...(p.evCharger||{})};const hasEvCharger=Boolean(charger.enabled);
     const totalPages=hasEvCharger?7:6;const financialPage=hasEvCharger?6:5;const safe=v=>escapeHtml(v||'—');
     const footer=page=>`<div class="vp-footer"><span>${safe(companyName)} · ${safe(company.website||company.email||'')}</span><span>Proposta comercial confidencial · ${page}/${totalPages}</span></div>`;
@@ -7445,7 +7515,7 @@ ${company.tradeName||company.name}`:''}`;
         ${footer(3)}</div></section>
       <section class="proposal-page vp-page">${header(4,'Solução técnica','A composição da usina, equipamentos principais e premissas de implantação.')}
         <div class="vp-metric-grid">${metric('Potência DC',`${number(c.actualPower,2)} kWp`,'Potência total instalada em módulos.','#ffb703')}${metric('Potência AC',`${number(acPower,0)} kW`,'Capacidade nominal dos inversores.','#25a5bd')}${metric('Área estimada',`${number(c.occupiedArea,0)} m²`,'Área estimada para instalação dos módulos.','#168a56')}</div>
-        <div class="vp-grid-2"><div class="vp-card"><h3>Ajuste conceitual do arranjo</h3><div class="vp-project-wrap">${projectImage?`<img src="${projectImage}" alt="Projeto do cliente com placas">`:`<div class="vp-project-placeholder"><div><strong>Ajuste conceitual do arranjo</strong><span>Envie na etapa Dimensionamento uma foto/render com as placas no telhado, solo ou carport.</span></div></div>`}</div></div><div class="vp-card"><h3>Equipamentos principais</h3><table class="vp-table"><tbody><tr><th>Item</th><th>Especificação</th></tr><tr><td>Módulos</td><td>${c.moduleQty} × ${number(c.moduleItem.power,0)} Wp · ${safe(c.moduleItem.brand)}</td></tr><tr><td>Inversores</td><td>${c.inverterQty} × ${number(c.inverter.power,0)} kW · ${safe(c.inverter.brand)}</td></tr><tr><td>Estrutura</td><td>${safe(p.technical?.structureType)}</td></tr><tr><td>Orientação</td><td>${safe(p.technical?.orientation)}</td></tr><tr><td>Perdas</td><td>${number(p.technical?.systemLosses||0,0)}%</td></tr><tr><td>Monitoramento</td><td>Incluso</td></tr></tbody></table></div></div>
+        <div class="vp-grid-2"><div class="vp-card"><h3>Ajuste conceitual do arranjo</h3><div class="vp-project-wrap">${projectImage?`<img src="${projectImage}" alt="Projeto do cliente com placas">`:`<div class="vp-project-placeholder"><div><strong>Ajuste conceitual do arranjo</strong><span>Envie na etapa Dimensionamento uma foto/render com as placas no telhado, solo ou carport.</span></div></div>`}</div></div><div class="vp-card"><h3>Equipamentos principais</h3><table class="vp-table"><tbody><tr><th>Item</th><th>Especificação</th></tr><tr><td>Módulos</td><td>${c.moduleQty} × ${number(c.moduleItem.power,0)} Wp · ${safe(c.moduleItem.brand)}</td></tr><tr><td>Inversores</td><td>${safe(c.inverterSummary)}</td></tr><tr><td>Potência AC total</td><td>${number(c.inverterPowerTotal,2)} kW</td></tr><tr><td>Estrutura</td><td>${safe(p.technical?.structureType)}</td></tr><tr><td>Orientação</td><td>${safe(p.technical?.orientation)}</td></tr><tr><td>Perdas</td><td>${number(p.technical?.systemLosses||0,0)}%</td></tr><tr><td>Monitoramento</td><td>Incluso</td></tr></tbody></table></div></div>
         ${footer(4)}</div></section>
       ${evChargerPage}
       <section class="proposal-page vp-page">${header(financialPage,'Retorno financeiro','Visualização do investimento, economia e comparação acumulada ao longo do tempo.')}
