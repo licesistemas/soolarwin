@@ -2711,7 +2711,7 @@ service cloud.firestore {
   const DRIVE_SCRIPT_TOKEN_KEY = 'solarcrm-drive-script-token-v1';
   const DRIVE_ROOT_FOLDER_KEY = 'solarcrm-drive-root-folder-v1';
   const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-2';
-  const SYSTEM_VERSION = '3.8.0-configuracoes-compartilhadas';
+  const SYSTEM_VERSION = '3.8.1-propostas-persistentes';
   const COMPANY_WIDE_SHARED_ACCESS = true;
   let storageWarningShown = false;
   let draftSaveTimer = null;
@@ -3572,8 +3572,15 @@ service cloud.firestore {
 
   function replaceCompanyCollection(stateKey,rows=[]){
     const current=state.currentCompanyId;
-    const retained=(state[stateKey]||[]).filter(item=>(item.companyId||current)!==current);
-    state[stateKey]=[...retained,...rows.map(item=>({...item,companyId:item.companyId||current}))];
+    const previous=(state[stateKey]||[]);
+    const retained=previous.filter(item=>(item.companyId||current)!==current);
+    const localById=new Map(previous.filter(item=>(item.companyId||current)===current).map(item=>[item.id,item]));
+    const normalizedRows=rows.map(item=>{
+      const normalized={...item,companyId:item.companyId||current};
+      return stateKey==='proposals'&&localById.has(normalized.id)?mergeProposalLocalAssets(normalized,localById.get(normalized.id)):normalized;
+    });
+    state[stateKey]=[...retained,...normalizedRows];
+    if(stateKey==='proposals')normalizedRows.forEach(item=>ProposalDB.putProposal(item).catch(error=>console.warn('Falha ao atualizar cache da proposta:',error)));
     if(stateKey==='equipmentCatalog')refreshEquipmentCatalog();
   }
 
@@ -3835,20 +3842,39 @@ service cloud.firestore {
     }
   }
 
+  function compactProposalForLocalStorage(proposal={}){
+    const clean=deepClone(proposal||{});
+    clean.coverPhoto='';
+    clean.billText='';
+    clean.billHistoryText='';
+    if(clean.technical)clean.technical.projectImage='';
+    if(clean.acceptance?.signature)clean.acceptance.signature='';
+    clean.localAssetsStored=Boolean(proposal.coverPhoto||proposal.technical?.projectImage||proposal.billText||proposal.billHistoryText||proposal.acceptance?.signature);
+    return clean;
+  }
+
+  function stateForLocalStorage(){
+    return {...state,proposals:(state.proposals||[]).map(compactProposalForLocalStorage)};
+  }
+
   function persist() {
     try {
-      const saved = safeStorageSet(STORAGE_KEY, JSON.stringify(state));
+      // Fotos, OCR e assinaturas podem ultrapassar rapidamente o limite de ~5 MB do localStorage.
+      // O estado leve fica aqui; a proposta completa é preservada no IndexedDB (ProposalDB).
+      const saved = safeStorageSet(STORAGE_KEY, JSON.stringify(stateForLocalStorage()));
       if (!saved) {
-        if (!storageWarningShown) toast('Armazenamento indisponível', 'Os dados desta sessão não poderão ser preservados neste navegador.', 'error');
+        if (!storageWarningShown) toast('Armazenamento indisponível', 'O cache leve não pôde ser atualizado. As propostas continuam protegidas na base local do navegador.', 'error');
         storageWarningShown = true;
-        return;
+        return false;
       }
       const el = document.getElementById('proposalAutosaveStatus');
       if (el) el.textContent = `Cache atualizado às ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
+      return true;
     } catch (error) {
-      if (!storageWarningShown) toast('Erro ao salvar', 'O armazenamento local pode estar cheio. Exporte um backup.', 'error');
+      if (!storageWarningShown) toast('Erro ao salvar', 'Não foi possível atualizar o cache do sistema. Exporte um backup.', 'error');
       storageWarningShown = true;
       console.warn('Falha ao persistir os dados:', error);
+      return false;
     }
   }
 
@@ -3928,6 +3954,84 @@ service cloud.firestore {
     async delete(id){const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(this.store,'readwrite');tx.objectStore(this.store).delete(id);tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error);});}
   };
 
+
+  const ProposalDB={
+    name:'solarcrm-proposals-v1',store:'records',db:null,
+    async open(){
+      if(this.db)return this.db;
+      if(!window.indexedDB)throw new Error('IndexedDB não está disponível neste navegador.');
+      this.db=await new Promise((resolve,reject)=>{
+        const req=indexedDB.open(this.name,1);
+        req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(this.store))req.result.createObjectStore(this.store);};
+        req.onsuccess=()=>resolve(req.result);
+        req.onerror=()=>reject(req.error||new Error('Falha ao abrir a base local de propostas.'));
+      });
+      return this.db;
+    },
+    proposalKey(companyId,id){return `proposal:${companyId||'company'}:${id}`;},
+    draftKey(companyId){return `draft:${companyId||'company'}`;},
+    async putValue(key,value){const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(this.store,'readwrite');tx.objectStore(this.store).put(value,key);tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error||new Error('Falha ao gravar na base local.'));tx.onabort=()=>reject(tx.error||new Error('Gravação local cancelada.'));});},
+    async getValue(key){const db=await this.open();return new Promise((resolve,reject)=>{const req=db.transaction(this.store,'readonly').objectStore(this.store).get(key);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error);});},
+    async getAll(){const db=await this.open();return new Promise((resolve,reject)=>{const req=db.transaction(this.store,'readonly').objectStore(this.store).getAll();req.onsuccess=()=>resolve(req.result||[]);req.onerror=()=>reject(req.error);});},
+    async deleteValue(key){const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(this.store,'readwrite');tx.objectStore(this.store).delete(key);tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error);});},
+    async putProposal(proposal){if(!proposal?.id)return false;return this.putValue(this.proposalKey(proposal.companyId||state.currentCompanyId,proposal.id),{kind:'proposal',companyId:proposal.companyId||state.currentCompanyId,id:proposal.id,updatedAt:proposal.updatedAt||new Date().toISOString(),proposal:deepClone(proposal)});},
+    async getCompanyProposals(companyId){const rows=await this.getAll();return rows.filter(row=>row?.kind==='proposal'&&row.companyId===companyId&&row.proposal?.id).map(row=>row.proposal);},
+    async deleteProposal(companyId,id){return this.deleteValue(this.proposalKey(companyId,id));},
+    async putDraft(companyId,proposal){return this.putValue(this.draftKey(companyId),{kind:'draft',companyId,savedAt:new Date().toISOString(),proposal:deepClone(proposal)});},
+    async deleteDraft(companyId){return this.deleteValue(this.draftKey(companyId));}
+  };
+
+  function mergeProposalLocalAssets(base={},cached={}){
+    const merged={...cached,...base};
+    merged.client={...(cached.client||{}),...(base.client||{})};
+    merged.commercial={...(cached.commercial||{}),...(base.commercial||{})};
+    merged.financing={...(cached.financing||{}),...(base.financing||{})};
+    merged.technical={...(cached.technical||{}),...(base.technical||{})};
+    if(!base.coverPhoto&&cached.coverPhoto)merged.coverPhoto=cached.coverPhoto;
+    if(!base.billText&&cached.billText)merged.billText=cached.billText;
+    if(!base.billHistoryText&&cached.billHistoryText)merged.billHistoryText=cached.billHistoryText;
+    if(!base.technical?.projectImage&&cached.technical?.projectImage)merged.technical.projectImage=cached.technical.projectImage;
+    if(!base.acceptance?.signature&&cached.acceptance?.signature)merged.acceptance={...(cached.acceptance||{}),...(base.acceptance||{}),signature:cached.acceptance.signature};
+    return merged;
+  }
+
+  async function restoreProposalCache(){
+    try{
+      const cached=await ProposalDB.getCompanyProposals(state.currentCompanyId);
+      if(!cached.length)return 0;
+      const currentById=new Map((state.proposals||[]).map(item=>[item.id,item]));
+      cached.forEach(local=>{
+        const current=currentById.get(local.id);
+        if(current){
+          const merged=mergeProposalLocalAssets(current,local);
+          const index=state.proposals.findIndex(item=>item.id===local.id);
+          if(index>=0)state.proposals[index]=merged;
+        }else state.proposals.push(local);
+      });
+      return cached.length;
+    }catch(error){
+      console.warn('Falha ao restaurar propostas da base local:',error);
+      return 0;
+    }
+  }
+
+  function approximateJsonBytes(value){
+    try{return new Blob([JSON.stringify(value)]).size;}catch(_){return JSON.stringify(value||{}).length*2;}
+  }
+
+  function proposalForCloud(proposal={}){
+    const clean=deepClone(proposal||{});
+    // O texto bruto da fatura é usado somente para OCR/reanálise local e pode deixar o documento grande demais para o Firestore.
+    clean.billText='';
+    clean.billHistoryText='';
+    clean.cloudAssetNotice='Imagens grandes e OCR completo permanecem protegidos na base local do navegador.';
+    const maxDocumentBytes=850000;
+    if(approximateJsonBytes(clean)>maxDocumentBytes&&clean.technical)clean.technical.projectImage='';
+    if(approximateJsonBytes(clean)>maxDocumentBytes)clean.coverPhoto='';
+    if(approximateJsonBytes(clean)>maxDocumentBytes&&clean.acceptance?.signature)clean.acceptance.signature='';
+    return clean;
+  }
+
   function daysBetween(a,b=new Date()){
     const start=a instanceof Date?a:new Date(String(a).length===10?`${a}T12:00:00`:a);
     const end=b instanceof Date?b:new Date(b);
@@ -3954,7 +4058,8 @@ service cloud.firestore {
   }
   function syncRecordToFirebase(collection,record){
     if(!window.FirebaseCRM?.syncReady)return;
-    window.FirebaseCRM.saveRecord(collection,firestoreSafeRecord(record)).catch(error=>console.warn(`Falha ao sincronizar ${collection}:`,error));
+    const payload=collection==='proposals'?proposalForCloud(record):record;
+    window.FirebaseCRM.saveRecord(collection,firestoreSafeRecord(payload)).catch(error=>console.warn(`Falha ao sincronizar ${collection}:`,error));
   }
   function recordAutomation({type='manual',channel='internal',title,text='',status='Concluído',recipient='',recordId='',dedupeKey=''}){
     const existing=dedupeKey&&companyRows('automationLogs').find(log=>log.dedupeKey===dedupeKey);
@@ -4314,10 +4419,12 @@ service cloud.firestore {
     return hasPermission(view,'view');
   }
 
-  function init() {
+  async function init() {
     document.body.dataset.theme = state.theme || 'dark';
     initAuthenticationScreen();
     chartDefaults();
+    await restoreProposalCache();
+    persist();
     if (window.pdfjsLib) {
       pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
     }
@@ -5565,7 +5672,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
   function duplicateProposal(id){
     if(!hasPermission('proposals','create')){denyPermission('proposals','create');return;}
     const p=state.proposals.find(x=>x.id===id); if(!p)return;
-    const copy=deepClone(p);copy.id=newId('prop');copy.number=`PROP-${String(state.proposals.length+1).padStart(4,'0')}`;copy.status='Rascunho';copy.createdAt=todayISO();copy.acceptance=null;copy.updatedAt=new Date().toISOString();state.proposals.unshift(copy);persist();syncRecordToFirebase('proposals',copy);renderView('proposals');toast('Proposta duplicada',copy.number);
+    const copy=deepClone(p);copy.id=newId('prop');copy.number=`PROP-${String(state.proposals.length+1).padStart(4,'0')}`;copy.status='Rascunho';copy.createdAt=todayISO();copy.acceptance=null;copy.updatedAt=new Date().toISOString();state.proposals.unshift(copy);ProposalDB.putProposal(copy).catch(error=>console.warn('Falha ao salvar cópia local:',error));persist();syncRecordToFirebase('proposals',copy);renderView('proposals');toast('Proposta duplicada',copy.number);
   }
 
   async function deleteProposal(id){
@@ -5597,6 +5704,8 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
       state.public_proposals=(state.public_proposals||[]).filter(row=>row.id!==id&&row.proposalId!==id);
       if(activeProposal?.id===id)activeProposal=null;
       safeStorageRemove(ACTIVE_DRAFT_KEY);
+      await ProposalDB.deleteProposal(state.currentCompanyId,id).catch(()=>null);
+      await ProposalDB.deleteDraft(state.currentCompanyId).catch(()=>null);
       persist();
       renderSidebar();
       if(activeView==='proposals')renderView('proposals');
@@ -5743,10 +5852,16 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
   function scheduleProposalDraftSave(){
     clearTimeout(draftSaveTimer);
     const el=document.getElementById('proposalAutosaveStatus');if(el)el.textContent='Salvando rascunho...';
-    draftSaveTimer=setTimeout(()=>{
+    draftSaveTimer=setTimeout(async()=>{
       if(!activeProposal)return;
-      safeStorageSet(ACTIVE_DRAFT_KEY,JSON.stringify({savedAt:new Date().toISOString(),proposal:activeProposal}));
-      const status=document.getElementById('proposalAutosaveStatus');if(status)status.textContent=`Rascunho salvo às ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
+      try{
+        await ProposalDB.putDraft(state.currentCompanyId,activeProposal);
+        safeStorageSet(ACTIVE_DRAFT_KEY,JSON.stringify({savedAt:new Date().toISOString(),proposalId:activeProposal.id,companyId:state.currentCompanyId}));
+        const status=document.getElementById('proposalAutosaveStatus');if(status)status.textContent=`Rascunho protegido às ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}`;
+      }catch(error){
+        console.warn('Falha ao salvar rascunho:',error);
+        const status=document.getElementById('proposalAutosaveStatus');if(status)status.textContent='Rascunho não salvo';
+      }
     },350);
   }
 
@@ -5983,8 +6098,8 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     document.querySelectorAll('[data-schedule]').forEach(input=>input.addEventListener('input',()=>{const [i,j]=input.dataset.schedule.split('.').map(Number);activeProposal.schedule[i][j]=input.value;scheduleProposalDraftSave();}));
     document.querySelector('[data-proposal-prev]')?.addEventListener('click',()=>{proposalStep=Math.max(0,proposalStep-1);renderProposalBuilder();});
     document.querySelector('[data-proposal-next]')?.addEventListener('click',()=>{if(!validateProposalStep(proposalStep))return;if(proposalStep>=proposalStepDefs.length-1)previewProposal(activeProposal);else{proposalStep++;renderProposalBuilder();}});
-    document.getElementById('coverPhotoInput')?.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;activeProposal.coverPhoto=await resizeImage(file,1600,1100,.84);scheduleProposalDraftSave();renderProposalBuilder();});
-    ['technicalProjectImageInput','technicalProjectImageInputTop'].forEach(id=>document.getElementById(id)?.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;activeProposal.technical=activeProposal.technical||{};activeProposal.technical.projectImage=await resizeImage(file,1800,1200,.88);scheduleProposalDraftSave();renderProposalBuilder();toast('Imagem técnica adicionada','O ajuste conceitual aparecerá na página técnica da proposta.','success');}));
+    document.getElementById('coverPhotoInput')?.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;activeProposal.coverPhoto=await resizeImage(file,1200,820,.72);scheduleProposalDraftSave();renderProposalBuilder();});
+    ['technicalProjectImageInput','technicalProjectImageInputTop'].forEach(id=>document.getElementById(id)?.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;activeProposal.technical=activeProposal.technical||{};activeProposal.technical.projectImage=await resizeImage(file,1400,900,.72);scheduleProposalDraftSave();renderProposalBuilder();toast('Imagem técnica adicionada','O ajuste conceitual aparecerá na página técnica da proposta.','success');}));
     document.getElementById('energyBillInput')?.addEventListener('change',handleEnergyBillUpload);
     document.getElementById('billLocalAnalyzeBtn')?.addEventListener('click',analyzeBillLocally);
     document.getElementById('openCompanySettingsBtn')?.addEventListener('click',()=>openSettings('company'));
@@ -7185,19 +7300,49 @@ ${historyText}`.trim(),historyText);
   async function saveProposalRecord(proposal,{silent=false}={}){
     if(!proposal)return false;
     const required=[proposal.client?.name,proposal.client?.city,proposal.commercial?.price];
-    if(required.some(value=>!value||Number(proposal.commercial?.price)<=0)){if(!silent)toast('Preencha os campos obrigatórios','Cliente, cidade e valor do investimento são necessários.','error');return false;}
+    if(required.some(value=>!value)||Number(proposal.commercial?.price)<=0){if(!silent)toast('Preencha os campos obrigatórios','Cliente, cidade e valor do investimento são necessários.','error');return false;}
     proposal.companyId=state.currentCompanyId;proposal.updatedAt=new Date().toISOString();
     const idx=state.proposals.findIndex(item=>item.id===proposal.id);
     if(idx>=0)state.proposals[idx]=deepClone(proposal);else state.proposals.unshift(deepClone(proposal));
     upsertClientFromProposal(proposal,proposal.status==='Aceita'?'Ativo':'Em negociação');
-    persist();renderSidebar();safeStorageRemove(ACTIVE_DRAFT_KEY);
+
+    let indexedDbSaved=false;
+    try{indexedDbSaved=await ProposalDB.putProposal(proposal);}catch(error){console.warn('Falha ao salvar proposta no IndexedDB:',error);}
+    const cacheSaved=persist();
+    renderSidebar();
+    safeStorageRemove(ACTIVE_DRAFT_KEY);
+    ProposalDB.deleteDraft(state.currentCompanyId).catch(()=>null);
     if(activeView==='proposals')renderView('proposals');
-    if(window.FirebaseCRM?.syncReady){try{await window.FirebaseCRM.saveRecord('proposals',firestoreSafeRecord(proposal));}catch(error){console.warn(error);if(!silent)toast('Salva localmente',error?.message||'A sincronização com o banco de dados falhou.','error');}}
-    if(!silent)toast('Proposta salva',`${proposal.number} · ${proposal.client.name}`);
+
+    if(!indexedDbSaved&&!cacheSaved){
+      if(!silent)toast('Proposta não salva','O navegador bloqueou os dois mecanismos de armazenamento local. Verifique o modo privado ou as permissões do site.','error');
+      return false;
+    }
+
+    let cloudSaved=false;
+    if(window.FirebaseCRM?.syncReady){
+      try{
+        await window.FirebaseCRM.saveRecord('proposals',firestoreSafeRecord(proposalForCloud(proposal)));
+        cloudSaved=true;
+      }catch(error){
+        console.warn(error);
+        if(!silent)toast('Salva neste navegador',error?.message||'A sincronização com o banco de dados falhou.','error');
+      }
+    }
+    if(!silent){
+      const destination=cloudSaved?'Base local e Firebase':'Base local protegida';
+      toast('Proposta salva',`${proposal.number} · ${proposal.client.name} · ${destination}`);
+      const status=document.getElementById('proposalAutosaveStatus');if(status)status.textContent=cloudSaved?'Salva localmente e sincronizada':'Salva neste navegador';
+    }
     return true;
   }
 
-  async function saveActiveProposal(){return saveProposalRecord(activeProposal);}
+  async function saveActiveProposal(){
+    const button=document.getElementById('proposalSaveBtn');
+    const oldLabel=button?.textContent||'Salvar proposta';
+    if(button){button.disabled=true;button.textContent='Salvando...';}
+    try{return await saveProposalRecord(activeProposal);}finally{if(button){button.disabled=false;button.textContent=oldLabel;}}
+  }
 
   function buildCommercialProposalWhatsapp(proposal,link){
     const c=calculateProposal(proposal);const company=state.company||{};const name=proposal.client?.name||'tudo bem';
@@ -7244,7 +7389,7 @@ ${company.tradeName||company.name}`:''}`;
       proposal.updatedAt=new Date().toISOString();
       const publicRecord=publicProposalRecord(proposal,'');
       await window.FirebaseCRM.saveRecord('public_proposals',firestoreSafeRecord(publicRecord));
-      await window.FirebaseCRM.saveRecord('proposals',firestoreSafeRecord(proposal));
+      await window.FirebaseCRM.saveRecord('proposals',firestoreSafeRecord(proposalForCloud(proposal)));
       return {link:proposal.publicUrl,pdfUrl:'',published:true,noStorage:true};
     }catch(error){
       console.error(error);
@@ -8001,7 +8146,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     document.querySelectorAll('[data-configure-user-access]').forEach(button=>button.addEventListener('click',()=>openPermissionMatrix('user',button.dataset.configureUserAccess)));
     document.getElementById('settingsExportBackup')?.addEventListener('click',exportBackup);
     document.getElementById('settingsImportBackup')?.addEventListener('click',()=>document.getElementById('backupImportInput').click());
-    document.getElementById('resetCleanData')?.addEventListener('click',()=>{if(confirm('Apagar definitivamente todos os dados locais deste navegador?')){safeStorageRemove(STORAGE_KEY);safeStorageRemove(ACTIVE_DRAFT_KEY);state=normalizeState(seedState());activeProposal=null;persist();closeModal('settingsModal');renderSidebar();renderView('dashboard');updateTopbar();toast('Base local limpa','Nenhum cadastro foi recriado.','success');}});
+    document.getElementById('resetCleanData')?.addEventListener('click',()=>{if(confirm('Apagar definitivamente todos os dados locais deste navegador?')){safeStorageRemove(STORAGE_KEY);safeStorageRemove(ACTIVE_DRAFT_KEY);try{indexedDB.deleteDatabase(ProposalDB.name);}catch(_){}ProposalDB.db=null;state=normalizeState(seedState());activeProposal=null;persist();closeModal('settingsModal');renderSidebar();renderView('dashboard');updateTopbar();toast('Base local limpa','Nenhum cadastro foi recriado.','success');}});
   }
 
   async function saveUserProfile(event){
@@ -8333,7 +8478,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
         if(!hasPermission(moduleId,'create')&&!hasPermission(moduleId,'edit'))continue;
         for(const record of companyRows(collection)){
           record.companyId=state.currentCompanyId;
-          await window.FirebaseCRM.saveRecord(collection,firestoreSafeRecord(record));
+          await window.FirebaseCRM.saveRecord(collection,firestoreSafeRecord(collection==='proposals'?proposalForCloud(record):record));
         }
       }
       await loadAuthorizedFirebaseData({silent:true,restartWatchers:true});
@@ -8420,7 +8565,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
   }
 
   window.SolarCRMDebug={SYSTEM_VERSION,calculateProposal,extractBillFields,normalizeState,renderProposalDocument,projectStages,projectDocumentCategories,defaultAutomationRule,executeAutomationRules,queueAutomationRule,ensureProjectStructure,ensureAllProjectStructures,updateProjectStage,runSystemSelfTests,runWorkflowSelfTests,loadFirebaseConfig,clearFirebaseConfig,firebaseApiKeyLooksValid,finishAuthenticatedSession,initializeSharedCompanySettings,loadAuthorizedFirebaseData,startAuthorizedDataWatchers,saveSharedCompanySettings,applySharedCompanySettings,chooseBestCompanySettings,companyConfigurationScore,loadUserPermissionData,openPermissionMatrix,defaultPermissionMatrix,normalizePermissionMatrix,permissionArraysFromMatrix,hasPermission,lockSystemForAuthentication,unlockSystemAfterAuthentication,buildClientPortalRecord,publishClientPortalStatus,clientPortalUrl,getState:()=>deepClone(state)};
-  document.addEventListener('DOMContentLoaded',()=>{init();autoConnectFirebase();});
+  document.addEventListener('DOMContentLoaded',async()=>{await init();autoConnectFirebase();});
 })();
 
 </script>
