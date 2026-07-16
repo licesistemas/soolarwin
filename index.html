@@ -992,6 +992,15 @@ body[data-theme="light"] .login-benefit {
 .vp-consumption-fill.peak{background:#ffb703}
 .vp-consumption-month{font-size:8px!important;color:#10273d;line-height:1;font-weight:900}
 .vp-consumption-value{font-size:8px!important;color:#65768a;line-height:1}
+.vp-diagnosis-chart-canvas{height:240px;margin-top:6px}
+.vp-diagnosis-compare-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+.vp-compare-pill{padding:13px 14px;border-radius:18px;background:#f4f8fc;border:1px solid #d9e4ef;min-height:88px}
+.vp-compare-pill span{display:block;color:#708195;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
+.vp-compare-pill strong{display:block;color:#10273d;font-size:19px;line-height:1.08;margin-top:8px}
+.vp-compare-pill small{display:block;color:#65768a;font-size:11px;line-height:1.35;margin-top:8px}
+.vp-compare-pill.highlight{background:#102b46;border-color:#102b46}
+.vp-compare-pill.highlight span,.vp-compare-pill.highlight strong,.vp-compare-pill.highlight small{color:#fff}
+.vp-compare-pill.highlight strong{color:#ffcf58}
 .vp-diagnosis-bottom{grid-template-columns:.9fr 1.1fr!important;gap:16px!important}
 .vp-diagnosis-data,.vp-diagnosis-reading{padding:20px!important;border-radius:24px!important;min-height:0!important}
 .vp-diagnosis-data h3,.vp-diagnosis-reading h3{font-size:23px!important;line-height:1.05!important;margin:0 0 14px!important}
@@ -6141,6 +6150,14 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     return (low+high)/2;
   }
 
+  const proposalGenerationSeasonality=[1.12,1.08,1.02,0.96,0.89,0.84,0.87,0.94,0.99,1.04,1.10,1.15];
+  function proposalMonthlyGenerationProfile(p,calc=null){
+    const c=calc||calculateProposal(p);
+    const annualGeneration=Math.max(0,Number(c?.annualGeneration||0));
+    const totalWeight=proposalGenerationSeasonality.reduce((sum,value)=>sum+value,0)||12;
+    return proposalGenerationSeasonality.map(factor=>annualGeneration*(factor/totalWeight));
+  }
+
   function getPath(obj,path){return path.split('.').reduce((o,k)=>o?.[k],obj);}
   function setPath(obj,path,value){const parts=path.split('.');let cur=obj;parts.slice(0,-1).forEach(k=>{if(!cur[k]||typeof cur[k]!=='object')cur[k]={};cur=cur[k];});cur[parts.at(-1)]=value;}
 
@@ -7944,12 +7961,17 @@ ${company.tradeName||company.name}`:''}`;
     const metric=(label,value,caption,accent='#ffb703')=>`<div class="vp-metric" style="--accent:${accent}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong><p>${escapeHtml(caption)}</p></div>`;
     const dataRow=(label,value)=>`<div class="vp-data-row"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`;
     const shortCurrency=v=>currency(v,0).replace(',00','');
-    const consumptionValues=(Array.isArray(p.consumption)?p.consumption:[]).map(value=>Number(value||0));
+    const consumptionValues=(Array.isArray(p.consumption)?p.consumption:[]).map(value=>Math.max(0,Number(value||0)));
+    const generationValues=proposalMonthlyGenerationProfile(p,c).map(value=>Math.max(0,Number(value||0)));
     const maxConsumption=Math.max(...consumptionValues,1);
-    const minConsumption=Math.min(...consumptionValues.filter(value=>value>0),maxConsumption);
     const peakMonthIndex=consumptionValues.findIndex(value=>value===maxConsumption);
-    const lowMonthIndex=consumptionValues.findIndex(value=>value===minConsumption);
-    const monthlyBars=months.map((month,index)=>{const value=Number(consumptionValues[index]||0);const height=Math.max(8,Math.round(value/maxConsumption*100));return `<div class="vp-consumption-col"><div class="vp-consumption-track"><div class="vp-consumption-fill ${index===peakMonthIndex?'peak':''}" style="height:${height}%"></div></div><strong class="vp-consumption-month">${month}</strong><span class="vp-consumption-value">${number(value,0)}</span></div>`;}).join('');
+    const annualGenerationChart=generationValues.reduce((sum,value)=>sum+value,0);
+    const coverageRatio=Math.min(999,annualGenerationChart/Math.max(1,c.annualConsumption||0)*100);
+    const balanceValues=months.map((_,index)=>generationValues[index]-consumptionValues[index]);
+    const bestBalanceValue=Math.max(...balanceValues);
+    const worstBalanceValue=Math.min(...balanceValues);
+    const bestBalanceIndex=balanceValues.findIndex(value=>value===bestBalanceValue);
+    const worstBalanceIndex=balanceValues.findIndex(value=>value===worstBalanceValue);
     const diagnosticNotes=[
       ['Perfil de consumo','O histórico mensal identifica o tamanho real da necessidade energética da unidade.'],
       ['Base econômica','A tarifa e a fatura atual servem como referência para calcular economia, payback e retorno.'],
@@ -7986,7 +8008,7 @@ ${company.tradeName||company.name}`:''}`;
       ${worksGalleryPage}
       <section class="proposal-page vp-page vp-diagnosis-page">${header(diagnosisPage,'Diagnóstico energético','Análise do consumo atual, custo mensal e potencial de compensação antes da implantação.')}
         <div class="vp-metric-grid">${metric('Consumo médio',`${number(c.avgConsumption,0)} kWh/mês`,'Média apurada no histórico informado.','#ffb703')}${metric('Custo mensal atual',`${shortCurrency(c.billBefore)}`,'Estimativa da fatura sem o sistema solar.','#25a5bd')}${metric('Consumo anual',`${number(c.annualConsumption,0)} kWh/ano`,'Demanda anual usada para dimensionar a usina.','#168a56')}</div>
-        <div class="vp-card vp-diagnosis-chart"><div class="vp-chart-title-row" style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start"><div><h3>Histórico mensal de consumo</h3><p style="color:#65768a">Valores em kWh usados como base técnica e comercial do projeto.</p></div><div style="text-align:right;color:#65768a;font-size:11px;white-space:nowrap"><strong style="display:block;color:#10273d;font-size:15px;line-height:1.05">Pico: ${months[Math.max(peakMonthIndex,0)]||'—'}</strong>${number(maxConsumption,0)} kWh</div></div><div class="vp-consumption-grid">${monthlyBars}</div></div>
+        <div class="vp-card vp-diagnosis-chart"><div class="vp-chart-title-row" style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start"><div><h3>Consumo x projeção de geração</h3><p style="color:#65768a">Comparativo mensal entre o histórico de consumo e a energia estimada para a usina proposta.</p></div><div style="text-align:right;color:#65768a;font-size:11px;white-space:nowrap"><strong style="display:block;color:#10273d;font-size:15px;line-height:1.05">Cobertura estimada</strong>${number(coverageRatio,0)}%</div></div><div class="vp-chart vp-diagnosis-chart-canvas"><canvas id="pdfConsumptionChart"></canvas></div><div class="vp-diagnosis-compare-grid"><div class="vp-compare-pill"><span>Consumo anual</span><strong>${number(c.annualConsumption,0)} kWh</strong><small>Base real informada pelo histórico dos últimos 12 meses.</small></div><div class="vp-compare-pill"><span>Geração anual projetada</span><strong>${number(annualGenerationChart,0)} kWh</strong><small>Estimativa calculada a partir da potência proposta e da geração específica adotada.</small></div><div class="vp-compare-pill highlight"><span>${worstBalanceValue>=0?'Mês com maior sobra':'Mês com maior déficit'}</span><strong>${months[(worstBalanceValue>=0?bestBalanceIndex:worstBalanceIndex)]||'—'}</strong><small>${worstBalanceValue>=0?`Saldo positivo estimado de ${number(bestBalanceValue,0)} kWh.`:`Necessidade complementar estimada de ${number(Math.abs(worstBalanceValue),0)} kWh.`}</small></div></div></div>
         <div class="vp-grid-2 vp-diagnosis-bottom"><div class="vp-dark-list vp-diagnosis-data"><h3>Dados da unidade</h3>${dataRow('Cliente',p.client.name)}${dataRow('Cidade',p.client.city)}${dataRow('Unidade consumidora',p.client.consumerUnit)}${dataRow('Distribuidora',p.client.distributor)}${dataRow('Classe / grupo',`${safe(p.client.className)} · ${safe(p.client.tariffGroup)}`)}${dataRow('Tarifa considerada',`${currency(p.currentTariff,2)}/kWh`)}</div><div class="vp-reasons vp-diagnosis-reading"><h3>Leitura do diagnóstico</h3><div class="vp-reason-grid">${diagnosticNotes}</div></div></div>
         ${footer(diagnosisPage)}</div></section>
       <section class="proposal-page vp-page">${header(technicalPage,'Solução técnica','A composição da usina, equipamentos principais e premissas de implantação.')}
@@ -8039,7 +8061,8 @@ ${company.tradeName||company.name}`:''}`;
   function initProposalCharts(){
     if(!window.Chart)return;destroyCharts(proposalCharts);
     const p=activeProposal,c=calculateProposal(p);const common={responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{labels:{color:'#5e6b7b',usePointStyle:true,boxWidth:7,font:{size:8}}}},scales:{x:{grid:{display:false},ticks:{color:'#7d8998',font:{size:8}}},y:{grid:{color:'#e9edf2'},ticks:{color:'#7d8998',font:{size:8}}}}};
-    const cons=document.getElementById('pdfConsumptionChart');if(cons)proposalCharts.push(new Chart(cons,{type:'bar',data:{labels:months,datasets:[{label:'Consumo (kWh)',data:p.consumption,backgroundColor:'#174f80',borderRadius:5}]},options:{...common,plugins:{legend:{display:false}}}}));
+    const generationProfile=proposalMonthlyGenerationProfile(p,c);
+    const cons=document.getElementById('pdfConsumptionChart');if(cons)proposalCharts.push(new Chart(cons,{data:{labels:months,datasets:[{type:'bar',label:'Consumo (kWh)',data:(Array.isArray(p.consumption)?p.consumption:[]).map(value=>Math.max(0,Number(value||0))),backgroundColor:'rgba(23,79,128,.94)',borderRadius:6,maxBarThickness:24},{type:'line',label:'Geração projetada (kWh)',data:generationProfile,borderColor:'#ffb703',backgroundColor:'rgba(255,183,3,.18)',fill:false,tension:.35,pointRadius:3,pointHoverRadius:4,pointBackgroundColor:'#ffb703',pointBorderColor:'#fff',pointBorderWidth:1.5,borderWidth:2.5}]},options:{...common,interaction:{mode:'index',intersect:false},plugins:{legend:{display:true,labels:{color:'#5e6b7b',usePointStyle:true,boxWidth:8,font:{size:8}}},tooltip:{callbacks:{label:context=>`${context.dataset.label}: ${number(context.parsed.y||0,0)} kWh`}}},scales:{x:{grid:{display:false},ticks:{color:'#7d8998',font:{size:8}}},y:{grid:{color:'#e9edf2'},ticks:{color:'#7d8998',font:{size:8},callback:value=>`${number(value,0)} kWh`}}}}}));
     const tariff=document.getElementById('pdfTariffChart');if(tariff)proposalCharts.push(new Chart(tariff,{type:'line',data:{labels:months,datasets:[{label:'Tarifa R$/kWh',data:p.tariffHistory?.length===12?p.tariffHistory:Array.from({length:12},(_,i)=>Number(p.currentTariff||.9)*Math.pow(1-0.07/12,11-i)),borderColor:'#e39a00',backgroundColor:'rgba(227,154,0,.12)',fill:true,tension:.35,pointRadius:2}]},options:common}));
     const years=Array.from({length:26},(_,i)=>i);let without=[0],withSolar=[Number(p.commercial.price||0)],accWithout=0,accWith=Number(p.commercial.price||0);for(let y=1;y<=25;y++){const annualBill=c.billBefore*12*Math.pow(1+Number(p.commercial.annualTariffIncrease||0)/100,y-1);accWithout+=annualBill;accWith+=Number(p.commercial.annualMaintenance||0)+Number(p.commercial.residualBill||0)*12;without.push(accWithout);withSolar.push(accWith);}
     const savings=document.getElementById('pdfSavingsChart');if(savings)proposalCharts.push(new Chart(savings,{type:'line',data:{labels:years,datasets:[{label:'Sem solar',data:without,borderColor:'#e35353',backgroundColor:'rgba(227,83,83,.08)',fill:true,tension:.25,pointRadius:0},{label:'Com solar',data:withSolar,borderColor:'#168a56',backgroundColor:'rgba(22,138,86,.08)',fill:true,tension:.25,pointRadius:0}]},options:{...common,scales:{x:{grid:{display:false},ticks:{color:'#7d8998',font:{size:8},callback:v=>`${v}a`}},y:{grid:{color:'#e9edf2'},ticks:{color:'#7d8998',font:{size:8},callback:v=>`R$ ${Math.round(v/1000)} mil`}}}}}));
