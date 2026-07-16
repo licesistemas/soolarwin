@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <meta name="theme-color" content="#08111f" />
-  <title>SolarCRM Pro — Projeto da Proposta à Entrega</title>
+  <title>SolarCRM Pro — Projeto da Proposta à Entrega · Drive Fotos v2</title>
   <meta name="description" content="CRM completo para empresas de energia solar com propostas profissionais, Kanban, banco de dados, financeiro, obras e pós-venda." />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <style>
@@ -493,7 +493,14 @@ img.equipment-visual { object-fit:cover; padding:0; }
 .settings-tab.active { background:var(--primary); color:#17202a; border-color:var(--primary); }
 .logo-preview { width:180px; height:80px; object-fit:contain; border:1px solid var(--line); border-radius:12px; background:#fff; padding:10px; }
 .photo-list { display:grid; grid-template-columns:repeat(4,1fr); gap:9px; }
-.photo-list img { width:100%; height:100px; object-fit:cover; border-radius:11px; border:1px solid var(--line); }
+.photo-list img { width:100%; height:132px; object-fit:cover; border-radius:11px; border:1px solid var(--line); background:linear-gradient(135deg,var(--panel-2),var(--panel-3)); }
+.work-photo-card{position:relative;min-height:132px;border-radius:13px;overflow:hidden;border:1px solid var(--line);background:var(--panel-2)}
+.work-photo-card img{display:block;border:0;border-radius:0}
+.work-photo-card.image-unavailable::after{content:'Prévia indisponível';position:absolute;inset:0;display:grid;place-items:center;padding:18px;text-align:center;color:var(--muted);font-size:10px;font-weight:800;background:linear-gradient(135deg,var(--panel-2),var(--panel-3))}
+.work-photo-badge{position:absolute;left:7px;bottom:7px;z-index:3;display:inline-flex;align-items:center;gap:5px;min-height:24px;padding:0 8px;border-radius:999px;background:rgba(7,17,31,.82);backdrop-filter:blur(8px);color:#fff;font-size:8px;font-weight:850;box-shadow:0 5px 14px rgba(0,0,0,.18)}
+.work-photo-badge::before{content:'☁';font-size:10px}.work-photo-badge.local::before{content:'◷'}.work-photo-badge.error::before{content:'!'}
+.work-photo-remove{position:absolute!important;right:7px!important;top:7px!important;z-index:4}
+.work-photo-upload-summary{margin-top:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:9px}
 .firebase-status { padding:12px; border:1px solid var(--line); border-radius:13px; background:var(--panel-2); display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .firebase-status strong { font-size:11px; }
 .firebase-status span { display:block; margin-top:3px; color:var(--muted); font-size:9px; }
@@ -963,7 +970,7 @@ body[data-theme="light"] .login-benefit {
 .vp-works-intro:after{content:"";position:absolute;width:240px;height:240px;border-radius:50%;right:-95px;top:-125px;background:rgba(90,169,255,.17)}
 .vp-works-intro-copy{position:relative;z-index:2;max-width:560px}.vp-works-intro-copy strong{display:block;color:#fff;font-size:23px;line-height:1.08}.vp-works-intro-copy span{display:block;margin-top:8px;color:#ccdae8;font-size:13px;line-height:1.4}
 .vp-works-count{position:relative;z-index:2;flex:0 0 108px;height:76px;border-radius:19px;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center}.vp-works-count strong{color:#10273d;font-size:30px;line-height:1}.vp-works-count span{margin-top:5px;color:#65768a;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.05em}
-.vp-works-grid{display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,260px);gap:15px}.vp-works-grid.count-1{grid-template-columns:1fr;grid-template-rows:535px}.vp-works-grid.count-2{grid-template-columns:repeat(2,1fr);grid-template-rows:535px}.vp-works-grid.count-3{grid-template-columns:repeat(2,1fr);grid-template-rows:260px 260px}.vp-works-grid.count-3 .vp-work-card:first-child{grid-row:1/3}.vp-work-card{position:relative;margin:0;border-radius:24px;overflow:hidden;background:#dfe8f0;border:2px solid #d9e4ef;min-height:0}.vp-work-card img{width:100%;height:100%;object-fit:cover;display:block}.vp-work-card:after{content:"";position:absolute;inset:auto 0 0;height:42%;background:linear-gradient(180deg,transparent,rgba(4,15,25,.88));pointer-events:none}.vp-work-caption{position:absolute;z-index:2;left:18px;right:18px;bottom:16px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;color:#fff}.vp-work-caption span{display:block;color:#d6e4f1;font-size:9px;text-transform:uppercase;letter-spacing:.08em;font-weight:900}.vp-work-caption strong{display:block;margin-top:4px;color:#fff;font-size:17px}.vp-work-index{width:34px;height:34px;border-radius:11px;background:#ffb703;color:#10273d;display:grid;place-items:center;font-size:12px;font-weight:950;flex:0 0 auto}
+.vp-works-grid{display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,260px);gap:15px}.vp-works-grid.count-1{grid-template-columns:1fr;grid-template-rows:535px}.vp-works-grid.count-2{grid-template-columns:repeat(2,1fr);grid-template-rows:535px}.vp-works-grid.count-3{grid-template-columns:repeat(2,1fr);grid-template-rows:260px 260px}.vp-works-grid.count-3 .vp-work-card:first-child{grid-row:1/3}.vp-work-card{position:relative;margin:0;border-radius:24px;overflow:hidden;background:#dfe8f0;border:2px solid #d9e4ef;min-height:0}.vp-work-card img{width:100%;height:100%;object-fit:cover;display:block}.vp-work-card:after{content:"";position:absolute;inset:auto 0 0;height:42%;background:linear-gradient(180deg,transparent,rgba(4,15,25,.88));pointer-events:none}.vp-work-card.image-unavailable img{opacity:0}.vp-work-card.image-unavailable:before{content:'Imagem armazenada no Google Drive';position:absolute;inset:0;z-index:1;display:grid;place-items:center;padding:28px;text-align:center;color:#5f7285;font-size:13px;font-weight:850;background:linear-gradient(135deg,#eef3f7,#dfe8f0)}.vp-work-caption{position:absolute;z-index:2;left:18px;right:18px;bottom:16px;display:flex;align-items:flex-end;justify-content:space-between;gap:12px;color:#fff}.vp-work-caption span{display:block;color:#d6e4f1;font-size:9px;text-transform:uppercase;letter-spacing:.08em;font-weight:900}.vp-work-caption strong{display:block;margin-top:4px;color:#fff;font-size:17px}.vp-work-index{width:34px;height:34px;border-radius:11px;background:#ffb703;color:#10273d;display:grid;place-items:center;font-size:12px;font-weight:950;flex:0 0 auto}
 .vp-works-proof{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}.vp-works-proof div{padding:13px 16px;border-radius:16px;background:#fff;border:2px solid #d9e4ef}.vp-works-proof span{display:block;color:#708195;font-size:9px;font-weight:900;text-transform:uppercase}.vp-works-proof strong{display:block;margin-top:5px;color:#10273d;font-size:16px}
 
 
@@ -3368,7 +3375,11 @@ service cloud.firestore {
     const photos=[];
     for(let i=0;i<(state.company.workPhotos||[]).length;i++){
       const photo=state.company.workPhotos[i];
-      photos.push(String(photo||'').startsWith('data:')?await uploadSharedCompanyAsset(photo,'obras',`obra-${Date.now()}-${i+1}.jpg`):photo);
+      if(String(photo||'').startsWith('data:')){
+        const remote=await uploadSharedCompanyAsset(photo,'obras',`obra-${Date.now()}-${i+1}.jpg`);
+        await rememberWorkPhotoPreview(remote,photo);
+        photos.push(remote);
+      }else photos.push(photo);
     }
     state.company.workPhotos=photos.filter(Boolean);
     syncCurrentCompanyRecord();persist();
@@ -3549,10 +3560,14 @@ service cloud.firestore {
       mimeType:file.type||'application/octet-stream',
       size:file.size,
       uploadedBy:state.currentUser.name||state.currentUser.email||'Administrador',
+      publicAccess:true,
+      makePublic:true,
+      imagePreview:String(file.type||'').startsWith('image/'),
       dataBase64:base64
     });
     const driveId=data.fileId||data.driveFileId||'';
-    return data.directUrl||data.downloadUrl||(driveId?`https://drive.google.com/uc?export=view&id=${encodeURIComponent(driveId)}`:'')||data.fileUrl||data.url||data.webContentLink||data.webViewLink||dataUrl;
+    if(driveId)return `https://lh3.googleusercontent.com/d/${encodeURIComponent(driveId)}=w1600`;
+    return data.publicUrl||data.directUrl||data.thumbnailUrl||data.downloadUrl||data.fileUrl||data.url||data.webContentLink||data.webViewLink||dataUrl;
   }
 
   const cloudCollectionPlan = [
@@ -3964,6 +3979,64 @@ service cloud.firestore {
     async delete(id){const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(this.store,'readwrite');tx.objectStore(this.store).delete(id);tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error);});}
   };
 
+
+
+  const WorkPhotoDB={
+    name:'solarcrm-work-photo-cache-v1',store:'images',db:null,
+    async open(){if(this.db)return this.db;if(!window.indexedDB)throw new Error('IndexedDB indisponível.');this.db=await new Promise((resolve,reject)=>{const req=indexedDB.open(this.name,1);req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains(this.store))req.result.createObjectStore(this.store);};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});return this.db;},
+    async put(key,value){const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(this.store,'readwrite');tx.objectStore(this.store).put(value,key);tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error);});},
+    async get(key){const db=await this.open();return new Promise((resolve,reject)=>{const req=db.transaction(this.store,'readonly').objectStore(this.store).get(key);req.onsuccess=()=>resolve(req.result||'');req.onerror=()=>reject(req.error);});},
+    async delete(key){const db=await this.open();return new Promise((resolve,reject)=>{const tx=db.transaction(this.store,'readwrite');tx.objectStore(this.store).delete(key);tx.oncomplete=()=>resolve(true);tx.onerror=()=>reject(tx.error);});}
+  };
+  const workPhotoPreviewCache=new Map();
+  const workPhotoAccessRepairAttempts=new Set();
+  function workPhotoCacheKey(photo=''){return `${state.currentCompanyId||'company'}::${String(photo||'')}`;}
+  function extractGoogleDriveFileId(value=''){
+    const source=String(value||'').trim();
+    const patterns=[/(?:[?&]id=)([-\w]{10,})/i,/\/d\/([-\w]{10,})/i,/googleusercontent\.com\/d\/([-\w]{10,})/i,/thumbnail\?id=([-\w]{10,})/i];
+    for(const pattern of patterns){const match=source.match(pattern);if(match?.[1])return match[1];}
+    return '';
+  }
+  function workPhotoCandidates(photo=''){
+    const source=String(photo||'').trim();const candidates=[];const cached=workPhotoPreviewCache.get(source);
+    if(cached)candidates.push(cached);
+    if(source.startsWith('data:image/'))candidates.push(source);
+    const driveId=extractGoogleDriveFileId(source);
+    if(driveId){const id=encodeURIComponent(driveId);candidates.push(`https://lh3.googleusercontent.com/d/${id}=w1600`);candidates.push(`https://drive.google.com/thumbnail?id=${id}&sz=w1600`);candidates.push(`https://drive.usercontent.google.com/download?id=${id}&export=view&confirm=t`);candidates.push(`https://drive.google.com/uc?export=view&id=${id}`);}
+    if(source&&!source.startsWith('data:'))candidates.push(source);
+    return [...new Set(candidates.filter(Boolean))];
+  }
+  function workPhotoDisplaySource(photo=''){return workPhotoCandidates(photo)[0]||'';}
+  function workPhotoFallbackPayload(photo=''){return encodeURIComponent(JSON.stringify(workPhotoCandidates(photo)));}
+  function workPhotoCloudLabel(photo=''){const source=String(photo||'');if(extractGoogleDriveFileId(source)||/^https?:/i.test(source))return {text:'Salva no Drive',className:''};if(source.startsWith('data:'))return {text:'Cópia local',className:'local'};return {text:'Pendente',className:'error'};}
+  async function rememberWorkPhotoPreview(photo,dataUrl){
+    const source=String(photo||'').trim();if(!source||!String(dataUrl||'').startsWith('data:image/'))return false;
+    workPhotoPreviewCache.set(source,dataUrl);
+    try{await WorkPhotoDB.put(workPhotoCacheKey(source),dataUrl);return true;}catch(error){console.warn('Não foi possível guardar a prévia local da obra:',error);return false;}
+  }
+  async function forgetWorkPhotoPreview(photo){const source=String(photo||'').trim();workPhotoPreviewCache.delete(source);try{await WorkPhotoDB.delete(workPhotoCacheKey(source));}catch(_){} }
+  async function repairWorkPhotoDriveAccess(photo=''){
+    const driveId=extractGoogleDriveFileId(photo);const cfg=driveGatewayConfig();
+    if(!driveId||!cfg.url||state.role!=='admin'||workPhotoAccessRepairAttempts.has(driveId))return false;
+    workPhotoAccessRepairAttempts.add(driveId);
+    try{await promiseWithTimeout(postToDriveScript({action:'makeFilePublic',fileId:driveId,publicAccess:true,makePublic:true}),7000,'Tempo excedido ao liberar a foto no Drive.');return true;}
+    catch(error){console.warn('Não foi possível corrigir a permissão da foto no Drive:',error);return false;}
+  }
+  async function prepareWorkPhotoSources(){
+    const photos=(Array.isArray(state.company?.workPhotos)?state.company.workPhotos:[]).filter(Boolean);
+    await Promise.all(photos.map(async photo=>{const source=String(photo||'');if(!source||workPhotoPreviewCache.has(source)||source.startsWith('data:image/'))return;try{const cached=await WorkPhotoDB.get(workPhotoCacheKey(source));if(cached)workPhotoPreviewCache.set(source,cached);}catch(_){}}));
+    await Promise.all(photos.map(photo=>repairWorkPhotoDriveAccess(photo)));
+    return photos.length;
+  }
+  function applyWorkPhotoSources(root=document){
+    root?.querySelectorAll?.('[data-work-photo-key]').forEach(img=>{let photo='';try{photo=decodeURIComponent(img.dataset.workPhotoKey||'');}catch(_){photo=img.dataset.workPhotoKey||'';}const candidates=workPhotoCandidates(photo);if(candidates.length&&img.src!==candidates[0]){img.dataset.workPhotoCandidate='0';img.src=candidates[0];img.closest('.work-photo-card,.vp-work-card')?.classList.remove('image-unavailable');}});
+  }
+  window.workPhotoImageFallback=img=>{
+    let candidates=[];try{candidates=JSON.parse(decodeURIComponent(img.dataset.workPhotoFallbacks||''));}catch(_){let photo='';try{photo=decodeURIComponent(img.dataset.workPhotoKey||'');}catch(__){photo=img.dataset.workPhotoKey||'';}candidates=workPhotoCandidates(photo);}
+    let index=Number(img.dataset.workPhotoCandidate||0)+1;
+    if(index<candidates.length){img.dataset.workPhotoCandidate=String(index);img.src=candidates[index];return;}
+    img.closest('.work-photo-card,.vp-work-card')?.classList.add('image-unavailable');
+  };
 
   const ProposalDB={
     name:'solarcrm-proposals-v1',store:'records',db:null,
@@ -7646,7 +7719,7 @@ ${company.tradeName||company.name}`:''}`;
     const worksGalleryPage=hasWorkGallery?`
       <section class="proposal-page vp-page vp-works-page">${header(worksPage,'Obras executadas','Projetos reais que demonstram padrão de acabamento, organização técnica e experiência em diferentes tipos de instalação.')}
         <div class="vp-works-intro"><div class="vp-works-intro-copy"><strong>Experiência que pode ser vista</strong><span>Uma seleção de instalações executadas pela ${safe(companyName)}, apresentada para demonstrar qualidade, cuidado e capacidade de entrega.</span></div><div class="vp-works-count"><strong>${workPhotos.length}</strong><span>${workPhotos.length===1?'obra em destaque':'obras em destaque'}</span></div></div>
-        <div class="vp-works-grid count-${workPhotos.length}">${workPhotos.map((photo,index)=>`<figure class="vp-work-card"><img src="${attr(photo)}" alt="Obra executada ${index+1}"><figcaption class="vp-work-caption"><div><span>Projeto executado</span><strong>Obra ${String(index+1).padStart(2,'0')}</strong></div><div class="vp-work-index">${String(index+1).padStart(2,'0')}</div></figcaption></figure>`).join('')}</div>
+        <div class="vp-works-grid count-${workPhotos.length}">${workPhotos.map((photo,index)=>`<figure class="vp-work-card"><img src="${attr(workPhotoDisplaySource(photo))}" alt="Obra executada ${index+1}" loading="eager" data-work-photo-key="${attr(encodeURIComponent(photo))}" data-work-photo-fallbacks="${attr(workPhotoFallbackPayload(photo))}" data-work-photo-candidate="0" onerror="window.workPhotoImageFallback(this)"><figcaption class="vp-work-caption"><div><span>Projeto executado</span><strong>Obra ${String(index+1).padStart(2,'0')}</strong></div><div class="vp-work-index">${String(index+1).padStart(2,'0')}</div></figcaption></figure>`).join('')}</div>
         <div class="vp-works-proof"><div><span>Clientes atendidos</span><strong>${company.clientsCount?number(company.clientsCount,0):'Experiência comprovada'}</strong></div><div><span>Potência instalada</span><strong>${company.installedPowerMW?`${number(company.installedPowerMW,1)} MW`:'Experiência comprovada'}</strong></div><div><span>Atuação</span><strong>${safe(company.city||'Projetos personalizados')}</strong></div></div>
         ${footer(worksPage)}</div></section>`:'';
     const evChargerPage=hasEvCharger?`
@@ -7699,8 +7772,9 @@ ${company.tradeName||company.name}`:''}`;
     if(!proposal){toast('Proposta indisponível','','error');return;}
     activeProposal=deepClone(proposal);
     await ensureEmbeddedCompanyLogo();
+    await prepareWorkPhotoSources();
     destroyCharts(proposalCharts);
-    const root=document.getElementById('proposalPages');root.innerHTML=renderProposalDocument(activeProposal);applyProposalLogoSource(root);enforceProposalVisualFixes(root);
+    const root=document.getElementById('proposalPages');root.innerHTML=renderProposalDocument(activeProposal);applyProposalLogoSource(root);applyWorkPhotoSources(root);enforceProposalVisualFixes(root);
     document.getElementById('proposalPreviewTitle').textContent=`${activeProposal.number} · ${activeProposal.client.name}`;
     openModal('proposalPreviewModal');
     setTimeout(()=>{initProposalPDFElements();fitProposalPages();},80);
@@ -7735,14 +7809,16 @@ ${company.tradeName||company.name}`:''}`;
   async function buildProposalPdfBlob({onProgress=null}={}){
     if(!activeProposal)throw new Error('Proposta indisponível.');
     await ensureEmbeddedCompanyLogo();
+    await prepareWorkPhotoSources();
     applyProposalLogoSource(document.getElementById('proposalPages'));
+    applyWorkPhotoSources(document.getElementById('proposalPages'));
     const {jsPDF}=window.jspdf||{};if(!jsPDF||!window.html2canvas)throw new Error('Bibliotecas de PDF indisponíveis.');
     const galleryCount=(Array.isArray(state.company?.workPhotos)?state.company.workPhotos:[]).filter(Boolean).length;const totalPages=6+(galleryCount?1:0)+(activeProposal.evCharger?.enabled?1:0);let sourceRoot=null;let pages=[];
     const previewOpen=document.getElementById('proposalPreviewModal')?.classList.contains('open');
     const previewPages=[...document.querySelectorAll('#proposalPages .proposal-page')];
     if(previewOpen&&previewPages.length===totalPages)pages=previewPages;
     else{
-      sourceRoot=document.createElement('div');sourceRoot.className='pdf-export-source';sourceRoot.innerHTML=renderProposalDocument(activeProposal);applyProposalLogoSource(sourceRoot);document.body.appendChild(sourceRoot);
+      sourceRoot=document.createElement('div');sourceRoot.className='pdf-export-source';sourceRoot.innerHTML=renderProposalDocument(activeProposal);applyProposalLogoSource(sourceRoot);applyWorkPhotoSources(sourceRoot);document.body.appendChild(sourceRoot);
       await new Promise(r=>setTimeout(r,80));
       initProposalPDFElements();
       await new Promise(r=>setTimeout(r,220));
@@ -7840,6 +7916,7 @@ ${company.tradeName||company.name}`:''}`;
     root.innerHTML=`<div class="settings-tabs">${tabs.map(([id,label])=>`<button class="settings-tab ${settingsTab===id?'active':''}" data-settings-tab="${id}">${label}</button>`).join('')}</div><div id="settingsPanel">${renderSettingsPanel(settingsTab)}</div>`;
     root.querySelectorAll('[data-settings-tab]').forEach(btn=>btn.addEventListener('click',()=>{settingsTab=btn.dataset.settingsTab;renderSettings();}));
     bindSettingsEvents();
+    if(settingsTab==='branding')prepareWorkPhotoSources().then(()=>applyWorkPhotoSources(root)).catch(()=>{});
     if(settingsTab==='users' && state.role==='admin' && !permissionUsersLoaded && !permissionUsersLoading) setTimeout(()=>loadUserPermissionData(),0);
   }
 
@@ -7876,7 +7953,11 @@ ${company.tradeName||company.name}`:''}`;
       const autoStatus=companyAutoSaveStatusModel();
       return `<div class="notice" style="margin-bottom:14px"><strong>Cadastro central da empresa</strong><br>Todos os usuários autorizados carregam estes dados diretamente de <b>companies/${escapeHtml(state.currentCompanyId)}</b>. Os demais módulos também são lidos do Firebase conforme as permissões do perfil.<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:10px"><span id="companyAutoSaveStatus" class="status ${autoStatus.className}">${escapeHtml(autoStatus.text)}</span><small id="companyAutoSaveDetail" style="color:var(--muted)">${canEditCompany?'Cada alteração é gravada automaticamente. Não é necessário clicar em sincronizar.':'Seu perfil pode consultar os dados, mas não pode alterá-los.'}</small></div>${sharedSettingsLastError?`<small style="display:block;margin-top:8px;color:var(--red)">${escapeHtml(sharedSettingsLastError)}</small>`:''}</div><form id="companySettingsForm" autocomplete="off"><fieldset ${canEditCompany?'':'disabled'} style="border:0;padding:0;margin:0;min-width:0"><div class="form-grid">${settingsInput('name','Razão social',c.name)}${settingsInput('tradeName','Nome fantasia',c.tradeName)}${settingsInput('document','CNPJ',c.document)}${settingsInput('city','Cidade / sede',c.city)}${settingsInput('phone','Telefone',c.phone)}${settingsInput('email','E-mail',c.email,'email')}${settingsInput('website','Site',c.website)}${settingsInput('proposalValidityDays','Validade padrão da proposta (dias)',c.proposalValidityDays,'number')}${settingsInput('clientsCount','Quantidade de clientes',c.clientsCount,'number')}${settingsInput('installedPowerMW','Potência instalada (MW)',c.installedPowerMW,'number')}${settingsInput('defaultCommissionPercent','Comissão padrão (%)',c.defaultCommissionPercent,'number')}<label class="field full"><span>História da empresa</span><textarea name="history">${escapeHtml(c.history)}</textarea></label><label class="field full"><span>Certificações (separadas por vírgula)</span><input name="certifications" value="${attr(c.certifications)}"></label><label class="field full"><span>Parceiros</span><input name="partners" value="${attr(c.partners)}"></label><label class="field full"><span>Dados bancários</span><input name="bankData" value="${attr(c.bankData)}"></label><label class="field full"><span>Mensagem de envio de proposta</span><textarea name="proposalMessage">${escapeHtml(c.proposalMessage)}</textarea></label><label class="field full"><span>Mensagem de cobrança</span><textarea name="collectionMessage">${escapeHtml(c.collectionMessage)}</textarea></label><label class="field full"><span>Mensagem de NPS</span><textarea name="npsMessage">${escapeHtml(c.npsMessage)}</textarea></label></div></fieldset><div class="notice" style="margin-top:16px"><strong>${canEditCompany?'Salvamento automático ativo':'Modo de consulta'}</strong><br>${canEditCompany?'Ao parar de digitar, o sistema salva no Firestore e atualiza todos os usuários ativos em tempo real.':'As informações exibidas vieram diretamente do banco de dados da empresa.'}</div></form>`;
     }
-    if(tab==='branding')return `<div class="form-section"><div class="form-section-head"><div><h3>Logo da empresa</h3><p>Usada na capa e no cabeçalho de todas as páginas.</p></div></div><div class="grid grid-2"><div>${customCompanyLogoSource(c)?`<img class="logo-preview" src="${companyLogoSource(c)}" alt="Logo">`:`<img class="logo-preview" src="${defaultLogoData()}" alt="Logo padrão">`}</div><label class="upload-drop"><div><strong>Selecionar logo</strong><span>Envie PNG da logo. O sistema remove fundo branco das bordas e preserva a transparência na proposta.</span><input id="companyLogoInput" type="file" accept="image/png" style="margin-top:10px"></div></label></div></div><div class="form-section"><div class="form-section-head"><div><h3>Fotos de obras executadas</h3><p>Até quatro imagens na página institucional da proposta.</p></div></div><label class="upload-drop"><div><strong>Adicionar fotos</strong><span>Selecione uma ou várias imagens.</span><input id="workPhotosInput" type="file" accept="image/*" multiple style="margin-top:10px"></div></label><div class="photo-list" style="margin-top:12px">${(c.workPhotos||[]).map((photo,i)=>`<div style="position:relative"><img src="${photo}"><button class="btn btn-danger btn-sm btn-icon" data-remove-work-photo="${i}" style="position:absolute;right:5px;top:5px">×</button></div>`).join('')}</div></div><div class="form-section"><div class="form-section-head"><div><h3>Assinatura do vendedor</h3><p>Imagem opcional utilizada na página de aceite.</p></div></div><div class="grid grid-2"><div>${c.sellerSignature?`<img class="logo-preview" src="${c.sellerSignature}" alt="Assinatura">`:'<div class="upload-drop"><span>Nenhuma assinatura cadastrada.</span></div>'}</div><label class="upload-drop"><div><strong>Enviar assinatura</strong><span>Use PNG com fundo branco ou transparente.</span><input id="sellerSignatureInput" type="file" accept="image/*" style="margin-top:10px"></div></label></div></div>`;
+    if(tab==='branding'){
+      const workPhotos=(Array.isArray(c.workPhotos)?c.workPhotos:[]).filter(Boolean).slice(0,4);
+      const photoCards=workPhotos.map((photo,i)=>{const cloud=workPhotoCloudLabel(photo);const source=workPhotoDisplaySource(photo);return `<div class="work-photo-card"><img src="${attr(source)}" alt="Obra executada ${i+1}" loading="eager" data-work-photo-key="${attr(encodeURIComponent(photo))}" data-work-photo-fallbacks="${attr(workPhotoFallbackPayload(photo))}" data-work-photo-candidate="0" onerror="window.workPhotoImageFallback(this)"><span class="work-photo-badge ${cloud.className}">${escapeHtml(cloud.text)}</span><button class="btn btn-danger btn-sm btn-icon work-photo-remove" data-remove-work-photo="${i}" type="button">×</button></div>`;}).join('');
+      return `<div class="form-section"><div class="form-section-head"><div><h3>Logo da empresa</h3><p>Usada na capa e no cabeçalho de todas as páginas.</p></div></div><div class="grid grid-2"><div>${customCompanyLogoSource(c)?`<img class="logo-preview" src="${companyLogoSource(c)}" alt="Logo">`:`<img class="logo-preview" src="${defaultLogoData()}" alt="Logo padrão">`}</div><label class="upload-drop"><div><strong>Selecionar logo</strong><span>Envie PNG da logo. O sistema remove fundo branco das bordas e preserva a transparência na proposta.</span><input id="companyLogoInput" type="file" accept="image/png" style="margin-top:10px"></div></label></div></div><div class="form-section"><div class="form-section-head"><div><h3>Fotos de obras executadas</h3><p>As imagens são reduzidas, enviadas ao Google Drive e exibidas imediatamente na proposta.</p></div><span class="status ${workPhotos.length?'green':'yellow'}">${workPhotos.length}/4</span></div><label class="upload-drop"><div><strong>Adicionar fotos</strong><span>Selecione uma ou várias imagens. O CRM mantém uma prévia local segura caso o Drive demore para carregar.</span><input id="workPhotosInput" type="file" accept="image/*" multiple style="margin-top:10px"></div></label><div class="photo-list" style="margin-top:12px">${photoCards}</div><div class="work-photo-upload-summary"><span>${workPhotos.length?`${workPhotos.length} imagem(ns) pronta(s) para aparecer na proposta.`:'Nenhuma foto cadastrada.'}</span><span>Destino: Google Drive</span></div></div><div class="form-section"><div class="form-section-head"><div><h3>Assinatura do vendedor</h3><p>Imagem opcional utilizada na página de aceite.</p></div></div><div class="grid grid-2"><div>${c.sellerSignature?`<img class="logo-preview" src="${c.sellerSignature}" alt="Assinatura">`:'<div class="upload-drop"><span>Nenhuma assinatura cadastrada.</span></div>'}</div><label class="upload-drop"><div><strong>Enviar assinatura</strong><span>Use PNG com fundo branco ou transparente.</span><input id="sellerSignatureInput" type="file" accept="image/*" style="margin-top:10px"></div></label></div></div>`;
+    }
     if(tab==='firebase'){
       if(!currentUserIsAdmin())return `<div class="notice danger-note"><strong>Acesso restrito</strong><br>As configurações técnicas do Firebase são exclusivas do administrador.</div>`;
       const status=getFirebaseUiState();
@@ -7894,7 +7975,7 @@ ${company.tradeName||company.name}`:''}`;
     const cfg=driveGatewayConfig();
     const ready=Boolean(cfg.url);
     return `<div class="firebase-status"><div><strong>Google Drive como armazenamento principal</strong><span>Todos os documentos anexados nas etapas do projeto serão enviados para uma pasta do Google Drive.</span></div><span class="status ${ready?'green':'yellow'}">${ready?'Drive configurado':'Configurar Drive'}</span></div>
-      <form id="driveStorageSettingsForm" class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Configuração do Drive</h3><p>Cole a URL do Web App do Apps Script e informe o mesmo token usado no código.</p></div></div><div class="form-grid"><label class="field full"><span>URL do Web App</span><input name="driveScriptUrl" value="${attr(cfg.url)}" placeholder="https://script.google.com/macros/s/.../exec"></label><label class="field"><span>Token do Apps Script</span><input name="driveScriptToken" type="password" value="${attr(cfg.token)}" placeholder="Mesmo valor da constante TOKEN"></label><label class="field"><span>Pasta raiz no Drive</span><input name="driveRootFolderName" value="${attr(cfg.rootFolderName)}" placeholder="Soolarwin CRM"></label><label class="field"><span>Destino dos arquivos</span><input value="Google Drive (exclusivo)" readonly></label></div><div style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px"><button class="btn btn-ghost" id="driveStorageTestBtn" type="button">Testar conexão</button><button class="btn btn-primary" type="submit">Salvar Google Drive</button></div><div class="notice warning" style="margin-top:12px"><strong>Importante:</strong> publique o Apps Script como Web App executando como você. Compartilhe a pasta raiz do Drive com a equipe que precisa abrir os documentos.</div></form>
+      <form id="driveStorageSettingsForm" class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Configuração do Drive</h3><p>Cole a URL do Web App do Apps Script e informe o mesmo token usado no código.</p></div></div><div class="form-grid"><label class="field full"><span>URL do Web App</span><input name="driveScriptUrl" value="${attr(cfg.url)}" placeholder="https://script.google.com/macros/s/.../exec"></label><label class="field"><span>Token do Apps Script</span><input name="driveScriptToken" type="password" value="${attr(cfg.token)}" placeholder="Mesmo valor da constante TOKEN"></label><label class="field"><span>Pasta raiz no Drive</span><input name="driveRootFolderName" value="${attr(cfg.rootFolderName)}" placeholder="Soolarwin CRM"></label><label class="field"><span>Destino dos arquivos</span><input value="Google Drive (exclusivo)" readonly></label></div><div style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px"><button class="btn btn-ghost" id="driveStorageTestBtn" type="button">Testar conexão</button><button class="btn btn-primary" type="submit">Salvar Google Drive</button></div><div class="notice warning" style="margin-top:12px"><strong>Importante:</strong> use o Apps Script corrigido desta versão, publique como Web App executando como você e permita acesso a qualquer pessoa com o link. As fotos de obras recebem link de visualização e uma prévia local para nunca aparecerem quebradas.</div></form>
       <div class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Estrutura criada automaticamente</h3><p>O sistema organiza por projeto, etapa e categoria.</p></div></div><pre style="white-space:pre-wrap;font-size:10px;line-height:1.6;background:var(--panel-2);border:1px solid var(--line);border-radius:12px;padding:12px;color:var(--text-soft)">${escapeHtml(`${cfg.rootFolderName}\n└── Projetos\n    └── Cliente - ID do projeto\n        └── Etapa\n            └── Categoria\n                └── arquivo.pdf`)}</pre></div>`;
   }
 
@@ -8138,8 +8219,30 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     }
     document.getElementById('companyLogoInput')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;if(f.type!=='image/png'){toast('Use PNG sem fundo','A logo da proposta deve ser PNG com fundo transparente.','error');return;}const local=await resizeTransparentPng(f,1000,400);state.company.logoDataUrl=local;state.company.logo=local;syncCurrentCompanyRecord();persist();renderSettings();try{const remote=await uploadSharedCompanyAsset(local,'branding','logo.png');state.company.logo=remote||local;}catch(error){console.warn(error);state.company.logo=local;}syncCurrentCompanyRecord();persist();await saveSharedCompanySettings({successTitle:'Logo atualizada'});renderSettings();});
     document.getElementById('sellerSignatureInput')?.addEventListener('change',async e=>{const f=e.target.files?.[0];if(!f)return;const local=await resizeImage(f,900,350,.92);state.company.sellerSignature=local;syncCurrentCompanyRecord();persist();renderSettings();try{state.company.sellerSignature=await uploadSharedCompanyAsset(local,'branding','assinatura-vendedor.png');}catch(error){console.warn(error);}await saveSharedCompanySettings({successTitle:'Assinatura atualizada'});renderSettings();});
-    document.getElementById('workPhotosInput')?.addEventListener('change',async e=>{const files=[...(e.target.files||[])].slice(0,4-(state.company.workPhotos?.length||0));for(let i=0;i<files.length;i++){const local=await resizeImage(files[i],1200,800,.82);let value=local;try{value=await uploadSharedCompanyAsset(local,'obras',`obra-${Date.now()}-${i+1}.jpg`);}catch(error){console.warn(error);}state.company.workPhotos.push(value);}syncCurrentCompanyRecord();persist();await saveSharedCompanySettings({successTitle:'Fotos adicionadas'});renderSettings();});
-    document.querySelectorAll('[data-remove-work-photo]').forEach(btn=>btn.addEventListener('click',async()=>{state.company.workPhotos.splice(Number(btn.dataset.removeWorkPhoto),1);syncCurrentCompanyRecord();persist();await saveSharedCompanySettings({successTitle:'Foto removida'});renderSettings();}));
+    document.getElementById('workPhotosInput')?.addEventListener('change',async e=>{
+      const available=Math.max(0,4-(state.company.workPhotos?.length||0));const files=[...(e.target.files||[])].slice(0,available);if(!files.length){toast('Limite de fotos','É possível cadastrar até quatro obras executadas.','info');return;}
+      const button=e.target;button.disabled=true;const pending=[];
+      try{
+        for(let i=0;i<files.length;i++){
+          const local=await resizeImage(files[i],1600,1067,.86);state.company.workPhotos.push(local);workPhotoPreviewCache.set(local,local);pending.push({local,file:files[i],filename:`obra-${Date.now()}-${i+1}.jpg`});
+        }
+        syncCurrentCompanyRecord();persist();renderSettings();toast('Enviando para o Drive',`${pending.length} imagem(ns) preparada(s).`,'info');
+        let sent=0;let failed=0;
+        for(const item of pending){
+          try{
+            const remote=await uploadSharedCompanyAsset(item.local,'obras',item.filename);const index=state.company.workPhotos.indexOf(item.local);if(index>=0)state.company.workPhotos[index]=remote;await rememberWorkPhotoPreview(remote,item.local);sent++;
+          }catch(error){console.warn('Falha ao enviar obra ao Drive:',error);failed++;}
+        }
+        syncCurrentCompanyRecord();persist();
+        const saved=await saveSharedCompanySettings({silent:true});
+        renderSettings();
+        if(sent&&saved)toast('Fotos salvas no Google Drive',`${sent} imagem(ns) enviada(s) e pronta(s) para a proposta.`,'success');
+        else if(sent)toast('Fotos enviadas ao Drive','As prévias estão disponíveis. A sincronização da empresa será tentada novamente.','info');
+        if(failed)toast('Algumas fotos ficaram locais',`${failed} imagem(ns) não chegaram ao Drive. Confira a configuração do Apps Script.`, 'error');
+      }catch(error){console.error(error);toast('Não foi possível processar as fotos',error.message||'Tente novamente.','error');renderSettings();}
+      finally{button.disabled=false;}
+    });
+    document.querySelectorAll('[data-remove-work-photo]').forEach(btn=>btn.addEventListener('click',async()=>{const index=Number(btn.dataset.removeWorkPhoto);const photo=state.company.workPhotos[index];state.company.workPhotos.splice(index,1);await forgetWorkPhotoPreview(photo);syncCurrentCompanyRecord();persist();await saveSharedCompanySettings({successTitle:'Foto removida'});renderSettings();}));
     document.getElementById('firebaseSettingsForm')?.addEventListener('submit',async e=>{e.preventDefault();const config=normalizeFirebaseConfig(Object.fromEntries(new FormData(e.currentTarget).entries()));if(!firebaseApiKeyLooksValid(config.apiKey)){toast('API Key inválida','A chave precisa começar com AIza e possuir 39 caracteres. Remova a configuração antiga ou copie novamente do painel do banco de dados.','error');return;}safeStorageSet(FIREBASE_CONFIG_KEY,JSON.stringify(config));await connectFirebase(config);renderSettings();});
     document.getElementById('firebaseRestoreConfigBtn')?.addEventListener('click',async()=>{const config=clearFirebaseConfig();toast('Configuração oficial restaurada','Os dados do aplicativo Web energiasolar-67b14 foram recarregados.','success');renderSettings();});
     document.getElementById('firebaseTestBtn')?.addEventListener('click',async()=>connectFirebase(loadFirebaseConfig()));
@@ -8164,7 +8267,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     document.querySelectorAll('[data-configure-user-access]').forEach(button=>button.addEventListener('click',()=>openPermissionMatrix('user',button.dataset.configureUserAccess)));
     document.getElementById('settingsExportBackup')?.addEventListener('click',exportBackup);
     document.getElementById('settingsImportBackup')?.addEventListener('click',()=>document.getElementById('backupImportInput').click());
-    document.getElementById('resetCleanData')?.addEventListener('click',()=>{if(confirm('Apagar definitivamente todos os dados locais deste navegador?')){safeStorageRemove(STORAGE_KEY);safeStorageRemove(ACTIVE_DRAFT_KEY);try{indexedDB.deleteDatabase(ProposalDB.name);}catch(_){}ProposalDB.db=null;state=normalizeState(seedState());activeProposal=null;persist();closeModal('settingsModal');renderSidebar();renderView('dashboard');updateTopbar();toast('Base local limpa','Nenhum cadastro foi recriado.','success');}});
+    document.getElementById('resetCleanData')?.addEventListener('click',()=>{if(confirm('Apagar definitivamente todos os dados locais deste navegador?')){safeStorageRemove(STORAGE_KEY);safeStorageRemove(ACTIVE_DRAFT_KEY);try{indexedDB.deleteDatabase(ProposalDB.name);indexedDB.deleteDatabase(WorkPhotoDB.name);}catch(_){}ProposalDB.db=null;WorkPhotoDB.db=null;workPhotoPreviewCache.clear();workPhotoAccessRepairAttempts.clear();state=normalizeState(seedState());activeProposal=null;persist();closeModal('settingsModal');renderSidebar();renderView('dashboard');updateTopbar();toast('Base local limpa','Nenhum cadastro foi recriado.','success');}});
   }
 
   async function saveUserProfile(event){
