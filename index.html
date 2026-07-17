@@ -7613,31 +7613,70 @@ ${historyText}`.trim(),historyText);
 
   function extractCelescHeaderConsumerUnitCandidate(text){
     const cleanUc=value=>{
-      const digits=String(value||'').replace(/\D/g,'').replace(/^0+(?=\d)/,'');
-      return digits.length>=5&&digits.length<=14?digits:'';
+      let rawValue=String(value||'')
+        .replace(/[‐‑‒–—−]/g,'-')
+        .replace(/,/g,'.')
+        .replace(/\s*([.\-])\s*/g,'$1')
+        .trim();
+      if(/^\d{1,3}(?:\s+\d{3}){1,3}(?:-\d{1,3})?$/.test(rawValue)){
+        rawValue=rawValue.replace(/\s+/g,'.').replace(/\.-/g,'-');
+      }
+      const digits=rawValue.replace(/\D/g,'').replace(/^0+(?=\d)/,'');
+      if(digits.length<5||digits.length>14)return'';
+
+      // Mantém a máscara quando ela existir na própria fatura, por exemplo
+      // 507.376.011-65. UCs sem pontuação continuam sendo retornadas apenas com dígitos.
+      if(/[.\-]/.test(rawValue)){
+        const masked=rawValue.replace(/[^0-9.\-]/g,'').replace(/\.{2,}/g,'.').replace(/-{2,}/g,'-');
+        if(masked.replace(/\D/g,'').replace(/^0+(?=\d)/,'')===digits)return masked;
+      }
+      return digits;
     };
     const blockedLine=line=>/(c[oó]digo\s+para\s+cadastro|d[eé]bito\s+autom[aá]tico|unidade\s+consumidora|nosso\s+n[uú]mero|refer[eê]ncia|vencimento|total\s+a\s+pagar|ag[eê]ncia|cedente|pagador|bradesco|pix|boleto)/i.test(String(line||''));
+    const ucCandidatesFromLine=line=>{
+      const s=String(line||'').replace(/\s+/g,' ').trim();
+      if(!s)return[];
+      const candidates=[];
+
+      // Formatos com máscara/separadores, como 507.376.011-65 ou 507 376 011-65.
+      const formatted=/(?:^|[^0-9])((?:0*\d{1,3})(?:(?:\s*[.,]\s*|\s+)\d{3}){1,3}(?:\s*[-‐‑‒–—−]\s*\d{1,3})?)(?=$|[^0-9])/g;
+      for(const match of s.matchAll(formatted)){
+        const candidate=cleanUc(match[1]);
+        if(candidate)candidates.push(candidate);
+      }
+
+      // Formato tradicional sem máscara, mantendo a faixa já aceita de 5 a 14 dígitos.
+      const plain=/(?:^|[^0-9])((?:0*)\d{5,14})(?=$|[^0-9])/g;
+      for(const match of s.matchAll(plain)){
+        const candidate=cleanUc(match[1]);
+        if(candidate&&!candidates.some(item=>item.replace(/\D/g,'')===candidate.replace(/\D/g,'')))candidates.push(candidate);
+      }
+      return candidates;
+    };
     const numberFromHeaderLine=line=>{
       const s=String(line||'').replace(/\s+/g,' ').trim();
       if(!s||blockedLine(s))return'';
-      const nums=[...s.matchAll(/\b(0*\d{5,14})\b/g)].map(m=>m[1]);
-      if(!nums.length)return'';
-      return cleanUc(nums[nums.length-1]);
+      const nums=ucCandidatesFromLine(s);
+      return nums.length?nums[nums.length-1]:'';
     };
     const raw=String(text||'');
     const lines=raw.split(/\n+/).map(line=>line.replace(/\s+/g,' ').trim()).filter(Boolean);
 
-    const marked=raw.match(/CELESC_HEADER_UC\s*[:=\-]?\s*(0*\d{5,14})/i);
-    if(marked?.[1])return cleanUc(marked[1]);
+    const markedLine=raw.match(/CELESC_HEADER_UC\s*[:=\-]?\s*([^\n\r]+)/i);
+    if(markedLine?.[1]){
+      const markedCandidates=ucCandidatesFromLine(markedLine[1]);
+      if(markedCandidates.length)return markedCandidates[0];
+    }
 
     // REGRA FIXA CELESC: a UC correta é a linha imediatamente ACIMA de “Cliente:”.
-    // Exemplo: [Classificação/Modalidade] / 40679596 / Cliente: 20497840.
+    // Aceita tanto o padrão numérico tradicional quanto UCs mascaradas, como 507.376.011-65.
     // Não usar “Unidade Consumidora” do boleto/rodapé nem “Código para Cadastro em Débito Automático”.
     for(let i=0;i<lines.length;i++){
       if(!/\bCliente\s*:/i.test(lines[i]))continue;
 
-      const sameLine=lines[i].match(/(?:^|\s)(0*\d{5,14})\s+Cliente\s*:/i);
-      if(sameLine?.[1])return cleanUc(sameLine[1]);
+      const beforeClient=lines[i].split(/\bCliente\s*:/i)[0]||'';
+      const sameLineCandidates=ucCandidatesFromLine(beforeClient);
+      if(sameLineCandidates.length)return sameLineCandidates[sameLineCandidates.length-1];
 
       for(let j=i-1;j>=Math.max(0,i-5);j--){
         const candidate=numberFromHeaderLine(lines[j]);
@@ -9162,6 +9201,10 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
       const galleryExtra=(Array.isArray(state.company?.workPhotos)?state.company.workPhotos:[]).filter(Boolean).length?1:0;check(`Proposta sem recarga contém ${7+galleryExtra} páginas`,pages===7+galleryExtra,`${pages} páginas`);proposal.evCharger.enabled=true;const evPages=(renderProposalDocument(proposal).match(/class="proposal-page(?:\s|")/g)||[]).length;check(`Proposta com recarga contém ${8+galleryExtra} páginas`,evPages===8+galleryExtra,`${evPages} páginas`);
       const bill=extractBillFields('CELESC_HEADER_UC 123456789\nClasse: Residencial Grupo tarifário: B1 Tarifa 0,92345 600 kWh 620 kWh 640 kWh 660 kWh 680 kWh 700 kWh 720 kWh 740 kWh 760 kWh 780 kWh 800 kWh 820 kWh');
       check('Leitura local identifica UC pelo cabeçalho',bill.client.consumerUnit==='123456789',bill.client.consumerUnit);
+      const maskedUcBill=extractBillFields('CELESC_HEADER_UC 507.376.011-65\nClasse: Residencial Grupo tarifário: B1 Tarifa 0,92345');
+      check('Leitura local aceita UC com 11 dígitos e máscara',maskedUcBill.client.consumerUnit==='507.376.011-65',maskedUcBill.client.consumerUnit);
+      const maskedUcAboveClient=extractBillFields('507.376.011-65\nCliente: 20497840\nClasse: Residencial Grupo tarifário: B1');
+      check('Leitura local aceita UC mascarada acima de Cliente',maskedUcAboveClient.client.consumerUnit==='507.376.011-65',maskedUcAboveClient.client.consumerUnit);
       check('Leitura local identifica distribuidora',bill.client.distributor==='CELESC',bill.client.distributor);
       check('Leitura local identifica consumo',bill.consumption.length>=6,`${bill.consumption.length} meses`);
       const normalized=normalizeState({company:{...defaultCompany},companies:[{...defaultCompany}],currentCompanyId:defaultCompany.id,currentUser:{id:'t',name:'Teste',role:'admin',companyIds:[]}});
