@@ -8331,22 +8331,24 @@ ${company.tradeName||company.name}`:''}`;
     });
   }
 
-  function initProposalPDFElements(){
+  function initProposalPDFElements(root=document){
+    const find=id=>root?.querySelector?.(`#${id}`)||(root===document?document.getElementById(id):null);
     if(window.QRCode){
-      const qr=document.getElementById('proposalQr');if(qr){qr.innerHTML='';const proposalLink=proposalPublicUrl(activeProposal,activeProposal?.publicPdfUrl||'');new QRCode(qr,{text:proposalLink,width:92,height:92,colorDark:'#122033',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}
+      const qr=find('proposalQr');if(qr){qr.innerHTML='';const proposalLink=proposalPublicUrl(activeProposal,activeProposal?.publicPdfUrl||'');new QRCode(qr,{text:proposalLink,width:92,height:92,colorDark:'#122033',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}
     }
-    initProposalCharts();
+    initProposalCharts(root);
   }
 
-  function initProposalCharts(){
+  function initProposalCharts(root=document){
     if(!window.Chart)return;destroyCharts(proposalCharts);
+    const find=id=>root?.querySelector?.(`#${id}`)||(root===document?document.getElementById(id):null);
     const p=activeProposal,c=calculateProposal(p);const common={responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{labels:{color:'#5e6b7b',usePointStyle:true,boxWidth:7,font:{size:8}}}},scales:{x:{grid:{display:false},ticks:{color:'#7d8998',font:{size:8}}},y:{grid:{color:'#e9edf2'},ticks:{color:'#7d8998',font:{size:8}}}}};
     const generationProfile=proposalMonthlyGenerationProfile(p,c);
-    const cons=document.getElementById('pdfConsumptionChart');if(cons)proposalCharts.push(new Chart(cons,{data:{labels:months,datasets:[{type:'bar',label:'Consumo (kWh)',data:(Array.isArray(p.consumption)?p.consumption:[]).map(value=>Math.max(0,Number(value||0))),backgroundColor:'rgba(23,79,128,.94)',borderRadius:6,maxBarThickness:24},{type:'line',label:'Geração projetada (kWh)',data:generationProfile,borderColor:'#ffb703',backgroundColor:'rgba(255,183,3,.18)',fill:false,tension:.35,pointRadius:3,pointHoverRadius:4,pointBackgroundColor:'#ffb703',pointBorderColor:'#fff',pointBorderWidth:1.5,borderWidth:2.5}]},options:{...common,interaction:{mode:'index',intersect:false},plugins:{legend:{display:true,labels:{color:'#5e6b7b',usePointStyle:true,boxWidth:8,font:{size:8}}},tooltip:{callbacks:{label:context=>`${context.dataset.label}: ${number(context.parsed.y||0,0)} kWh`}}},scales:{x:{grid:{display:false},ticks:{color:'#7d8998',font:{size:8}}},y:{grid:{color:'#e9edf2'},ticks:{color:'#7d8998',font:{size:8},callback:value=>`${number(value,0)} kWh`}}}}}));
-    const tariff=document.getElementById('pdfTariffChart');if(tariff)proposalCharts.push(new Chart(tariff,{type:'line',data:{labels:months,datasets:[{label:'Tarifa R$/kWh',data:p.tariffHistory?.length===12?p.tariffHistory:Array.from({length:12},(_,i)=>Number(p.currentTariff||.9)*Math.pow(1-0.07/12,11-i)),borderColor:'#e39a00',backgroundColor:'rgba(227,154,0,.12)',fill:true,tension:.35,pointRadius:2}]},options:common}));
+    const cons=find('pdfConsumptionChart');if(cons)proposalCharts.push(new Chart(cons,{data:{labels:months,datasets:[{type:'bar',label:'Consumo (kWh)',data:(Array.isArray(p.consumption)?p.consumption:[]).map(value=>Math.max(0,Number(value||0))),backgroundColor:'rgba(23,79,128,.94)',borderRadius:6,maxBarThickness:24},{type:'line',label:'Geração projetada (kWh)',data:generationProfile,borderColor:'#ffb703',backgroundColor:'rgba(255,183,3,.18)',fill:false,tension:.35,pointRadius:3,pointHoverRadius:4,pointBackgroundColor:'#ffb703',pointBorderColor:'#fff',pointBorderWidth:1.5,borderWidth:2.5}]},options:{...common,interaction:{mode:'index',intersect:false},plugins:{legend:{display:true,labels:{color:'#5e6b7b',usePointStyle:true,boxWidth:8,font:{size:8}}},tooltip:{callbacks:{label:context=>`${context.dataset.label}: ${number(context.parsed.y||0,0)} kWh`}}},scales:{x:{grid:{display:false},ticks:{color:'#7d8998',font:{size:8}}},y:{grid:{color:'#e9edf2'},ticks:{color:'#7d8998',font:{size:8},callback:value=>`${number(value,0)} kWh`}}}}}));
+    const tariff=find('pdfTariffChart');if(tariff)proposalCharts.push(new Chart(tariff,{type:'line',data:{labels:months,datasets:[{label:'Tarifa R$/kWh',data:p.tariffHistory?.length===12?p.tariffHistory:Array.from({length:12},(_,i)=>Number(p.currentTariff||.9)*Math.pow(1-0.07/12,11-i)),borderColor:'#e39a00',backgroundColor:'rgba(227,154,0,.12)',fill:true,tension:.35,pointRadius:2}]},options:common}));
     const years=Array.from({length:26},(_,i)=>i);let without=[0],withSolar=[Number(p.commercial.price||0)],accWithout=0,accWith=Number(p.commercial.price||0);for(let y=1;y<=25;y++){const annualBill=c.billBefore*12*Math.pow(1+Number(p.commercial.annualTariffIncrease||0)/100,y-1);accWithout+=annualBill;accWith+=Number(p.commercial.annualMaintenance||0)+Number(p.commercial.residualBill||0)*12;without.push(accWithout);withSolar.push(accWith);}
-    const savings=document.getElementById('pdfSavingsChart');if(savings)proposalCharts.push(new Chart(savings,{type:'line',data:{labels:years,datasets:[{label:'Sem solar',data:without,borderColor:'#e35353',backgroundColor:'rgba(227,83,83,.08)',fill:true,tension:.25,pointRadius:0},{label:'Com solar',data:withSolar,borderColor:'#168a56',backgroundColor:'rgba(22,138,86,.08)',fill:true,tension:.25,pointRadius:0}]},options:{...common,scales:{x:{grid:{display:false},ticks:{color:'#7d8998',font:{size:8},callback:v=>`${v}a`}},y:{grid:{color:'#e9edf2'},ticks:{color:'#7d8998',font:{size:8},callback:v=>`R$ ${Math.round(v/1000)} mil`}}}}}));
-    const finance=document.getElementById('pdfFinanceChart');if(finance)proposalCharts.push(new Chart(finance,{type:'bar',data:{labels:['Economia mensal','Parcela','Saldo líquido'],datasets:[{data:[c.monthlySaving,c.installment,c.netMonthlyEconomy],backgroundColor:['#168a56','#174f80',c.netMonthlyEconomy>=0?'#e39a00':'#e35353'],borderRadius:7}]},options:{...common,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#7d8998',font:{size:8}}},y:{grid:{color:'#e9edf2'},ticks:{color:'#7d8998',font:{size:8},callback:v=>`R$ ${v}`}}}}}));
+    const savings=find('pdfSavingsChart');if(savings)proposalCharts.push(new Chart(savings,{type:'line',data:{labels:years,datasets:[{label:'Sem solar',data:without,borderColor:'#e35353',backgroundColor:'rgba(227,83,83,.08)',fill:true,tension:.25,pointRadius:0},{label:'Com solar',data:withSolar,borderColor:'#168a56',backgroundColor:'rgba(22,138,86,.08)',fill:true,tension:.25,pointRadius:0}]},options:{...common,scales:{x:{grid:{display:false},ticks:{color:'#7d8998',font:{size:8},callback:v=>`${v}a`}},y:{grid:{color:'#e9edf2'},ticks:{color:'#7d8998',font:{size:8},callback:v=>`R$ ${Math.round(v/1000)} mil`}}}}}));
+    const finance=find('pdfFinanceChart');if(finance)proposalCharts.push(new Chart(finance,{type:'bar',data:{labels:['Economia mensal','Parcela','Saldo líquido'],datasets:[{data:[c.monthlySaving,c.installment,c.netMonthlyEconomy],backgroundColor:['#168a56','#174f80',c.netMonthlyEconomy>=0?'#e39a00':'#e35353'],borderRadius:7}]},options:{...common,plugins:{legend:{display:false}},scales:{x:{grid:{display:false},ticks:{color:'#7d8998',font:{size:8}}},y:{grid:{color:'#e9edf2'},ticks:{color:'#7d8998',font:{size:8},callback:v=>`R$ ${v}`}}}}}));
   }
 
   async function buildProposalPdfBlob({onProgress=null}={}){
@@ -8356,18 +8358,19 @@ ${company.tradeName||company.name}`:''}`;
     applyProposalLogoSource(document.getElementById('proposalPages'));
     applyWorkPhotoSources(document.getElementById('proposalPages'));
     const {jsPDF}=window.jspdf||{};if(!jsPDF||!window.html2canvas)throw new Error('Bibliotecas de PDF indisponíveis.');
-    const galleryCount=(Array.isArray(state.company?.workPhotos)?state.company.workPhotos:[]).filter(Boolean).length;const totalPages=6+(galleryCount?1:0)+(activeProposal.evCharger?.enabled?1:0);let sourceRoot=null;let pages=[];
+    let sourceRoot=null;let pages=[];
     const previewOpen=document.getElementById('proposalPreviewModal')?.classList.contains('open');
     const previewPages=[...document.querySelectorAll('#proposalPages .proposal-page')];
-    if(previewOpen&&previewPages.length===totalPages)pages=previewPages;
+    if(previewOpen&&previewPages.length)pages=previewPages;
     else{
-      sourceRoot=document.createElement('div');sourceRoot.className='pdf-export-source';sourceRoot.innerHTML=renderProposalDocument(activeProposal);applyProposalLogoSource(sourceRoot);applyWorkPhotoSources(sourceRoot);document.body.appendChild(sourceRoot);
+      sourceRoot=document.createElement('div');sourceRoot.className='pdf-export-source';sourceRoot.innerHTML=renderProposalDocument(activeProposal);applyProposalLogoSource(sourceRoot);applyWorkPhotoSources(sourceRoot);enforceProposalVisualFixes(sourceRoot);document.body.appendChild(sourceRoot);
       await new Promise(r=>setTimeout(r,80));
-      initProposalPDFElements();
+      initProposalPDFElements(sourceRoot);
       await new Promise(r=>setTimeout(r,220));
       pages=[...sourceRoot.querySelectorAll('.proposal-page')];
     }
-    if(pages.length!==totalPages){sourceRoot?.remove();throw new Error(`As ${totalPages} páginas não foram renderizadas.`);}
+    if(!pages.length){sourceRoot?.remove();throw new Error('Nenhuma página da proposta foi renderizada.');}
+    const totalPages=pages.length;
     if(document.fonts?.ready)await document.fonts.ready;
     await Promise.all([...pages.flatMap(page=>[...page.querySelectorAll('img')])].map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.addEventListener('load',resolve,{once:true});img.addEventListener('error',resolve,{once:true});setTimeout(resolve,3000);}))); 
     await new Promise(r=>setTimeout(r,160));
