@@ -769,7 +769,8 @@ body.auth-ready #loginScreen { display:none !important; }
 .login-submit { width:100%; min-height:49px; margin-top:2px; }
 .login-divider { margin:17px 0; display:flex; align-items:center; gap:10px; color:var(--muted); font-size:9px; }
 .login-divider::before,.login-divider::after { content:""; height:1px; flex:1; background:var(--line); }
-.google-btn { width:100%; min-height:49px; border:1px solid var(--line); border-radius:13px; background:#fff; color:#243043; font-weight:850; font-size:11px; display:flex; align-items:center; justify-content:center; gap:10px; }
+.google-btn { width:100%; min-height:49px; border:1px solid var(--line); border-radius:13px; background:#fff; color:#243043; font-weight:850; font-size:11px; display:flex; align-items:center; justify-content:center; gap:10px; touch-action:manipulation; -webkit-tap-highlight-color:transparent; user-select:none; }
+.google-btn[aria-busy="true"] { cursor:wait; opacity:.72; }
 .google-btn:hover { transform:translateY(-1px); box-shadow:0 10px 25px rgba(0,0,0,.17); }
 .google-logo { width:18px; height:18px; display:block; }
 .login-secondary { margin-top:14px; display:flex; align-items:center; justify-content:center; gap:6px; color:var(--muted); font-size:9px; text-align:center; }
@@ -1524,7 +1525,16 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
         this.app = existing || appMod.initializeApp(firebaseOptions, appName);
         this.auth = authMod.getAuth(this.app);
         try { await authMod.setPersistence(this.auth, authMod.browserLocalPersistence); } catch (_) {}
-        try { await authMod.getRedirectResult(this.auth); } catch (redirectError) { this.lastAuthError = friendlyError(redirectError, 'Não foi possível concluir o login com Google.'); }
+        this.redirectResult = null;
+        try {
+          const redirectResult = await authMod.getRedirectResult(this.auth);
+          if (redirectResult?.user) {
+            this.redirectResult = redirectResult;
+            this.user = redirectResult.user;
+          }
+        } catch (redirectError) {
+          this.lastAuthError = friendlyError(redirectError, 'Não foi possível concluir o login com Google.');
+        }
         this.db = firestoreMod.getFirestore(this.app);
         this.realtimeDb = databaseMod.getDatabase(this.app);
         this.functions = functionsMod.getFunctions(this.app, config.functionsRegion || 'southamerica-east1');
@@ -1591,11 +1601,17 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
       try {
         const provider = new this.modules.authMod.GoogleAuthProvider();
         provider.setCustomParameters({ prompt: 'select_account' });
+
+        // Popup é usado também no celular. O redirect do Firebase pode falhar
+        // em domínios externos por bloqueio de armazenamento de terceiros.
         if (redirect) {
+          try { sessionStorage.setItem('solarcrm_google_redirect_pending', '1'); } catch (_) {}
           await this.modules.authMod.signInWithRedirect(this.auth, provider);
           return null;
         }
+
         const result = await this.modules.authMod.signInWithPopup(this.auth, provider);
+        try { sessionStorage.removeItem('solarcrm_google_redirect_pending'); } catch (_) {}
         this.user = result.user;
         await this.refreshProfile();
         if (!this.profile) await this.repairBootstrapOwnerProfile().catch(() => null);
@@ -2825,7 +2841,7 @@ service cloud.firestore {
   const DRIVE_SCRIPT_TOKEN_KEY = 'solarcrm-drive-script-token-v1';
   const DRIVE_ROOT_FOLDER_KEY = 'solarcrm-drive-root-folder-v1';
   const ACTIVE_DRAFT_KEY = 'solarcrm-pro-active-draft-v2-9-2';
-  const SYSTEM_VERSION = '3.9.1-itens-adicionais';
+  const SYSTEM_VERSION = '3.9.2-mobile-google';
   const COMPANY_WIDE_SHARED_ACCESS = true;
   let storageWarningShown = false;
   let draftSaveTimer = null;
@@ -9061,17 +9077,38 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     finally{if(button){button.disabled=false;button.textContent='Entrar';}}
   }
 
-  async function loginWithGoogleFromSystemScreen(){
+  function setGoogleLoginButtonBusy(busy){
+    const button=document.getElementById('systemGoogleLogin');
+    if(!button)return;
+    button.disabled=Boolean(busy);
+    button.setAttribute('aria-busy',busy?'true':'false');
+    const textNode=[...button.childNodes].find(node=>node.nodeType===Node.TEXT_NODE&&node.textContent.trim());
+    if(textNode)textNode.textContent=busy?' Conectando...':' Entrar com Google';
+  }
+
+  async function loginWithGoogleFromSystemScreen(event){
+    event?.preventDefault();
+    event?.stopPropagation();
     if(location.protocol==='file:'){
-      setLoginStatus('Google requer um endereço web','Abra o CRM por localhost ou hospedagem web para usar o login Google. O acesso por e-mail e senha pode continuar disponível.','error');return;
+      setLoginStatus('Google requer um endereço web','Este HTML foi aberto diretamente no aparelho. Publique em HTTPS ou use localhost para o Google autorizar o acesso.','error');return;
     }
-    const button=document.getElementById('systemGoogleLogin');if(button){button.disabled=true;button.lastChild.textContent=' Conectando...';}
+    if(!window.FirebaseCRM?.connected){
+      setLoginStatus('Conexão ainda não pronta','Aguarde a conexão com o Firebase e toque novamente.','error');return;
+    }
+    setGoogleLoginButtonBusy(true);
+    setLoginStatus('Abrindo o Google','Escolha sua conta na janela segura que será aberta.','info');
     try{
-      const mobile=window.matchMedia('(max-width: 700px)').matches;
-      const user=await window.FirebaseCRM.loginWithGoogle({redirect:mobile});
+      // Popup direto preserva o gesto do toque e evita o problema de redirect
+      // em navegadores móveis com bloqueio de armazenamento de terceiros.
+      const user=await window.FirebaseCRM.loginWithGoogle({redirect:false});
       if(user)await finishAuthenticatedSession(user,{automatic:true});
-    }catch(error){setLoginStatus('Não foi possível entrar com Google',error.message||'Ative o provedor Google e autorize este domínio no Banco de dados.','error');}
-    finally{if(button){button.disabled=false;button.lastChild.textContent=' Entrar com Google';}}
+    }catch(error){
+      const code=String(error?.code||'');
+      const extra=code==='auth/popup-blocked'
+        ? 'O navegador bloqueou a janela. Libere pop-ups para este site e tente novamente.'
+        : error.message||'Ative o provedor Google e autorize este domínio no Firebase Authentication.';
+      setLoginStatus('Não foi possível entrar com Google',extra,'error');
+    }finally{setGoogleLoginButtonBusy(false);}
   }
 
   async function resetPasswordFromSystemScreen(){
@@ -9253,6 +9290,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
       setLoginStatus('Conectando ao banco de dados','Validando o projeto e os métodos de acesso.','info');
       await window.FirebaseCRM.connect(config);setSystemLoginEnabled(true);attachFirebaseAuthWatcher();
       if(window.FirebaseCRM.auth?.currentUser)await finishAuthenticatedSession(window.FirebaseCRM.auth.currentUser,{automatic:true});
+      else if(window.FirebaseCRM.lastAuthError)setLoginStatus('Login Google não concluído',window.FirebaseCRM.lastAuthError.message,'error');
       else lockSystemForAuthentication('Acesso necessário','Entre com seu usuário e senha ou use sua conta Google.');
     }catch(error){
       console.warn('Banco de dados não conectado automaticamente:',error.code||'',error.message);setSystemLoginEnabled(false);setLoginStatus('Banco de dados indisponível',error.message||'Verifique a configuração do projeto.','error');
