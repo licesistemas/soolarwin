@@ -2404,6 +2404,47 @@ service cloud.firestore {
     function canCreateRecord() { return belongsTo(request.resource.data.companyId); }
     function canUpdateRecord() { return belongsTo(resource.data.companyId) && sameCompanyOnUpdate(); }
 
+    // Entrada pública exclusiva do formulário formulario.soolarwin.com.br.
+    // O visitante só pode CRIAR um Novo Lead com campos e valores estritamente limitados.
+    // Leitura, edição e exclusão continuam protegidas por autenticação.
+    function isPublicSoolarwinLead(id) {
+      return !signedIn()
+        && request.resource.data.keys().hasOnly([
+          'id','companyId','name','phone','email','city','source','stage',
+          'estimatedValue','score','owner','notes','createdAt','updatedAt',
+          'monthlyBill','installationType','originUrl'
+        ])
+        && request.resource.data.id == id
+        && request.resource.data.companyId == 'company-demo'
+        && request.resource.data.source == 'Instagram / Formulário'
+        && request.resource.data.stage == 'Novo Lead'
+        && request.resource.data.owner == 'Atendimento'
+        && request.resource.data.estimatedValue == 0
+        && request.resource.data.score is int
+        && request.resource.data.score >= 0
+        && request.resource.data.score <= 100
+        && request.resource.data.name is string
+        && request.resource.data.name.size() >= 2
+        && request.resource.data.name.size() <= 100
+        && request.resource.data.phone is string
+        && request.resource.data.phone.size() >= 8
+        && request.resource.data.phone.size() <= 30
+        && request.resource.data.city is string
+        && request.resource.data.city.size() >= 2
+        && request.resource.data.city.size() <= 100
+        && request.resource.data.installationType is string
+        && request.resource.data.installationType.size() <= 80
+        && request.resource.data.monthlyBill is int
+        && request.resource.data.monthlyBill >= 0
+        && request.resource.data.monthlyBill <= 100000
+        && request.resource.data.notes is string
+        && request.resource.data.notes.size() <= 1000
+        && request.resource.data.createdAt is string
+        && request.resource.data.updatedAt is string
+        && request.resource.data.originUrl is string
+        && request.resource.data.originUrl.size() <= 500;
+    }
+
     match /users/{userId} {
       allow get: if signedIn() && (
         request.auth.uid == userId
@@ -2563,7 +2604,7 @@ service cloud.firestore {
 
     match /leads/{id} {
       allow read: if canReadRecord() && hasPermission('leads','view');
-      allow create: if canCreateRecord() && hasPermission('leads','create');
+      allow create: if (canCreateRecord() && hasPermission('leads','create')) || isPublicSoolarwinLead(id);
       allow update: if canUpdateRecord() && hasPermission('leads','edit');
       allow delete: if canReadRecord() && hasPermission('leads','delete');
     }
@@ -3146,7 +3187,7 @@ service cloud.firestore {
     leads: {
       title: 'Lead', fields: [
         ['name','Nome do lead','text',true], ['phone','WhatsApp','tel',true], ['email','E-mail','email'], ['city','Cidade','text'],
-        ['source','Origem','select',false,['Instagram','Google','Indicação','Site','Evento','Prospecção']],
+        ['source','Origem','select',false,['Instagram','Instagram / Formulário','Google','Indicação','Site','Evento','Prospecção']],
         ['stage','Etapa','select',true,pipelineStages.map(s=>s.id)], ['estimatedValue','Valor estimado','number'], ['score','Score','number'], ['owner','Responsável','text'], ['notes','Observações','textarea']
       ]
     },
