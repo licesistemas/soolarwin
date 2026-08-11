@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#08111f">
+<title>Representante · Propostas Solares</title>
+<style>
+:root {
+  --bg:#07111f;
+  --bg-soft:#0b1727;
+  --panel:rgba(14,28,46,.94);
+  --panel-solid:#0e1c2e;
+  --panel-2:#13243a;
+  --panel-3:#172a43;
+  --line:rgba(151,170,199,.16);
+  --line-strong:rgba(151,170,199,.28);
+  --text:#f6f8fb;
+  --text-soft:#b6c1d1;
+  --muted:#7e8da5;
+  --primary:#ffb703;
+  --primary-2:#ffd166;
+  --primary-soft:rgba(255,183,3,.14);
+  --green:#35d07f;
+  --green-soft:rgba(53,208,127,.14);
+  --blue:#5aa9ff;
+  --blue-soft:rgba(90,169,255,.14);
+  --red:#ff6b6b;
+  --red-soft:rgba(255,107,107,.14);
+  --purple:#a78bfa;
+  --purple-soft:rgba(167,139,250,.14);
+  --shadow:0 20px 55px rgba(0,0,0,.28);
+  --radius:18px;
+  --radius-sm:12px;
+  --font:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;background:var(--bg)}
+body{
+  margin:0;min-height:100vh;padding-bottom:88px;color:var(--text);font-family:var(--font);overflow-x:hidden;
+  background:
+    radial-gradient(circle at 15% 0%,rgba(255,183,3,.08),transparent 28%),
+    radial-gradient(circle at 100% 100%,rgba(90,169,255,.07),transparent 28%),
+    var(--bg);
+}
+button,input,select,textarea{font:inherit}
+button{cursor:pointer}a{color:inherit;text-decoration:none}.hidden{display:none!important}
+::-webkit-scrollbar{width:8px;height:8px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(142,159,183,.26);border-radius:999px}
+
+.shell{width:min(100%,560px);margin:0 auto;min-height:100vh}
+.top{
+  position:sticky;top:0;z-index:40;min-height:84px;padding:14px 16px 12px;border-bottom:1px solid var(--line);
+  background:rgba(7,17,31,.76);backdrop-filter:blur(22px);
+}
+.toprow{display:flex;align-items:center;justify-content:space-between;gap:14px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.mark{
+  min-width:58px;height:44px;padding:0 12px;border-radius:14px;display:grid;place-items:center;flex:0 0 auto;
+  background:linear-gradient(135deg,var(--primary),#ffcf66);color:#152033;font-size:12px;font-weight:900;
+  box-shadow:0 12px 24px rgba(255,183,3,.2);border:1px solid rgba(255,255,255,.16)
+}
+.mark.has-logo{padding:4px 10px;min-width:112px}
+.mark img{display:block;max-width:132px;max-height:30px;object-fit:contain;filter:drop-shadow(0 4px 10px rgba(0,0,0,.15))}
+.wordmark{display:block;font-size:9px;font-weight:1000;letter-spacing:.12em;line-height:1;text-align:center;white-space:nowrap}
+.brand strong{display:block;font-size:15px;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand span{display:block;margin-top:2px;font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.avatar{
+  width:42px;height:42px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--text-soft);
+  display:grid;place-items:center;transition:.18s ease
+}
+.avatar:hover{color:var(--text);border-color:var(--line-strong);transform:translateY(-1px)}
+.sync{display:flex;align-items:center;gap:8px;margin-top:9px;font-size:10px;color:var(--text-soft)}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 0 4px var(--green-soft)}
+
+.main{padding:22px 14px 30px}
+.hero{
+  position:relative;overflow:hidden;padding:19px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);
+  box-shadow:0 10px 28px rgba(0,0,0,.08)
+}
+.hero::after{content:"";position:absolute;width:100px;height:100px;right:-28px;top:-30px;border-radius:50%;background:var(--primary-soft)}
+.eyebrow{position:relative;z-index:1;margin:0;color:var(--primary);text-transform:uppercase;letter-spacing:.15em;font-size:9px;font-weight:900}
+.hero h1{position:relative;z-index:1;margin:8px 0 0;font-size:26px;line-height:1.06;letter-spacing:-.04em}
+.hero p{position:relative;z-index:1;margin:8px 0 0;max-width:410px;color:var(--muted);font-size:12px;line-height:1.55}
+.hero-actions{position:relative;z-index:1;display:flex;gap:9px;flex-wrap:wrap;margin-top:16px}
+
+.btn{
+  min-height:42px;border-radius:12px;border:1px solid transparent;padding:0 16px;display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  font-weight:800;font-size:12px;transition:.18s ease;white-space:nowrap
+}
+.btn:hover{transform:translateY(-1px)}.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.primary{background:linear-gradient(135deg,var(--primary),var(--primary-2));color:#17202a;box-shadow:0 10px 24px rgba(255,183,3,.16)}
+.ghost{background:var(--panel);color:var(--text-soft);border-color:var(--line)}
+.blue{background:var(--blue-soft);color:var(--blue);border-color:rgba(90,169,255,.2)}
+.green{background:var(--green-soft);color:var(--green);border-color:rgba(53,208,127,.2)}
+.danger{background:var(--red-soft);color:var(--red);border-color:rgba(255,107,107,.2)}
+
+.stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin:14px 0 0}
+.stat{position:relative;overflow:hidden;padding:15px;border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);box-shadow:0 10px 28px rgba(0,0,0,.08)}
+.stat::after{content:"";position:absolute;width:72px;height:72px;right:-26px;top:-28px;border-radius:50%;background:var(--primary-soft)}
+.stat span{position:relative;z-index:1;display:block;color:var(--muted);font-size:8px;text-transform:uppercase;letter-spacing:.08em;font-weight:800}
+.stat strong{position:relative;z-index:1;display:block;margin-top:8px;font-size:22px;letter-spacing:-.04em}
+
+.section{margin-top:20px}.section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:12px}
+.section-head h2{margin:0;font-size:22px;letter-spacing:-.04em}.section-head p{margin:6px 0 0;color:var(--muted);font-size:11px}
+.card{border:1px solid var(--line);border-radius:var(--radius);background:var(--panel);box-shadow:0 10px 28px rgba(0,0,0,.08)}
+.pad{padding:18px}.list{display:flex;flex-direction:column;gap:10px}
+.proposal{padding:16px;border:1px solid var(--line);border-radius:15px;background:var(--panel)}
+.p-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}.proposal h3{margin:0;font-size:13px;letter-spacing:-.02em}.proposal p{margin:5px 0 0;color:var(--muted);font-size:9px}
+.status{display:inline-flex;align-items:center;gap:6px;padding:5px 8px;border-radius:999px;font-size:9px;font-weight:800;white-space:nowrap}
+.status::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.status.Enviada,.status.Visualizada,.status.Negociação{color:var(--blue);background:var(--blue-soft)}
+.status.Aceita{color:var(--green);background:var(--green-soft)}.status.Recusada{color:var(--red);background:var(--red-soft)}
+.p-value{margin:16px 0 12px;font-size:23px;font-weight:900;letter-spacing:-.04em}
+.p-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.p-metrics div{padding:9px;border-radius:11px;background:var(--panel-2)}
+.p-metrics span{display:block;color:var(--muted);font-size:8px;text-transform:uppercase;letter-spacing:.06em}.p-metrics strong{display:block;margin-top:4px;font-size:10px}
+.p-actions{display:flex;gap:7px;margin-top:13px}.p-actions .btn{flex:1;min-height:34px;padding:0 12px;font-size:10px;border-radius:10px}
+
+.form-card{padding:18px}.step-title{display:flex;align-items:center;gap:11px;margin-bottom:16px}.step-no{width:36px;height:36px;border-radius:12px;display:grid;place-items:center;background:var(--primary-soft);color:var(--primary);font-size:10px;font-weight:900}
+.step-title h3{margin:0;font-size:14px;letter-spacing:-.02em}.step-title p{margin:4px 0 0;color:var(--muted);font-size:10px}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.field{display:flex;flex-direction:column;gap:7px}.field.full{grid-column:1/-1}
+.field span{color:var(--text-soft);font-size:10px;font-weight:700}.field input,.field select,.field textarea{
+  width:100%;min-height:42px;border:1px solid var(--line);border-radius:11px;background:var(--panel-2);color:var(--text);padding:10px 11px;outline:0;transition:.16s ease
+}
+.field textarea{min-height:100px;resize:vertical}.field input::placeholder,.field textarea::placeholder{color:var(--muted)}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:rgba(255,183,3,.55);box-shadow:0 0 0 3px var(--primary-soft)}
+.hint{margin-top:12px;padding:11px 12px;border:1px solid rgba(90,169,255,.2);border-radius:12px;background:var(--blue-soft);color:var(--text-soft);font-size:10px;line-height:1.5}
+.price-warning{border-color:rgba(255,183,3,.22);background:var(--primary-soft)}
+.submit-row{position:sticky;bottom:78px;z-index:20;margin-top:14px;padding:10px;border:1px solid var(--line);border-radius:14px;background:rgba(7,17,31,.86);backdrop-filter:blur(22px)}
+.submit-row .btn{width:100%;min-height:46px}
+
+.bottom{
+  position:fixed;left:50%;transform:translateX(-50%);bottom:0;z-index:50;width:min(100%,560px);padding:8px 12px max(8px,env(safe-area-inset-bottom));
+  display:grid;grid-template-columns:repeat(3,1fr);gap:5px;border-top:1px solid var(--line);background:rgba(7,17,31,.9);backdrop-filter:blur(22px)
+}
+.nav{border:0;background:transparent;color:var(--text-soft);border-radius:12px;padding:8px 6px;font-size:9px;font-weight:800;transition:.18s ease}.nav b{display:block;width:22px;margin:0 auto 5px;font-size:16px;line-height:1}.nav:hover{background:rgba(255,255,255,.04);color:var(--text)}
+.nav.active{color:#101820;background:linear-gradient(135deg,var(--primary),var(--primary-2));box-shadow:0 10px 22px rgba(255,183,3,.18)}
+
+.login{min-height:100vh;display:grid;place-items:center;padding:22px}.login-card{width:min(100%,420px);padding:22px;border:1px solid var(--line);border-radius:22px;background:var(--panel-solid);box-shadow:var(--shadow)}
+.login-card .mark{width:52px;height:52px;border-radius:14px}#loginBrand{width:100%;height:auto;min-width:0;padding:0;margin:0 auto 12px;background:transparent!important;border:0!important;box-shadow:none!important;display:flex;justify-content:center;align-items:center}#loginBrand.has-logo{min-width:0;padding:0}#loginBrand img{max-width:min(100%,300px);max-height:92px;object-fit:contain;filter:none}.login-card h1{margin:12px 0 6px;font-size:27px;letter-spacing:-.04em}.login-card>p{margin:0 0 18px;color:var(--muted);font-size:11px;line-height:1.55}.login-card .field{margin-top:12px}.login-card .btn{width:100%;margin-top:12px}
+.login-error{margin-top:12px;padding:10px 11px;border:1px solid rgba(255,107,107,.22);border-radius:11px;background:var(--red-soft);color:#ff9b9b;font-size:10px;line-height:1.45}.or{display:flex;align-items:center;gap:10px;margin:15px 0;color:var(--muted);font-size:9px}.or::before,.or::after{content:"";height:1px;background:var(--line);flex:1}
+
+.success{margin-top:14px;padding:18px;border:1px solid rgba(53,208,127,.22);border-radius:var(--radius);background:var(--panel);box-shadow:0 10px 28px rgba(0,0,0,.08)}
+.check{width:42px;height:42px;border-radius:13px;display:grid;place-items:center;background:var(--green-soft);color:var(--green);font-size:20px;font-weight:900}.success h2{margin:13px 0 6px;font-size:21px;letter-spacing:-.03em}.success p{margin:0;color:var(--muted);font-size:10px;line-height:1.5}
+.result-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:14px 0}.result-grid div{padding:11px;border:1px solid var(--line);border-radius:12px;background:var(--panel-2)}.result-grid span{display:block;color:var(--muted);font-size:8px;text-transform:uppercase;letter-spacing:.06em}.result-grid strong{display:block;margin-top:5px;font-size:12px}.success-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.empty{padding:38px 18px;text-align:center;color:var(--muted);font-size:10px}.empty strong{display:block;color:var(--text);font-size:13px;margin-bottom:6px}
+.toast{position:fixed;left:50%;transform:translateX(-50%) translateY(20px);bottom:100px;z-index:100;width:min(calc(100% - 28px),500px);padding:12px 14px;border:1px solid var(--line);border-radius:13px;background:var(--panel-solid);color:var(--text);box-shadow:var(--shadow);opacity:0;pointer-events:none;transition:.2s}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}.toast strong{display:block;font-size:11px}.toast span{display:block;margin-top:3px;color:var(--muted);font-size:9px}
+.overlay{position:fixed;inset:0;z-index:90;background:rgba(2,7,14,.72);backdrop-filter:blur(8px);display:none;align-items:flex-end;justify-content:center}.overlay.open{display:flex}.sheet{width:min(100%,560px);max-height:90vh;overflow:auto;border:1px solid var(--line);border-radius:22px 22px 0 0;background:var(--panel-solid);box-shadow:var(--shadow);padding:17px 16px 30px}.sheet-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:12px;border-bottom:1px solid var(--line)}.sheet-head h2{margin:0;font-size:19px;letter-spacing:-.03em}.close{width:38px;height:38px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--text-soft)}
+.preview-hero{margin-top:14px;padding:18px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(135deg,var(--panel-2),var(--panel-3))}.preview-hero h3{margin:7px 0 4px;font-size:24px;letter-spacing:-.04em}.preview-hero p{margin:0;color:var(--muted);font-size:10px}.preview-value{margin-top:16px;color:var(--primary);font-size:28px;font-weight:900;letter-spacing:-.04em}
+.loading{width:16px;height:16px;border-radius:50%;border:2px solid rgba(23,32,42,.24);border-top-color:#17202a;animation:spin .7s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+
+@media(max-width:420px){
+  .main{padding:17px 12px 28px}.top{min-height:72px;padding:11px 12px}.hero h1{font-size:23px}.section-head h2{font-size:20px}.stats{gap:7px}.stat{padding:12px 10px}.stat strong{font-size:19px}.grid{grid-template-columns:1fr}.field.full{grid-column:auto}.p-metrics{grid-template-columns:repeat(3,1fr)}.hero-actions .btn{flex:1}.success-actions{grid-template-columns:1fr}.proposal{padding:14px}.p-actions{flex-wrap:wrap}.p-actions .btn{min-width:calc(50% - 4px)}
+}
+</style>
+</head>
+<body>
+<div id="loginView" class="login">
+  <form id="loginForm" class="login-card">
+    <div id="loginBrand" class="mark"><span class="wordmark">SOOLARWIN</span></div>
+    <h1>Acesso do representante</h1>
+    <p>Entre com o mesmo usuário autorizado no CRM. As propostas geradas aqui ficam sincronizadas na base oficial.</p>
+    <label class="field"><span>E-mail</span><input id="loginEmail" type="email" autocomplete="email" required placeholder="representante@empresa.com"></label>
+    <label class="field"><span>Senha</span><input id="loginPassword" type="password" autocomplete="current-password" required minlength="6" placeholder="••••••••"></label>
+    <button id="loginBtn" class="btn primary" type="submit">Entrar</button>
+    <div class="or">ou</div>
+    <button id="googleBtn" class="btn ghost" type="button">Entrar com Google</button>
+    <div id="loginError" class="login-error hidden"></div>
+  </form>
+</div>
+
+<div id="appView" class="shell hidden">
+  <header class="top">
+    <div class="toprow">
+      <div class="brand"><div><strong id="companyName">Propostas</strong><span id="repName">Representante</span></div></div>
+      <button id="logoutBtn" class="avatar" type="button" title="Sair">↗</button>
+    </div>
+    <div class="sync"><i class="dot"></i><span id="syncText">Firebase conectado · propostas sincronizadas</span></div>
+  </header>
+
+  <main class="main">
+    <section id="homeTab" data-tab-panel="home">
+      <div class="hero">
+        <div class="eyebrow">SolarCRM Pro · Venda em campo</div>
+        <h1>Da coleta à proposta pronta.</h1>
+        <p>Informe somente os dados essenciais. O sistema dimensiona, precifica, grava no CRM e disponibiliza a proposta para você compartilhar.</p>
+        <div class="hero-actions"><button class="btn primary" type="button" data-go="new">＋ Nova proposta</button><button class="btn ghost" type="button" data-go="list">Minhas propostas</button></div>
+      </div>
+      <div class="stats">
+        <div class="stat"><span>Minhas propostas</span><strong id="statTotal">0</strong></div>
+        <div class="stat"><span>Aceitas</span><strong id="statAccepted">0</strong></div>
+        <div class="stat"><span>Em negociação</span><strong id="statOpen">0</strong></div>
+      </div>
+      <div id="pricingWarning" class="hint price-warning hidden"><strong>Configuração necessária:</strong> defina um R$/kWp para este representante em Configurações → Usuários e permissões ou configure o valor padrão em Configurações → Empresa.</div>
+      <section class="section">
+        <div class="section-head"><div><h2>Recentes</h2><p>As últimas propostas criadas por você.</p></div></div>
+        <div id="recentList" class="list"></div>
+      </section>
+    </section>
+
+    <section id="newTab" class="hidden" data-tab-panel="new">
+      <div class="section-head"><div><h2>Nova proposta</h2><p>Preencha os dados mínimos para gerar automaticamente.</p></div><button id="clearFormBtn" class="btn ghost" type="button">Limpar</button></div>
+      <form id="proposalForm">
+        <div class="card form-card">
+          <div class="step-title"><div class="step-no">1</div><div><h3>Cliente</h3><p>Identificação e contato.</p></div></div>
+          <div class="grid">
+            <label class="field full"><span>Nome do cliente *</span><input name="clientName" required autocomplete="name" placeholder="Nome completo ou empresa"></label>
+            <label class="field"><span>WhatsApp *</span><input name="phone" required inputmode="tel" placeholder="(47) 99999-9999"></label>
+            <label class="field"><span>CPF / CNPJ</span><input name="document" inputmode="numeric" placeholder="Opcional"></label>
+            <label class="field"><span>E-mail</span><input name="email" type="email" placeholder="cliente@email.com"></label>
+            <label class="field"><span>Cidade *</span><input name="city" required placeholder="Jaraguá do Sul - SC"></label>
+            <label class="field"><span>Distribuidora</span><input name="distributor" value="CELESC" placeholder="CELESC"></label>
+            <label class="field full"><span>Endereço da instalação</span><input name="address" placeholder="Rua, número, bairro"></label>
+          </div>
+        </div>
+
+        <div class="card form-card" style="margin-top:12px">
+          <div class="step-title"><div class="step-no">2</div><div><h3>Consumo</h3><p>O sistema usa esses dados para dimensionar.</p></div></div>
+          <div class="grid">
+            <label class="field"><span>Consumo médio (kWh/mês) *</span><input name="avgConsumption" type="number" min="1" step="1" required inputmode="decimal" placeholder="Ex.: 850"></label>
+            <label class="field"><span>Valor médio da fatura (R$)</span><input name="billAmount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Ex.: 780"></label>
+            <label class="field"><span>Classe</span><select name="className"><option>Residencial</option><option>Comercial</option><option>Rural</option><option>Industrial</option></select></label>
+            <label class="field"><span>Unidade consumidora</span><input name="consumerUnit" placeholder="Opcional"></label>
+          </div>
+          <div class="hint">Se informar o valor médio da fatura, o sistema estima a tarifa efetiva. Caso contrário, usa a tarifa padrão definida no CRM.</div>
+        </div>
+
+        <div class="card form-card" style="margin-top:12px">
+          <div class="step-title"><div class="step-no">3</div><div><h3>Instalação</h3><p>Dados rápidos para o escopo técnico.</p></div></div>
+          <div class="grid">
+            <label class="field"><span>Tipo de estrutura</span><select name="structureType"><option>Telhado cerâmico</option><option>Telhado metálico</option><option>Fibrocimento</option><option>Laje</option><option>Solo</option><option>Carport</option></select></label>
+            <label class="field"><span>Orientação predominante</span><select name="orientation"><option>Norte</option><option>Nordeste</option><option>Noroeste</option><option>Leste</option><option>Oeste</option><option>Sul</option></select></label>
+            <label class="field full"><span>Observações</span><textarea name="notes" placeholder="Ex.: telhado fácil acesso, padrão trifásico, cliente pediu retorno rápido..."></textarea></label>
+          </div>
+        </div>
+
+        <div class="submit-row"><button id="generateBtn" class="btn primary" type="submit">⚡ Gerar proposta automaticamente</button></div>
+      </form>
+      <div id="generatedResult" class="success hidden"></div>
+    </section>
+
+    <section id="listTab" class="hidden" data-tab-panel="list">
+      <div class="section-head"><div><h2>Minhas propostas</h2><p>Atualização em tempo real pelo mesmo Firebase do CRM.</p></div></div>
+      <div id="proposalList" class="list"></div>
+    </section>
+  </main>
+
+  <nav class="bottom">
+    <button class="nav active" data-nav="home" type="button"><b>⌂</b>Início</button>
+    <button class="nav" data-nav="new" type="button"><b>＋</b>Nova proposta</button>
+    <button class="nav" data-nav="list" type="button"><b>▤</b>Propostas</button>
+  </nav>
+</div>
+
+<div id="previewOverlay" class="overlay"><div class="sheet"><div class="sheet-head"><h2>Proposta pronta</h2><button id="closePreview" class="close" type="button">×</button></div><div id="previewContent"></div></div></div>
+<div id="toast" class="toast"><strong></strong><span></span></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js';
+import { getAuth, setPersistence, browserLocalPersistence, onAuthStateChanged, signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider, signOut } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js';
+import { getFirestore, doc, getDoc, setDoc, collection, query, where, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js';
+
+const firebaseConfig={apiKey:'AIzaSyCYSQfnPLyV9B6osiZhsLYYrF64YLhGkMA',authDomain:'energiasolar-67b14.firebaseapp.com',databaseURL:'https://energiasolar-67b14-default-rtdb.firebaseio.com',projectId:'energiasolar-67b14',messagingSenderId:'394822890491',appId:'1:394822890491:web:5afc55e01902bbf142915e'};
+const app=initializeApp(firebaseConfig,'representante-mobile');
+const auth=getAuth(app);const db=getFirestore(app);setPersistence(auth,browserLocalPersistence).catch(()=>{});
+
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+let profile=null, company=null, companyId='', unsubscribeCompany=null, unsubscribeProposals=null, myProposals=[], lastGenerated=null;
+const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',maximumFractionDigits:0});
+const num=(v,d=1)=>Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const today=()=>new Date().toISOString().slice(0,10);
+const addDays=n=>{const d=new Date();d.setDate(d.getDate()+Number(n||10));return d.toISOString().slice(0,10)};
+const cleanPhone=v=>String(v||'').replace(/\D/g,'').replace(/^0+/,'').replace(/^55(?=\d{10,11}$)/,'');
+const normalizeDoc=v=>String(v||'').replace(/\D/g,'');
+const esc=v=>String(v??'').replace(/[&<>'"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[m]));
+const id=prefix=>`${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
+function firestoreSafeValue(value,insideArray=false){
+  if(value===undefined||value===null)return null;
+  if(typeof value==='number')return Number.isFinite(value)?value:null;
+  if(typeof value==='string'||typeof value==='boolean')return value;
+  if(value instanceof Date)return value.toISOString();
+  if(Array.isArray(value)){
+    const cleanItems=value.map(item=>firestoreSafeValue(item,true));
+    return insideArray?{items:cleanItems}:cleanItems;
+  }
+  if(typeof value==='object'){
+    const clean={};
+    Object.entries(value).forEach(([key,val])=>{if(val!==undefined)clean[key]=firestoreSafeValue(val,false)});
+    return clean;
+  }
+  return String(value);
+}
+function firestoreSafeRecord(record){return firestoreSafeValue(record||{},false)}
+const LOGIN_LOGO_KEY='representante_login_logo';
+const DEFAULT_BRAND_LOGO='https://raw.githubusercontent.com/licesistemas/soolarwin/main/logo%20%282%29.png?v=20260811';
+
+function toast(title,text=''){const el=$('#toast');el.querySelector('strong').textContent=title;el.querySelector('span').textContent=text;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),3200)}
+function initials(name=''){return name.split(/\s+/).filter(Boolean).slice(0,2).map(x=>x[0]).join('').toUpperCase()||'US'}
+function setBrandMark(el,{logoUrl='',alt='Soolarwin',fallback='SOOLARWIN'}={}){
+  if(!el)return;
+  const src=String(logoUrl||'').trim();
+  const hasLogo=/^(data:image|https?:|blob:)/i.test(src);
+  el.classList.toggle('has-logo',hasLogo);
+  el.innerHTML=hasLogo?`<img src="${esc(src)}" alt="${esc(alt)}">`:`<span class="wordmark">${esc(fallback||'SOOLARWIN')}</span>`;
+}
+function cachedLoginLogo(){try{return localStorage.getItem(LOGIN_LOGO_KEY)||''}catch(_){return ''}}
+function rememberLoginLogo(src=''){try{if(src)localStorage.setItem(LOGIN_LOGO_KEY,src)}catch(_){}}
+function applyLoginLogo(){setBrandMark($('#loginBrand'),{logoUrl:DEFAULT_BRAND_LOGO,alt:'Soolarwin',fallback:'SOOLARWIN'})}
+function pricing(){const mappedPrice=Number(company?.representativeKwpPrices?.[auth.currentUser?.uid]||0);const profilePrice=Number(profile?.autoProposalPricePerKwp||0);const representativePrice=mappedPrice>0?mappedPrice:profilePrice;const companyPrice=Number(company?.autoProposalPricePerKwp||0);return {pricePerKwp:representativePrice>0?representativePrice:companyPrice,pricePerKwpSource:mappedPrice>0?'representative-company-map':(profilePrice>0?'representative-profile':'company'),representativePricePerKwp:representativePrice,companyPricePerKwp:companyPrice,minPrice:Number(company?.autoProposalMinPrice||0),specificYield:Number(company?.autoProposalSpecificYield||120),coverage:Number(company?.autoProposalTargetCoverage||100),defaultTariff:Number(company?.autoProposalDefaultTariff||.92),residual:Number(company?.autoProposalResidualBill||75),moduleBrand:String(company?.autoProposalModuleBrand||'WEG'),moduleModel:String(company?.autoProposalModuleModel||'Módulo Monocristalino 590 W'),modulePower:Number(company?.autoProposalModulePower||590),moduleWidth:Number(company?.autoProposalModuleWidth||1.134),moduleHeight:Number(company?.autoProposalModuleHeight||2.278),moduleWeight:Number(company?.autoProposalModuleWeight||31.5),inverterBrand:String(company?.autoProposalInverterBrand||'WEG'),inverterModel:String(company?.autoProposalInverterModel||'Inversor String 10 kW'),inverterPower:Number(company?.autoProposalInverterPower||10),inverterOverload:Number(company?.autoProposalInverterOverload||1.3),paymentMethod:String(company?.autoProposalPaymentMethod||'Financiamento'),commercialNotes:String(company?.autoProposalCommercialNotes||'Instalação completa, homologação e monitoramento inclusos.')}}
+function publicUrlFor(p){const u=new URL('proposta.html',location.href);u.searchParams.set('id',p.id);if(p.client?.document)u.searchParams.set('cpf',normalizeDoc(p.client.document));u.searchParams.set('num',p.number);u.searchParams.set('name',p.client?.name||'');u.searchParams.set('power',Number(p.metrics?.actualPower||0).toFixed(2));u.searchParams.set('city',p.client?.city||'');return u.toString()}
+function clientPortalUrlFor(docNo=''){const u=new URL('cliente.html',location.href);if(docNo)u.searchParams.set('cpf',normalizeDoc(docNo));return u.toString()}
+function roundCommercial(v){return Math.ceil(Math.max(0,Number(v||0))/100)*100}
+function calculateAuto(avgConsumption,billAmount){const cfg=pricing();if(cfg.pricePerKwp<=0)throw new Error('O preço automático por kWp ainda não foi configurado no CRM.');if(avgConsumption<=0)throw new Error('Informe o consumo médio mensal.');const coverage=Math.max(1,cfg.coverage)/100;const requiredPower=avgConsumption*coverage/Math.max(1,cfg.specificYield);const moduleQty=Math.max(1,Math.ceil(requiredPower*1000/Math.max(1,cfg.modulePower)));const actualPower=moduleQty*cfg.modulePower/1000;const monthlyGeneration=actualPower*cfg.specificYield;const annualGeneration=monthlyGeneration*12;const inverterQty=Math.max(1,Math.ceil(actualPower/(Math.max(.01,cfg.inverterPower)*Math.max(1,cfg.inverterOverload))));const inverterPowerTotal=inverterQty*cfg.inverterPower;const inferredTariff=billAmount>0?billAmount/avgConsumption:0;const currentTariff=inferredTariff>=.2&&inferredTariff<=3.5?inferredTariff:cfg.defaultTariff;const compensated=Math.min(avgConsumption,monthlyGeneration);const monthlySaving=Math.max(0,compensated*currentTariff-cfg.residual);const annualSaving=monthlySaving*12;const investment=roundCommercial(Math.max(cfg.minPrice,actualPower*cfg.pricePerKwp));const payback=annualSaving>0?investment/annualSaving:0;const total25=annualSaving*25;const roi=investment>0?(total25-investment)/investment*100:0;return {...cfg,avgConsumption,requiredPower,moduleQty,actualPower,monthlyGeneration,annualGeneration,inverterQty,inverterPowerTotal,currentTariff,monthlySaving,annualSaving,investment,payback,roi,occupiedArea:moduleQty*cfg.moduleWidth*cfg.moduleHeight*1.15,totalWeight:moduleQty*cfg.moduleWeight}}
+function proposalNumber(){const d=new Date();const yy=String(d.getFullYear()).slice(-2),mm=String(d.getMonth()+1).padStart(2,'0'),dd=String(d.getDate()).padStart(2,'0'),hh=String(d.getHours()).padStart(2,'0'),mi=String(d.getMinutes()).padStart(2,'0');return `PROP-${yy}${mm}${dd}-${hh}${mi}-${Math.random().toString(36).slice(2,4).toUpperCase()}`}
+function buildProposal(values,calc){const pid=id('prop');const rates={36:1.45,48:1.35,72:1.25};const bank=(Array.isArray(company?.financingBanks)?company.financingBanks.find(b=>String(b.name||'').toLowerCase().includes('sicredi'))||company.financingBanks[0]:null);if(bank?.rates)Object.assign(rates,bank.rates);const number=proposalNumber();const createdAt=today();const p={id:pid,companyId,number,status:'Enviada',origin:'representative-mobile',source:'Representante Mobile',createdByUid:auth.currentUser.uid,createdAt,validUntil:addDays(company?.proposalValidityDays||10),sentAt:new Date().toISOString(),publishedAt:new Date().toISOString(),updatedAt:new Date().toISOString(),representative:{uid:auth.currentUser.uid,name:profile?.name||auth.currentUser.displayName||auth.currentUser.email,email:profile?.email||auth.currentUser.email},client:{name:values.clientName.trim(),document:normalizeDoc(values.document),phone:cleanPhone(values.phone),email:values.email.trim(),city:values.city.trim(),address:values.address.trim(),consumerUnit:values.consumerUnit.trim(),className:values.className,tariffGroup:'B1',distributor:values.distributor.trim()},coverPhoto:'',billFileName:'',billText:'',billAnalysis:{source:'representative-mobile',averageConsumption:calc.avgConsumption,billAmount:Number(values.billAmount||0),generatedAutomatically:true},consumption:Array(12).fill(calc.avgConsumption),currentTariff:calc.currentTariff,tariffHistory:Array(12).fill(calc.currentTariff),technical:{specificYield:calc.specificYield,targetCoverage:calc.coverage,systemLosses:17,moduleId:'representative-default-module',moduleManualQty:calc.moduleQty,moduleManualPower:calc.modulePower,inverterId:'representative-default-inverter',inverterOverload:calc.inverterOverload,inverters:[{id:id('inv'),catalogId:'representative-default-inverter',brand:calc.inverterBrand,model:calc.inverterModel,power:calc.inverterPower,quantity:calc.inverterQty}],structureType:values.structureType,orientation:values.orientation,areaExtra:15,projectImage:''},commercial:{price:calc.investment,pricePerKwpApplied:calc.pricePerKwp,pricePerKwpSource:calc.pricePerKwpSource,annualTariffIncrease:7,discountRate:10,annualMaintenance:450,moduleDegradation:.5,residualBill:calc.residual,paymentMethod:calc.paymentMethod,notes:[calc.commercialNotes,values.notes.trim()].filter(Boolean).join(' · ')},financing:{bankId:bank?.id||'sicredi',bank:bank?.name||'Sicredi',downPayment:calc.investment*.2,months:72,monthlyRate:Number(rates[72]||1.25),rates},evCharger:{enabled:false,quantity:1,brand:'',model:'',power:7.4,connector:'Tipo 2',supply:'Monofásica 220 V',installationType:'Parede',cableLength:5,connectivity:'Wi-Fi / Aplicativo',accessControl:'Livre',commercialNote:'Inclusa no investimento total da proposta',notes:'Fornecimento, instalação, proteções elétricas, configuração e orientação de uso conforme condições do local.'},additionalItemsTitle:'Itens adicionais e escopo complementar',additionalItems:[],schedule:[['Projeto','Levantamento e projeto executivo','2 dias'],['Homologação','Protocolo junto à distribuidora','15 a 30 dias'],['Compras','Aquisição e separação dos equipamentos','5 dias'],['Instalação','Montagem mecânica e elétrica','2 dias'],['Vistoria','Inspeção da distribuidora','7 a 15 dias'],['Troca do medidor','Substituição por medidor bidirecional','Até 7 dias'],['Operação','Ativação, treinamento e monitoramento','Imediato']],guarantees:{panels:'12 anos produto / 30 anos desempenho',inverters:'10 anos',structure:'10 anos',installation:'5 anos'},acceptance:null,seller:{name:profile?.name||auth.currentUser.displayName||auth.currentUser.email,email:profile?.email||auth.currentUser.email},metrics:{avgConsumption:calc.avgConsumption,moduleQty:calc.moduleQty,actualPower:calc.actualPower,monthlyGeneration:calc.monthlyGeneration,annualGeneration:calc.annualGeneration,inverterQty:calc.inverterQty,inverterPowerTotal:calc.inverterPowerTotal,monthlySaving:calc.monthlySaving,annualSaving:calc.annualSaving,payback:calc.payback,roi:calc.roi,occupiedArea:calc.occupiedArea,totalWeight:calc.totalWeight}};p.publicUrl=publicUrlFor(p);p.clientPortalUrl=clientPortalUrlFor(p.client.document);return p}
+function publicRecord(p){const c=p.metrics||{};const logo=String(company?.logo||company?.logoDataUrl||'');const short=v=>money(v);return {id:p.id,companyId,proposalId:p.id,number:p.number,status:p.status,clientName:p.client.name,clientDocument:normalizeDoc(p.client.document),clientPhone:p.client.phone,clientEmail:p.client.email,city:p.client.city,companyName:company?.tradeName||company?.name||'Empresa',companyWebsite:company?.website||'',companyEmail:company?.email||'',companyPhone:company?.phone||'',companyLogo:logo,actualPower:Number(c.actualPower||0),annualGeneration:Number(c.annualGeneration||0),monthlyGeneration:Number(c.monthlyGeneration||0),monthlySaving:Number(c.monthlySaving||0),annualSaving:Number(c.annualSaving||0),investment:Number(p.commercial.price||0),payback:Number(c.payback||0),additionalItemsTitle:p.additionalItemsTitle,additionalItems:[],publicPdfUrl:'',publicUrl:p.publicUrl,clientPortalUrl:p.clientPortalUrl,noStorage:true,publishedAt:p.publishedAt,updatedAt:new Date().toISOString(),presentation:{clientName:p.client.name,city:p.client.city,document:normalizeDoc(p.client.document),number:p.number,validUntil:p.validUntil,actualPower:Number(c.actualPower||0),acPower:Number(c.inverterPowerTotal||0),moduleQty:Number(c.moduleQty||0),modulePower:Number(p.technical.moduleManualPower||0),moduleBrand:pricing().moduleBrand,inverterQty:Number(c.inverterQty||0),inverterPower:Number(c.inverterPowerTotal||0),inverterBrand:pricing().inverterBrand,inverters:p.technical.inverters,inverterSummary:p.technical.inverters.map(i=>`${i.quantity} × ${num(i.power,2)} kW · ${i.brand} ${i.model}`).join(' | '),structureType:p.technical.structureType,orientation:p.technical.orientation,annualGeneration:Number(c.annualGeneration||0),monthlyGeneration:Number(c.monthlyGeneration||0),avgConsumption:Number(c.avgConsumption||0),currentTariff:Number(p.currentTariff||0),investment:Number(p.commercial.price||0),monthlySaving:Number(c.monthlySaving||0),annualSaving:Number(c.annualSaving||0),payback:Number(c.payback||0),roi:Number(c.roi||0),paymentMethod:p.commercial.paymentMethod,additionalItemsTitle:p.additionalItemsTitle,additionalItems:[],coverTitle:'Projeto Solar Fotovoltaico',summaryText:'Solução fotovoltaica com alta performance, economia e previsibilidade energética.',investmentFormatted:short(p.commercial.price),monthlySavingFormatted:short(c.monthlySaving),annualSavingFormatted:short(c.annualSaving)}}}
+async function saveProposalFlow(p){await setDoc(doc(db,'proposals',p.id),firestoreSafeRecord({...p,updatedBy:auth.currentUser.uid}),{merge:true});await setDoc(doc(db,'public_proposals',p.id),firestoreSafeRecord(publicRecord(p)),{merge:true});const clientId=`client-${p.id}`;const leadId=`lead-${p.id}`;await Promise.allSettled([setDoc(doc(db,'clients',clientId),{id:clientId,companyId,name:p.client.name,document:p.client.document,phone:p.client.phone,email:p.client.email,city:p.client.city,address:p.client.address,consumerUnit:p.client.consumerUnit,distributor:p.client.distributor,averageConsumption:p.metrics.avgConsumption,status:'Em negociação',proposalId:p.id,source:'Representante Mobile',createdByUid:auth.currentUser.uid,createdAt:p.createdAt,updatedAt:p.updatedAt},{merge:true}),setDoc(doc(db,'leads',leadId),{id:leadId,companyId,name:p.client.name,phone:p.client.phone,email:p.client.email,city:p.client.city,source:'Representante Mobile',stage:'Proposta Enviada',estimatedValue:p.commercial.price,score:85,owner:p.seller.name,notes:`Proposta automática ${p.number}`,proposalId:p.id,createdByUid:auth.currentUser.uid,createdAt:p.createdAt,updatedAt:p.updatedAt},{merge:true})]);return p}
+function proposalCard(p){const m=p.metrics||{};return `<article class="proposal"><div class="p-top"><div><h3>${esc(p.client?.name||'Cliente')}</h3><p>${esc(p.number||p.id)} · ${new Date(p.updatedAt||p.createdAt||Date.now()).toLocaleDateString('pt-BR')}</p></div><span class="status ${esc(p.status||'Enviada')}">${esc(p.status||'Enviada')}</span></div><div class="p-value">${money(p.commercial?.price)}</div><div class="p-metrics"><div><span>Sistema</span><strong>${num(m.actualPower,2)} kWp</strong></div><div><span>Módulos</span><strong>${Math.round(m.moduleQty||0)}</strong></div><div><span>Economia</span><strong>${money(m.monthlySaving)}/mês</strong></div></div><div class="p-actions"><button class="btn blue" type="button" data-preview="${p.id}">Visualizar</button><button class="btn green" type="button" data-share="${p.id}">Compartilhar</button></div></article>`}
+function renderLists(){const own=myProposals.slice().sort((a,b)=>new Date(b.updatedAt||b.createdAt)-new Date(a.updatedAt||a.createdAt));$('#statTotal').textContent=own.length;$('#statAccepted').textContent=own.filter(p=>p.status==='Aceita').length;$('#statOpen').textContent=own.filter(p=>['Enviada','Visualizada','Negociação'].includes(p.status)).length;$('#recentList').innerHTML=own.length?own.slice(0,3).map(proposalCard).join(''):'<div class="card empty"><strong>Nenhuma proposta ainda</strong>Crie sua primeira proposta pelo botão acima.</div>';$('#proposalList').innerHTML=own.length?own.map(proposalCard).join(''):'<div class="card empty"><strong>Sem propostas</strong>As propostas criadas neste celular aparecerão aqui.</div>';bindProposalActions()}
+function bindProposalActions(){$$('[data-preview]').forEach(b=>b.onclick=()=>openPreview(myProposals.find(p=>p.id===b.dataset.preview)));$$('[data-share]').forEach(b=>b.onclick=()=>shareProposal(myProposals.find(p=>p.id===b.dataset.share)))}
+function openPreview(p){if(!p)return;const m=p.metrics||{};$('#previewContent').innerHTML=`<div class="preview-hero"><div class="eyebrow">${esc(p.number)}</div><h3>${esc(p.client?.name)}</h3><p>${esc(p.client?.city||'')} · ${esc(p.technical?.structureType||'')}</p><div class="preview-value">${money(p.commercial?.price)}</div></div><div class="result-grid"><div><span>Potência</span><strong>${num(m.actualPower,2)} kWp</strong></div><div><span>Módulos</span><strong>${Math.round(m.moduleQty||0)} × ${Math.round(p.technical?.moduleManualPower||0)} W</strong></div><div><span>Geração</span><strong>${num(m.monthlyGeneration,0)} kWh/mês</strong></div><div><span>Economia</span><strong>${money(m.monthlySaving)}/mês</strong></div><div><span>Payback</span><strong>${num(m.payback,1)} anos</strong></div><div><span>Inversor</span><strong>${Math.round(m.inverterQty||0)} × ${num(pricing().inverterPower,1)} kW</strong></div></div><div class="success-actions"><a class="btn primary" href="${esc(p.publicUrl||publicUrlFor(p))}" target="_blank" rel="noopener">Abrir proposta completa</a><button class="btn green" type="button" id="shareFromPreview">Compartilhar</button></div>`;$('#shareFromPreview').onclick=()=>shareProposal(p);$('#previewOverlay').classList.add('open')}
+async function shareProposal(p){if(!p)return;const m=p.metrics||{};const link=p.publicUrl||publicUrlFor(p);const text=`Olá, ${p.client?.name||''}! ☀️\n\nSua proposta de energia solar está pronta.\n\n⚡ Sistema: ${num(m.actualPower,2)} kWp\n🔋 Geração: ${num(m.monthlyGeneration,0)} kWh/mês\n💰 Investimento: ${money(p.commercial?.price)}\n📉 Economia estimada: ${money(m.monthlySaving)}/mês\n\nVeja a proposta completa:\n${link}`;try{if(navigator.share){await navigator.share({title:`Proposta ${p.number}`,text,url:link});return}}catch(_){}window.open(`https://wa.me/${p.client?.phone?`55${cleanPhone(p.client.phone)}`:''}?text=${encodeURIComponent(text)}`,'_blank')}
+function showTab(name){$$('[data-tab-panel]').forEach(p=>p.classList.toggle('hidden',p.dataset.tabPanel!==name));$$('[data-nav]').forEach(n=>n.classList.toggle('active',n.dataset.nav===name));window.scrollTo({top:0,behavior:'smooth'})}
+async function loadSession(user){const snap=await getDoc(doc(db,'users',user.uid));if(!snap.exists())throw new Error('Seu usuário ainda não foi aprovado no CRM.');profile=snap.data();if(String(profile.status||'').toLowerCase()!=='ativo')throw new Error('Seu perfil no CRM não está ativo.');companyId=profile.companyId||profile.companyIds?.[0];if(!companyId)throw new Error('Seu usuário não está vinculado a uma empresa.');const c=await getDoc(doc(db,'companies',companyId));company=c.exists()?c.data():{id:companyId,name:'Empresa'};$('#companyName').textContent=company.tradeName||company.name||'Propostas';$('#repName').textContent=profile.name||user.displayName||user.email;const proposalLogo=company.logo||company.logoDataUrl||DEFAULT_BRAND_LOGO;rememberLoginLogo(proposalLogo);applyLoginLogo();$('#pricingWarning').classList.toggle('hidden',pricing().pricePerKwp>0);$('#loginView').classList.add('hidden');$('#appView').classList.remove('hidden');watchCompanySettings();watchMyProposals()}
+function watchCompanySettings(){unsubscribeCompany?.();unsubscribeCompany=onSnapshot(doc(db,'companies',companyId),snap=>{if(!snap.exists())return;company=snap.data();$('#pricingWarning').classList.toggle('hidden',pricing().pricePerKwp>0);$('#syncText').textContent='Configuração comercial atualizada';},err=>console.warn('Falha ao acompanhar empresa',err))}
+function watchMyProposals(){unsubscribeProposals?.();const q=query(collection(db,'proposals'),where('companyId','==',companyId));unsubscribeProposals=onSnapshot(q,snap=>{myProposals=snap.docs.map(d=>d.data()).filter(p=>p.createdByUid===auth.currentUser.uid||String(p.representative?.email||p.seller?.email||'').toLowerCase()===String(profile?.email||auth.currentUser.email||'').toLowerCase());renderLists();$('#syncText').textContent=`Sincronizado agora · ${myProposals.length} proposta(s)`},err=>{console.error(err);$('#syncText').textContent='Falha ao sincronizar propostas';toast('Falha na sincronização',err.message||'Verifique suas permissões no CRM.')})}
+
+$('#loginForm').addEventListener('submit',async e=>{e.preventDefault();const btn=$('#loginBtn'),err=$('#loginError');err.classList.add('hidden');btn.disabled=true;btn.innerHTML='<i class="loading"></i> Entrando';try{await signInWithEmailAndPassword(auth,$('#loginEmail').value.trim(),$('#loginPassword').value)}catch(ex){err.textContent=ex.code==='auth/invalid-credential'?'E-mail ou senha inválidos.':(ex.message||'Não foi possível entrar.');err.classList.remove('hidden')}finally{btn.disabled=false;btn.textContent='Entrar'}})
+$('#googleBtn').onclick=async()=>{const err=$('#loginError');err.classList.add('hidden');try{const provider=new GoogleAuthProvider();provider.setCustomParameters({prompt:'select_account'});await signInWithPopup(auth,provider)}catch(ex){err.textContent=ex.message||'Não foi possível entrar com Google.';err.classList.remove('hidden')}};
+$('#logoutBtn').onclick=()=>signOut(auth);$('#closePreview').onclick=()=>$('#previewOverlay').classList.remove('open');$('#previewOverlay').addEventListener('click',e=>{if(e.target===$('#previewOverlay'))$('#previewOverlay').classList.remove('open')});
+$$('[data-nav]').forEach(b=>b.onclick=()=>showTab(b.dataset.nav));$$('[data-go]').forEach(b=>b.onclick=()=>showTab(b.dataset.go));
+$('#clearFormBtn').onclick=()=>{$('#proposalForm').reset();$('#proposalForm').querySelector('[name=distributor]').value='CELESC';$('#generatedResult').classList.add('hidden')};
+$('#proposalForm').addEventListener('submit',async e=>{e.preventDefault();const btn=$('#generateBtn');const fd=new FormData(e.currentTarget);const values=Object.fromEntries(fd.entries());btn.disabled=true;btn.innerHTML='<i class="loading"></i> Gerando proposta';try{const calc=calculateAuto(Number(values.avgConsumption||0),Number(values.billAmount||0));const p=buildProposal(values,calc);await saveProposalFlow(p);lastGenerated=p;const result=$('#generatedResult');result.innerHTML=`<div class="check">✓</div><h2>Proposta pronta!</h2><p>${esc(p.number)} foi gerada automaticamente, publicada e gravada na tela de Propostas do CRM.</p><div class="result-grid"><div><span>Potência</span><strong>${num(calc.actualPower,2)} kWp</strong></div><div><span>Módulos</span><strong>${calc.moduleQty} × ${Math.round(calc.modulePower)} W</strong></div><div><span>Geração</span><strong>${num(calc.monthlyGeneration,0)} kWh/mês</strong></div><div><span>Investimento</span><strong>${money(calc.investment)}</strong></div></div><div class="success-actions"><button id="viewGenerated" class="btn primary" type="button">Visualizar proposta</button><button id="shareGenerated" class="btn green" type="button">Compartilhar</button></div>`;result.classList.remove('hidden');$('#viewGenerated').onclick=()=>openPreview(p);$('#shareGenerated').onclick=()=>shareProposal(p);toast('Proposta gerada',`${p.number} já está sincronizada com o CRM.`);result.scrollIntoView({behavior:'smooth',block:'start'})}catch(ex){console.error(ex);toast('Não foi possível gerar',ex.message||'Verifique a configuração e tente novamente.')}finally{btn.disabled=false;btn.textContent='⚡ Gerar proposta automaticamente'}})
+
+applyLoginLogo();
+onAuthStateChanged(auth,async user=>{if(!user){profile=null;company=null;companyId='';unsubscribeCompany?.();unsubscribeCompany=null;unsubscribeProposals?.();unsubscribeProposals=null;myProposals=[];applyLoginLogo();$('#appView').classList.add('hidden');$('#loginView').classList.remove('hidden');return}try{await loadSession(user)}catch(ex){console.error(ex);$('#loginError').textContent=ex.message||'Seu acesso ainda não está liberado.';$('#loginError').classList.remove('hidden');await signOut(auth)}})
+</script>
+</body>
+</html>
