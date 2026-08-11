@@ -9446,7 +9446,66 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
   }
 
   window.SolarCRMDebug={SYSTEM_VERSION,calculateOffgridDesign,defaultOffgridDesign,calculateProposal,extractBillFields,normalizeState,normalizeProposalAdditionalItems,renderProposalDocument,projectStages,projectDocumentCategories,defaultAutomationRule,executeAutomationRules,queueAutomationRule,ensureProjectStructure,ensureAllProjectStructures,updateProjectStage,runSystemSelfTests,runWorkflowSelfTests,loadFirebaseConfig,clearFirebaseConfig,firebaseApiKeyLooksValid,finishAuthenticatedSession,initializeSharedCompanySettings,loadAuthorizedFirebaseData,startAuthorizedDataWatchers,saveSharedCompanySettings,applySharedCompanySettings,chooseBestCompanySettings,companyConfigurationScore,loadUserPermissionData,openPermissionMatrix,defaultPermissionMatrix,normalizePermissionMatrix,permissionArraysFromMatrix,hasPermission,lockSystemForAuthentication,unlockSystemAfterAuthentication,buildClientPortalRecord,publishClientPortalStatus,clientPortalUrl,renderFinancingStep,companyFinancingBanks,findFinancingBank,applyFinancingBankToProposal,proposalFinancingOptions,getDefaultProposal:()=>deepClone(defaultProposal()),getState:()=>deepClone(state)};
-  document.addEventListener('DOMContentLoaded',async()=>{await init();autoConnectFirebase();});
+  
+  function representativePdfRequestId(){
+    try{return String(new URLSearchParams(location.search).get('abrirPdf')||'').trim();}catch(_){return '';}
+  }
+
+  function ensureRepresentativePdfOverlay(){
+    let el=document.getElementById('representativePdfOverlay');
+    if(el)return el;
+    el=document.createElement('div');
+    el.id='representativePdfOverlay';
+    el.style.cssText='position:fixed;inset:0;z-index:2147483646;background:#07111f;color:#f6f8fb;display:flex;align-items:center;justify-content:center;padding:24px;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif';
+    el.innerHTML='<div style="width:min(92vw,430px);text-align:center"><div style="width:54px;height:54px;border-radius:18px;margin:0 auto 18px;background:rgba(255,183,3,.14);display:grid;place-items:center;color:#ffb703;font-size:25px">☀</div><h2 style="margin:0;font-size:24px;letter-spacing:-.04em">Preparando o PDF</h2><p id="representativePdfStatus" style="margin:9px 0 0;color:#8998ad;font-size:13px;line-height:1.55">Carregando a proposta no CRM...</p></div>';
+    document.body.appendChild(el);
+    return el;
+  }
+
+  function setRepresentativePdfStatus(text){
+    const el=document.getElementById('representativePdfStatus');
+    if(el)el.textContent=text;
+  }
+
+  async function openRequestedRepresentativePdf(){
+    const proposalId=representativePdfRequestId();
+    if(!proposalId)return;
+    let busy=false, attempts=0;
+    const maxAttempts=240;
+    const timer=setInterval(async()=>{
+      if(busy)return;
+      attempts++;
+      if(attempts>maxAttempts){
+        clearInterval(timer);
+        ensureRepresentativePdfOverlay();
+        setRepresentativePdfStatus('Não foi possível localizar a proposta. Volte ao sistema do representante e tente novamente.');
+        return;
+      }
+      if(!window.FirebaseCRM?.connected)return;
+      if(!window.FirebaseCRM?.auth?.currentUser)return; // login screen stays available if session was not shared
+      if(!window.FirebaseCRM?.syncReady)return;
+      const proposal=(state.proposals||[]).find(item=>item.id===proposalId&&(!state.currentCompanyId||item.companyId===state.currentCompanyId));
+      if(!proposal)return;
+      busy=true;clearInterval(timer);ensureRepresentativePdfOverlay();
+      try{
+        setRepresentativePdfStatus('Montando o mesmo PDF usado no CRM...');
+        activeProposal=deepClone(proposal);
+        hydrateProposalFinancing(activeProposal);
+        await ensureEmbeddedCompanyLogo();
+        await prepareWorkPhotoSources();
+        const result=await buildProposalPdfBlob({onProgress:text=>setRepresentativePdfStatus(text||'Gerando PDF...')});
+        if(!result?.blob)throw new Error('O gerador não retornou o arquivo PDF.');
+        setRepresentativePdfStatus('PDF pronto. Abrindo...');
+        const blobUrl=URL.createObjectURL(result.blob);
+        setTimeout(()=>location.replace(blobUrl),120);
+      }catch(error){
+        console.error('Falha ao abrir PDF solicitado pelo representante:',error);
+        setRepresentativePdfStatus(error?.message||'Não foi possível gerar o PDF desta proposta.');
+      }
+    },500);
+  }
+
+  document.addEventListener('DOMContentLoaded',async()=>{await init();autoConnectFirebase();openRequestedRepresentativePdf();});
 })();
 
 </script>
