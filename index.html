@@ -1167,6 +1167,25 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
 @media(max-width:1180px){.offgrid-layout{grid-template-columns:1fr}.offgrid-result-stack{position:static}.offgrid-form-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:620px){.offgrid-form-grid,.offgrid-form-grid.cols-3,.offgrid-form-grid.cols-2{grid-template-columns:1fr}.offgrid-kpi-grid{grid-template-columns:1fr}.offgrid-bank-flow{grid-template-columns:1fr}.offgrid-bank-arrow{transform:rotate(90deg)}.offgrid-load-toolbar>*{width:100%}}
 </style>
+
+<style id="representativePdfEarlyStyle">
+html.representative-pdf-mode #loginScreen,
+html.representative-pdf-mode #appShell,
+html.representative-pdf-mode #sidebarBackdrop,
+html.representative-pdf-mode #drawer,
+html.representative-pdf-mode #drawerBackdrop,
+html.representative-pdf-mode #entityModal,
+html.representative-pdf-mode #proposalBuilderModal,
+html.representative-pdf-mode #settingsModal,
+html.representative-pdf-mode #acceptanceModal,
+html.representative-pdf-mode #projectWorkspaceModal,
+html.representative-pdf-mode #toastContainer { display:none !important; }
+html.representative-pdf-mode body { background:#07111f !important; min-height:100vh; }
+</style>
+<script>
+try{if(new URLSearchParams(location.search).get('abrirPdf'))document.documentElement.classList.add('representative-pdf-mode');}catch(_){ }
+</script>
+
 </head>
 <body data-theme="dark" class="auth-locked">
 
@@ -5308,6 +5327,33 @@ service cloud.firestore {
     if(finalPdf)params.set('pdf',finalPdf);
     return `${base}proposta.html${params.toString()?`?${params.toString()}`:''}`;
   }
+  function publicProposalPdfSnapshot(proposal){
+    const snap=deepClone(proposal||{});
+    // O registro público precisa conter somente o necessário para remontar o PDF.
+    // Textos brutos de fatura e imagens base64 são removidos para evitar documentos enormes no Firestore.
+    snap.billText='';
+    snap.billFileName='';
+    if(snap.billAnalysis&&typeof snap.billAnalysis==='object'){
+      const {rawText,pagesText,ocrText,...safeAnalysis}=snap.billAnalysis;
+      snap.billAnalysis=safeAnalysis;
+    }
+    if(String(snap.coverPhoto||'').startsWith('data:'))snap.coverPhoto='';
+    if(snap.technical&&String(snap.technical.projectImage||'').startsWith('data:'))snap.technical.projectImage='';
+    return firestoreSafeRecord(snap);
+  }
+
+  function publicProposalCompanySnapshot(company={}){
+    const workPhotos=Array.isArray(company.workPhotos)?company.workPhotos.filter(item=>{
+      const src=typeof item==='string'?item:String(item?.url||item?.src||'');
+      return src && !src.startsWith('data:');
+    }).slice(0,4):[];
+    return firestoreSafeRecord({
+      id:company.id||state.currentCompanyId||'', name:company.name||'', tradeName:company.tradeName||'', website:company.website||'', email:company.email||'', phone:company.phone||'', city:company.city||'',
+      logo:company.logo||'', logoDataUrl:String(company.logoDataUrl||'').startsWith('data:')?'':(company.logoDataUrl||''), clientsCount:Number(company.clientsCount||0), installedPowerMW:Number(company.installedPowerMW||0),
+      workPhotos, financingBanks:Array.isArray(company.financingBanks)?company.financingBanks:[]
+    });
+  }
+
   function publicProposalRecord(proposal=activeProposal,pdfUrl=''){
     const c=calculateProposal(proposal);const company=state.company||{};const client=proposal.client||{};
     const logoUrl=String(company.logo||'').trim()||String(company.logoDataUrl||'').trim();
@@ -5330,6 +5376,7 @@ service cloud.firestore {
       actualPower:Number(c.actualPower||0), annualGeneration:Number(c.annualGeneration||0), monthlyGeneration:Number(c.monthlyGeneration||0), monthlySaving:Number(c.monthlySaving||0), annualSaving:Number(c.annualSaving||0), investment:Number(proposal.commercial?.price||0), payback:Number(c.payback||0),
       additionalItemsTitle:String(proposal.additionalItemsTitle||'Itens adicionais e escopo complementar'), additionalItems:normalizeProposalAdditionalItems(proposal.additionalItems),
       publicPdfUrl:pdfUrl||proposal.publicPdfUrl||'', publicUrl:proposalPublicUrl(proposal,pdfUrl||proposal.publicPdfUrl||''), clientPortalUrl:clientPortalUrl(client.document||''), presentation,
+      pdfProposal:publicProposalPdfSnapshot(proposal), pdfCompany:publicProposalCompanySnapshot(company),
       noStorage:true, publishedAt:proposal.publishedAt||new Date().toISOString(), updatedAt:new Date().toISOString()
     };
   }
@@ -9451,6 +9498,20 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     try{return String(new URLSearchParams(location.search).get('abrirPdf')||'').trim();}catch(_){return '';}
   }
 
+  function representativePdfBridgePayload(proposalId=''){
+    try{
+      let raw='';
+      try{raw=sessionStorage.getItem('representative_pdf_payload')||''}catch(_){}
+      if(!raw){try{raw=localStorage.getItem('representative_pdf_payload')||''}catch(_){}}
+      if(!raw)return null;
+      const payload=JSON.parse(raw);
+      const savedAt=Number(payload?.savedAt||0);
+      if(!payload?.proposal?.id||payload.proposal.id!==proposalId)return null;
+      if(savedAt&&Date.now()-savedAt>20*60*1000){try{sessionStorage.removeItem('representative_pdf_payload')}catch(_){}try{localStorage.removeItem('representative_pdf_payload')}catch(_){}return null;}
+      return payload;
+    }catch(error){console.warn('Payload do representante inválido:',error);return null;}
+  }
+
   function ensureRepresentativePdfOverlay(){
     let el=document.getElementById('representativePdfOverlay');
     if(el)return el;
@@ -9467,45 +9528,118 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     if(el)el.textContent=text;
   }
 
-  async function openRequestedRepresentativePdf(){
-    const proposalId=representativePdfRequestId();
-    if(!proposalId)return;
-    let busy=false, attempts=0;
-    const maxAttempts=240;
-    const timer=setInterval(async()=>{
-      if(busy)return;
-      attempts++;
-      if(attempts>maxAttempts){
-        clearInterval(timer);
-        ensureRepresentativePdfOverlay();
-        setRepresentativePdfStatus('Não foi possível localizar a proposta. Volte ao sistema do representante e tente novamente.');
-        return;
-      }
-      if(!window.FirebaseCRM?.connected)return;
-      if(!window.FirebaseCRM?.auth?.currentUser)return; // login screen stays available if session was not shared
-      if(!window.FirebaseCRM?.syncReady)return;
-      const proposal=(state.proposals||[]).find(item=>item.id===proposalId&&(!state.currentCompanyId||item.companyId===state.currentCompanyId));
-      if(!proposal)return;
-      busy=true;clearInterval(timer);ensureRepresentativePdfOverlay();
-      try{
-        setRepresentativePdfStatus('Montando o mesmo PDF usado no CRM...');
-        activeProposal=deepClone(proposal);
-        hydrateProposalFinancing(activeProposal);
-        await ensureEmbeddedCompanyLogo();
-        await prepareWorkPhotoSources();
-        const result=await buildProposalPdfBlob({onProgress:text=>setRepresentativePdfStatus(text||'Gerando PDF...')});
-        if(!result?.blob)throw new Error('O gerador não retornou o arquivo PDF.');
-        setRepresentativePdfStatus('PDF pronto. Abrindo...');
-        const blobUrl=URL.createObjectURL(result.blob);
-        setTimeout(()=>location.replace(blobUrl),120);
-      }catch(error){
-        console.error('Falha ao abrir PDF solicitado pelo representante:',error);
-        setRepresentativePdfStatus(error?.message||'Não foi possível gerar o PDF desta proposta.');
-      }
-    },500);
+  async function generateRepresentativePdf(proposal,bridgeCompany=null){
+    ensureRepresentativePdfOverlay();
+    if(bridgeCompany&&typeof bridgeCompany==='object'){
+      const mergedCompany={...defaultCompany,...deepClone(bridgeCompany)};
+      mergedCompany.financingBanks=normalizeFinancingBanks(mergedCompany.financingBanks);
+      state.company=mergedCompany;
+      state.currentCompanyId=mergedCompany.id||proposal?.companyId||state.currentCompanyId;
+      const idx=(state.companies||[]).findIndex(item=>item.id===state.currentCompanyId);
+      if(idx>=0)state.companies[idx]=deepClone(mergedCompany);else state.companies=[...(state.companies||[]),deepClone(mergedCompany)];
+    }
+    activeProposal=deepClone(proposal);
+    activeProposal.schedule=normalizeProposalSchedule(activeProposal.schedule);
+    activeProposal.additionalItems=normalizeProposalAdditionalItems(activeProposal.additionalItems);
+    hydrateProposalFinancing(activeProposal);
+    setRepresentativePdfStatus('Montando o mesmo PDF usado no CRM...');
+    await ensureEmbeddedCompanyLogo();
+    await prepareWorkPhotoSources();
+    const result=await buildProposalPdfBlob({onProgress:text=>setRepresentativePdfStatus(text||'Gerando PDF...')});
+    if(!result?.blob)throw new Error('O gerador não retornou o arquivo PDF.');
+    setRepresentativePdfStatus('PDF pronto. Abrindo...');
+    try{sessionStorage.removeItem('representative_pdf_payload');}catch(_){}
+    try{localStorage.removeItem('representative_pdf_payload');}catch(_){}
+    const blobUrl=URL.createObjectURL(result.blob);
+    setTimeout(()=>location.replace(blobUrl),120);
   }
 
-  document.addEventListener('DOMContentLoaded',async()=>{await init();autoConnectFirebase();openRequestedRepresentativePdf();});
+  function publicCompanyFromProposalRecord(record={}){
+    return {
+      id:record.companyId||'', name:record.companyName||'', tradeName:record.companyName||'', website:record.companyWebsite||'', email:record.companyEmail||'', phone:record.companyPhone||'', city:record.city||'',
+      logo:record.companyLogo||'', logoDataUrl:'', clientsCount:0, installedPowerMW:0, workPhotos:[], financingBanks:[]
+    };
+  }
+
+  function proposalFromPublicPdfRecord(record={}){
+    const view=record.presentation||{};
+    const proposal=defaultProposal();
+    proposal.id=record.proposalId||record.id||'';
+    proposal.companyId=record.companyId||'';
+    proposal.number=record.number||view.number||proposal.number;
+    proposal.status=record.status||'Enviada';
+    proposal.validUntil=view.validUntil||proposal.validUntil;
+    proposal.client={...proposal.client,name:record.clientName||view.clientName||'',document:record.clientDocument||view.document||'',phone:record.clientPhone||'',email:record.clientEmail||'',city:record.city||view.city||''};
+    const avg=Number(view.avgConsumption||0);
+    proposal.consumption=Array(12).fill(avg);
+    proposal.currentTariff=Number(view.currentTariff||0);
+    proposal.tariffHistory=Array(12).fill(Number(view.currentTariff||0));
+    const actualPower=Number(view.actualPower||record.actualPower||0);
+    const monthlyGeneration=Number(view.monthlyGeneration||record.monthlyGeneration||0);
+    if(actualPower>0&&monthlyGeneration>0)proposal.technical.specificYield=monthlyGeneration/actualPower;
+    proposal.technical.moduleManualQty=Number(view.moduleQty||0)||null;
+    proposal.technical.moduleManualPower=Number(view.modulePower||0)||null;
+    proposal.technical.structureType=view.structureType||proposal.technical.structureType;
+    proposal.technical.orientation=view.orientation||proposal.technical.orientation;
+    proposal.technical.inverters=Array.isArray(view.inverters)?view.inverters:[];
+    proposal.commercial.price=Number(view.investment||record.investment||0);
+    proposal.commercial.paymentMethod=view.paymentMethod||proposal.commercial.paymentMethod;
+    proposal.financing.downPayment=proposal.commercial.price*.2;
+    proposal.additionalItemsTitle=record.additionalItemsTitle||view.additionalItemsTitle||proposal.additionalItemsTitle;
+    proposal.additionalItems=normalizeProposalAdditionalItems(record.additionalItems||view.additionalItems||[]);
+    proposal.seller={name:'Representante',email:''};
+    proposal.updatedAt=record.updatedAt||new Date().toISOString();
+    return proposal;
+  }
+
+  async function fetchPublicRepresentativePdfPayload(proposalId){
+    setRepresentativePdfStatus('Buscando a proposta no Firebase...');
+    const appModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js');
+    const firestoreModule=await import('https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js');
+    const appName='solarcrm-public-pdf';
+    let publicApp=appModule.getApps().find(item=>item.name===appName);
+    if(!publicApp)publicApp=appModule.initializeApp(DEFAULT_FIREBASE_CONFIG,appName);
+    const publicDb=firestoreModule.getFirestore(publicApp);
+    const snap=await firestoreModule.getDoc(firestoreModule.doc(publicDb,'public_proposals',proposalId));
+    if(!snap.exists())throw new Error('A proposta não foi encontrada na coleção pública. Gere/publice a proposta novamente e tente outra vez.');
+    const record=snap.data()||{};
+    return {
+      proposal:record.pdfProposal||proposalFromPublicPdfRecord(record),
+      company:record.pdfCompany||publicCompanyFromProposalRecord(record)
+    };
+  }
+
+  async function openRequestedRepresentativePdf(){
+    const proposalId=representativePdfRequestId();
+    if(!proposalId)return false;
+    ensureRepresentativePdfOverlay();
+
+    // 1) Se veio diretamente da tela do representante, usa a cópia local já autenticada.
+    // Isso é instantâneo e não expõe nem inicializa a tela de login do CRM.
+    const bridgePayload=representativePdfBridgePayload(proposalId);
+    if(bridgePayload){
+      try{
+        await generateRepresentativePdf(bridgePayload.proposal,bridgePayload.company||null);
+      }catch(error){
+        console.error('Falha ao gerar PDF pelo bridge do representante:',error);
+        setRepresentativePdfStatus(error?.message||'Não foi possível gerar o PDF desta proposta.');
+      }
+      return true;
+    }
+
+    // 2) Se o navegador limpou session/localStorage (comum no navegador do WhatsApp),
+    // busca somente o documento público da proposta no Firestore. Não usa Firebase Auth.
+    try{
+      const remote=await fetchPublicRepresentativePdfPayload(proposalId);
+      await generateRepresentativePdf(remote.proposal,remote.company||null);
+    }catch(error){
+      console.error('Falha ao buscar/gerar PDF público:',error);
+      setRepresentativePdfStatus(error?.message||'Não foi possível buscar esta proposta.');
+    }
+    return true;
+  }
+
+  document.addEventListener('DOMContentLoaded',async()=>{const pdfId=representativePdfRequestId();if(pdfId){ensureRepresentativePdfOverlay();await openRequestedRepresentativePdf();return;}await init();autoConnectFirebase();});
 })();
 
 </script>
