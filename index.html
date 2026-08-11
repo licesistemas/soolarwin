@@ -1358,6 +1358,23 @@ try{if(new URLSearchParams(location.search).get('abrirPdf'))document.documentEle
     </div>
   </div>
 
+  <div id="proposalTransferModal" class="modal" aria-hidden="true">
+    <div class="modal-dialog modal-md">
+      <div class="modal-header">
+        <div>
+          <p class="eyebrow">Gestão comercial</p>
+          <h2>Transferir proposta</h2>
+        </div>
+        <button class="icon-btn" data-close-modal="proposalTransferModal" type="button">✕</button>
+      </div>
+      <div id="proposalTransferBody" class="modal-body"></div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" data-close-modal="proposalTransferModal" type="button">Cancelar</button>
+        <button id="proposalTransferConfirmBtn" class="btn btn-primary" type="button">Transferir proposta</button>
+      </div>
+    </div>
+  </div>
+
   <div id="settingsModal" class="modal" aria-hidden="true">
     <div class="modal-dialog modal-lg">
       <div class="modal-header">
@@ -3451,6 +3468,8 @@ service cloud.firestore {
   let permissionRequests = [];
   let permissionUsersLoaded = false;
   let permissionUsersLoading = false;
+  let proposalTransferId = '';
+  let proposalTransferCandidates = [];
   let permissionDrafts = {};
   let sharedCompanyUnsubscribe = null;
   let sharedCompanyMirrorUnsubscribe = null;
@@ -4869,6 +4888,7 @@ service cloud.firestore {
     document.getElementById('drawerBackdrop')?.addEventListener('click', closeDrawer);
     document.querySelectorAll('[data-close-drawer]').forEach(btn=>btn.addEventListener('click',closeDrawer));
     document.querySelectorAll('[data-close-modal]').forEach(btn=>btn.addEventListener('click',()=>closeModal(btn.dataset.closeModal)));
+    document.getElementById('proposalTransferConfirmBtn')?.addEventListener('click',confirmProposalTransfer);
     // Segurança de cadastro: clicar fora do modal não fecha a tela nem descarta os dados preenchidos.
     document.querySelectorAll('.modal').forEach(modal=>modal.addEventListener('click',e=>{
       if(e.target!==modal || modal.classList.contains('proposal-preview-modal'))return;
@@ -5589,6 +5609,98 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     const rows=projectDocumentsFor(work.id);if(!rows.length){toast('Não há documentos para exportar','','error');return;}const header=['Arquivo','Categoria','Etapa','Tamanho','Data','Responsável','Observações'];const csv='\ufeff'+[header,...rows.map(doc=>[doc.name,doc.category,doc.stage,formatBytes(doc.size),dateTimeBR(doc.uploadedAt),doc.uploadedBy,doc.notes].map(value=>`"${String(value||'').replace(/"/g,'""')}"`))].map(row=>row.join(';')).join('\n');downloadBlob(new Blob([csv],{type:'text/csv;charset=utf-8'}),`documentos-${slugify(work.clientName)}.csv`);toast('Índice exportado',`${rows.length} documentos.`);
   }
 
+  function canTransferProposal(){
+    return ['admin','manager'].includes(String(state.role||state.currentUser?.role||'').toLowerCase());
+  }
+
+  function proposalOwnerLabel(proposal){
+    return proposal?.representative?.name || proposal?.seller?.name || 'Sem responsável';
+  }
+
+  function normalizeTransferCandidate(item={},source='user'){
+    const email=String(item.email||'').trim().toLowerCase();
+    if(!email)return null;
+    return {
+      uid:String(item.id||item.uid||''),
+      name:String(item.name||item.displayName||email.split('@')[0]||'Representante').trim(),
+      email,
+      role:String(item.role||item.permission||'seller').toLowerCase(),
+      status:String(item.status||'Ativo'),
+      source
+    };
+  }
+
+  async function proposalTransferUsers(){
+    const rows=[];
+    const add=(item,source)=>{const normalized=normalizeTransferCandidate(item,source);if(normalized)rows.push(normalized);};
+    (permissionUsers||[]).forEach(item=>add(item,'platform'));
+    if(state.role==='admin'&&window.FirebaseCRM?.syncReady){
+      try{(await window.FirebaseCRM.listUsers(state.currentCompanyId)).forEach(item=>add(item,'platform'));}catch(error){console.warn('Lista de usuários para transferência:',error);}
+    }
+    (state.users||[]).forEach(item=>add(item,'team'));
+    const seen=new Set();
+    return rows.filter(item=>{
+      if(item.status&&String(item.status).toLowerCase()!=='ativo')return false;
+      if(item.role&&!['seller','manager','admin','vendedor','gerente','representante'].includes(item.role))return false;
+      const key=item.email.toLowerCase();if(seen.has(key))return false;seen.add(key);return true;
+    }).sort((a,b)=>a.name.localeCompare(b.name,'pt-BR'));
+  }
+
+  async function openProposalTransfer(id){
+    if(!canTransferProposal()){toast('Transferência não permitida','Somente Administrador ou Gerente pode transferir propostas.','error');return;}
+    const proposal=state.proposals.find(item=>item.id===id);if(!proposal)return;
+    proposalTransferId=id;proposalTransferCandidates=[];
+    const body=document.getElementById('proposalTransferBody');
+    if(body)body.innerHTML=`<div class="notice"><strong>${escapeHtml(proposal.client?.name||'Cliente')}</strong><br>Responsável atual: ${escapeHtml(proposalOwnerLabel(proposal))}</div><div style="display:grid;place-items:center;min-height:130px;color:var(--muted)">Carregando representantes...</div>`;
+    openModal('proposalTransferModal');
+    const candidates=await proposalTransferUsers();
+    const currentEmail=String(proposal.representative?.email||proposal.seller?.email||'').toLowerCase();
+    const currentUid=String(proposal.representative?.uid||proposal.createdByUid||'');
+    proposalTransferCandidates=candidates.filter(item=>!(currentUid&&item.uid===currentUid)&&item.email!==currentEmail);
+    if(!body)return;
+    const options=proposalTransferCandidates.map((item,index)=>`<option value="${index}">${escapeHtml(item.name)} · ${escapeHtml(item.email)}</option>`).join('');
+    const history=(Array.isArray(proposal.transferHistory)?proposal.transferHistory:[]).slice(-4).reverse();
+    body.innerHTML=`
+      <div class="notice"><strong>${escapeHtml(proposal.client?.name||'Cliente')}</strong><br>${escapeHtml(proposal.number||proposal.id)} · Responsável atual: <strong>${escapeHtml(proposalOwnerLabel(proposal))}</strong></div>
+      <div class="form-grid" style="margin-top:16px">
+        <label class="field full"><span>Novo representante</span><select id="proposalTransferUserSelect"><option value="">${proposalTransferCandidates.length?'Selecione um usuário cadastrado...':'Nenhum usuário listado — informe abaixo'}</option>${options}</select></label>
+        <label class="field"><span>Nome manual (opcional)</span><input id="proposalTransferManualName" type="text" placeholder="Nome do representante"></label>
+        <label class="field"><span>E-mail manual</span><input id="proposalTransferManualEmail" type="email" placeholder="representante@empresa.com"></label>
+      </div>
+      ${proposalTransferCandidates.length?'':`<div class="notice warning" style="margin-top:12px"><strong>Lista de usuários indisponível.</strong><br>Você pode transferir informando o nome e o mesmo e-mail usado pelo representante para entrar no sistema.</div>`}
+      ${history.length?`<div class="form-section" style="margin-top:16px"><div class="form-section-head"><div><h3>Histórico de transferências</h3><p>Últimas alterações de responsável.</p></div></div><div style="display:grid;gap:8px">${history.map(row=>`<div style="padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel-2)"><strong style="font-size:11px">${escapeHtml(row.from?.name||'—')} → ${escapeHtml(row.to?.name||'—')}</strong><span style="display:block;color:var(--muted);font-size:9px;margin-top:4px">${dateTimeBR(row.at)} · por ${escapeHtml(row.by?.name||'Gestor')}</span></div>`).join('')}</div></div>`:''}`;
+  }
+
+  async function confirmProposalTransfer(){
+    if(!canTransferProposal())return;
+    const proposal=state.proposals.find(item=>item.id===proposalTransferId);if(!proposal)return;
+    const select=document.getElementById('proposalTransferUserSelect');
+    const index=Number(select?.value);
+    const listed=select?.value!==''&&Number.isInteger(index)?proposalTransferCandidates[index]:null;
+    const manualEmail=String(document.getElementById('proposalTransferManualEmail')?.value||'').trim().toLowerCase();
+    const manualName=String(document.getElementById('proposalTransferManualName')?.value||'').trim();
+    const target=listed||((manualEmail&&/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(manualEmail))?{uid:'',name:manualName||manualEmail.split('@')[0],email:manualEmail,source:'manual'}:null);
+    if(!target){toast('Selecione o representante','Escolha um usuário cadastrado ou informe nome e e-mail válidos.','error');return;}
+    const button=document.getElementById('proposalTransferConfirmBtn');const old=button?.textContent||'Transferir proposta';if(button){button.disabled=true;button.textContent='Transferindo...';}
+    try{
+      const previous={uid:String(proposal.representative?.uid||proposal.createdByUid||''),name:proposalOwnerLabel(proposal),email:String(proposal.representative?.email||proposal.seller?.email||'')};
+      const by={uid:String(state.currentUser?.id||window.FirebaseCRM?.auth?.currentUser?.uid||''),name:String(state.currentUser?.name||state.currentUser?.email||'Gestor'),email:String(state.currentUser?.email||'')};
+      proposal.transferHistory=[...(Array.isArray(proposal.transferHistory)?proposal.transferHistory:[]),{at:new Date().toISOString(),from:previous,to:{uid:target.uid,name:target.name,email:target.email},by}];
+      proposal.createdByUid=target.uid||'';
+      proposal.representative={uid:target.uid||'',name:target.name,email:target.email};
+      proposal.seller={...(proposal.seller||{}),name:target.name,email:target.email};
+      proposal.transferredAt=new Date().toISOString();
+      proposal.transferredBy=by;
+      const lead=state.leads.find(item=>item.proposalId===proposal.id);
+      if(lead){lead.owner=target.name;lead.updatedAt=new Date().toISOString();syncRecordToFirebase('leads',lead);}
+      const saved=await saveProposalRecord(proposal,{silent:true});if(!saved)throw new Error('Não foi possível salvar a proposta transferida.');
+      addActivity('⇄','Proposta transferida',`${proposal.client?.name||proposal.number} · ${previous.name} → ${target.name}`);
+      closeModal('proposalTransferModal');proposalTransferId='';proposalTransferCandidates=[];renderView('proposals');
+      toast('Proposta transferida',`${proposal.client?.name||proposal.number} agora pertence a ${target.name}.`,'success');
+    }catch(error){console.error(error);toast('Transferência não concluída',error.message||String(error),'error');}
+    finally{if(button){button.disabled=false;button.textContent=old;}}
+  }
+
   function renderProposals() {
     const rows=filteredRows('proposals');
     const total=sum(rows.map(p=>p.commercial?.price));
@@ -5597,7 +5709,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
       <div class="pipeline-summary"><div class="pipeline-pill"><span>Total em propostas</span><strong>${currency(total,0)}</strong></div><div class="pipeline-pill"><span>Aceitas</span><strong>${currency(accepted,0)}</strong></div><div class="pipeline-pill"><span>Em negociação</span><strong>${rows.filter(p=>p.status==='Negociação').length}</strong></div><div class="pipeline-pill"><span>Taxa de aceite</span><strong>${rows.length?number(rows.filter(p=>p.status==='Aceita').length/rows.length*100,1):0}%</strong></div></div>
       <div class="proposal-card-grid">${rows.map(p=>{
         const calc=calculateProposal(p);
-        return `<article class="proposal-card"><div class="proposal-card-head"><div><h3>${escapeHtml(p.client?.name||'Cliente')}</h3><p>${escapeHtml(p.number||p.id)} · ${dateBR(p.createdAt)}${p.origin==='representative-mobile'?' · Representante':''}</p></div><span class="status ${colorClass(p.status)}">${escapeHtml(p.status)}</span></div><div class="proposal-value">${currency(p.commercial?.price,0)}</div><div class="proposal-metrics"><div><span>Sistema</span><strong>${number(calc.actualPower,2)} kWp</strong></div><div><span>Módulos</span><strong>${calc.moduleQty}</strong></div><div><span>Payback</span><strong>${number(calc.payback,1)} anos</strong></div></div><div class="proposal-card-actions">${hasPermission('proposals','edit')?`<button class="btn btn-ghost btn-sm" data-action="edit-proposal" data-id="${p.id}">Editar</button>`:''}<button class="btn btn-secondary btn-sm" data-action="preview-proposal" data-id="${p.id}">Visualizar</button>${hasPermission('proposals','approve')?`<button class="btn btn-primary btn-sm" data-action="send-proposal" data-id="${p.id}">Enviar</button>`:''}${hasPermission('proposals','create')?`<button class="btn btn-ghost btn-sm btn-icon" data-action="duplicate-proposal" data-id="${p.id}" title="Duplicar">⧉</button>`:''}${hasPermission('proposals','delete')?`<button class="btn btn-danger btn-sm btn-icon" data-action="delete-proposal" data-id="${p.id}" title="Excluir">×</button>`:''}</div></article>`;
+        return `<article class="proposal-card"><div class="proposal-card-head"><div><h3>${escapeHtml(p.client?.name||'Cliente')}</h3><p>${escapeHtml(p.number||p.id)} · ${dateBR(p.createdAt)}${p.origin==='representative-mobile'?' · Representante':''}</p><p style="margin-top:4px;color:var(--text-soft)">Responsável: <strong>${escapeHtml(proposalOwnerLabel(p))}</strong></p></div><span class="status ${colorClass(p.status)}">${escapeHtml(p.status)}</span></div><div class="proposal-value">${currency(p.commercial?.price,0)}</div><div class="proposal-metrics"><div><span>Sistema</span><strong>${number(calc.actualPower,2)} kWp</strong></div><div><span>Módulos</span><strong>${calc.moduleQty}</strong></div><div><span>Payback</span><strong>${number(calc.payback,1)} anos</strong></div></div><div class="proposal-card-actions">${hasPermission('proposals','edit')?`<button class="btn btn-ghost btn-sm" data-action="edit-proposal" data-id="${p.id}">Editar</button>`:''}<button class="btn btn-secondary btn-sm" data-action="preview-proposal" data-id="${p.id}">Visualizar</button>${canTransferProposal()?`<button class="btn btn-ghost btn-sm" data-action="transfer-proposal" data-id="${p.id}">⇄ Transferir</button>`:''}${hasPermission('proposals','approve')?`<button class="btn btn-primary btn-sm" data-action="send-proposal" data-id="${p.id}">Enviar</button>`:''}${hasPermission('proposals','create')?`<button class="btn btn-ghost btn-sm btn-icon" data-action="duplicate-proposal" data-id="${p.id}" title="Duplicar">⧉</button>`:''}${hasPermission('proposals','delete')?`<button class="btn btn-danger btn-sm btn-icon" data-action="delete-proposal" data-id="${p.id}" title="Excluir">×</button>`:''}</div></article>`;
       }).join('')}</div>`;
   }
   function renderFinancial() {
@@ -5952,7 +6064,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
       'new-lead':['leads','create'],'new-ticket':['tickets','create'],'new-aftersales':['aftersales','create'],'new-proposal':['proposals','create'],
       'add-entity':[collectionModule,'create'],'edit-entity':[collectionModule,'edit'],'view-entity':[collectionModule,'view'],'delete-entity':[collectionModule,'delete'],
       'mark-paid':['financial','approve'],'open-project':['works','view'],'project-documents':['projectDocuments','view'],
-      'edit-proposal':['proposals','edit'],'preview-proposal':['proposals','view'],'send-proposal':['proposals','approve'],'duplicate-proposal':['proposals','create'],'delete-proposal':['proposals','delete'],
+      'edit-proposal':['proposals','edit'],'preview-proposal':['proposals','view'],'transfer-proposal':null,'send-proposal':['proposals','approve'],'duplicate-proposal':['proposals','create'],'delete-proposal':['proposals','delete'],
       'equipment-bank':null,'export-backup':['settings','export'],'export-csv':[collectionModule,'export'],'send-collections':['financial','approve'],
       'run-nps':['aftersales','approve'],'automation-log':['view'],'automation-outbox':['view'],'process-automations':['approve'],
       'test-automation':['approve'],'run-ai':['approve'],'print-report':['reports','export']
@@ -5978,6 +6090,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
       'project-documents':()=>openProjectWorkspace(data.id,'documents'),
       'edit-proposal':()=>openProposalBuilder(data.id),
       'preview-proposal':()=>previewProposal(state.proposals.find(p=>p.id===data.id)),
+      'transfer-proposal':()=>openProposalTransfer(data.id),
       'send-proposal':()=>sendProposal(state.proposals.find(p=>p.id===data.id)),
       'duplicate-proposal':()=>duplicateProposal(data.id),
       'delete-proposal':()=>deleteProposal(data.id),
