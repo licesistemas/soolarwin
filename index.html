@@ -6489,13 +6489,17 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
       ...moduleCatalogItem,
       power:manualModulePower>0?manualModulePower:Number(moduleCatalogItem.power||0)
     };
-    // Regra comercial de geração: cada módulo produz 0,58 kWh por mês.
-    // Este fator é energético e não tem relação com tarifa/preço em R$.
-    const generationPerModuleMonth=0.58;
+    // Regra de geração: cada módulo produz 58 kWh por mês.
+    // A quantidade de placas é sempre arredondada para cima para atingir ou superar a meta mensal.
+    const generationPerModuleMonth=58;
     const coverage=Math.max(1,Number(p.technical?.targetCoverage||100))/100;
-    const automaticModuleQty=Math.max(1,Math.ceil((avgConsumption*coverage)/generationPerModuleMonth));
+    const targetMonthlyGeneration=avgConsumption*coverage;
+    const automaticModuleQty=Math.max(1,Math.ceil(targetMonthlyGeneration/generationPerModuleMonth));
     const manualModuleQty=Number(p.technical?.moduleManualQty||0);
-    const moduleQty=manualModuleQty>0?Math.max(1,Math.round(manualModuleQty)):automaticModuleQty;
+    const manualRequestedModuleQty=manualModuleQty>0?Math.max(1,Math.round(manualModuleQty)):0;
+    // Se o usuário informar menos placas que o mínimo necessário, o CRM completa automaticamente.
+    const moduleQty=manualRequestedModuleQty>0?Math.max(manualRequestedModuleQty,automaticModuleQty):automaticModuleQty;
+    const addedModulesToReachTarget=manualRequestedModuleQty>0?Math.max(0,automaticModuleQty-manualRequestedModuleQty):0;
     const actualPower=moduleQty*moduleItem.power/1000;
     const requiredPower=automaticModuleQty*moduleItem.power/1000;
     const monthlyGeneration=moduleQty*generationPerModuleMonth;
@@ -6563,7 +6567,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     const installment=Math.max(0,Number(selectedFinancingOption?.installment||0));
     const netMonthlyEconomy=monthlySaving-installment;
     const billAfter=Math.max(residual,billBefore-monthlySaving);
-    return {avgConsumption,annualConsumption,informedMonths,requiredPower,moduleQty,automaticModuleQty,actualPower,generationPerModuleMonth,annualGeneration,monthlyGeneration,occupiedArea,totalWeight,inverterQty,automaticInverterQty,inverterPowerTotal,inverterSummary,inverters,moduleItem,moduleCatalogItem,inverter,catalogInverter,billBefore,billAfter,monthlySaving,annualSaving,total25,netSavings25,payback,roi,npv,irr,down,principal,monthsCount,monthlyRate,installment,netMonthlyEconomy,financingOptions,selectedFinancingOption,cashflows};
+    return {avgConsumption,annualConsumption,informedMonths,targetMonthlyGeneration,requiredPower,moduleQty,automaticModuleQty,manualRequestedModuleQty,addedModulesToReachTarget,actualPower,generationPerModuleMonth,annualGeneration,monthlyGeneration,occupiedArea,totalWeight,inverterQty,automaticInverterQty,inverterPowerTotal,inverterSummary,inverters,moduleItem,moduleCatalogItem,inverter,catalogInverter,billBefore,billAfter,monthlySaving,annualSaving,total25,netSavings25,payback,roi,npv,irr,down,principal,monthsCount,monthlyRate,installment,netMonthlyEconomy,financingOptions,selectedFinancingOption,cashflows};
   }
 
   function computeIRR(cashflows){
@@ -6780,14 +6784,14 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     if(step===2)return `
       <div class="calc-highlight"><div class="calc-box"><span>Potência necessária</span><strong>${number(calc.requiredPower,2)} kWp</strong></div><div class="calc-box"><span>Potência proposta</span><strong>${number(calc.actualPower,2)} kWp</strong></div><div class="calc-box"><span>Geração mensal</span><strong>${number(calc.monthlyGeneration)} kWh</strong></div><div class="calc-box"><span>Produção anual</span><strong>${number(calc.annualGeneration)} kWh</strong></div></div>
       <div class="form-section">${heading('Premissas de dimensionamento','Ajuste os parâmetros técnicos conforme a região e o projeto.')}
-        <div class="form-grid"><label class="field"><span>Geração por módulo (kWh/mês)</span><input value="0,58" readonly><small>Regra fixa: cada placa acrescenta 0,58 kWh à geração mensal.</small></label>${proposalField('technical.targetCoverage','Cobertura do consumo (%)','number')}${proposalField('technical.systemLosses','Perdas globais (%)','number')}${proposalField('technical.areaExtra','Margem adicional de área (%)','number')}${proposalField('technical.structureType','Tipo de estrutura','select',['Telhado cerâmico','Telhado metálico','Fibrocimento','Laje','Solo','Carport'])}${proposalField('technical.orientation','Orientação predominante','select',['Norte','Nordeste','Noroeste','Leste','Oeste','Sul'])}${proposalField('technical.inverterOverload','Overload permitido do inversor','number')}</div>
+        <div class="form-grid"><label class="field"><span>Geração por módulo (kWh/mês)</span><input value="58" readonly><small>Regra fixa: cada placa gera 58 kWh por mês. A quantidade é arredondada para cima até atingir a meta.</small></label>${proposalField('technical.targetCoverage','Cobertura do consumo (%)','number')}${proposalField('technical.systemLosses','Perdas globais (%)','number')}${proposalField('technical.areaExtra','Margem adicional de área (%)','number')}${proposalField('technical.structureType','Tipo de estrutura','select',['Telhado cerâmico','Telhado metálico','Fibrocimento','Laje','Solo','Carport'])}${proposalField('technical.orientation','Orientação predominante','select',['Norte','Nordeste','Noroeste','Leste','Oeste','Sul'])}${proposalField('technical.inverterOverload','Overload permitido do inversor','number')}</div>
       </div>
       ${renderManualModuleEditor(p,calc)}
       <div class="form-section" style="border:2px solid rgba(255,183,3,.45);box-shadow:0 16px 36px rgba(255,183,3,.10)">${heading('Ajuste conceitual do arranjo','Este é o campo da imagem que aparece na página técnica da proposta, no lugar do layout padrão.')}
         <div class="grid grid-2"><label class="upload-drop" style="background:linear-gradient(135deg,rgba(255,183,3,.14),rgba(90,169,255,.08));border-color:rgba(255,183,3,.45)"><div><strong>📷 Subir foto/render do projeto com placas</strong><span>JPG ou PNG. Envie a imagem do cliente já com as placas posicionadas no telhado, solo ou carport.</span><input id="technicalProjectImageInput" type="file" accept="image/*" style="margin-top:10px"></div></label><div>${p.technical?.projectImage?`<img class="upload-preview" src="${p.technical.projectImage}" alt="Ajuste conceitual do arranjo">`:`<div class="upload-drop"><div><strong>Pré-visualização do ajuste</strong><span>Nenhuma imagem selecionada. Se não subir imagem, a proposta mostra o layout conceitual padrão.</span></div></div>`}</div></div>
       </div>
       <div class="form-section">${heading('Resultado técnico','Valores calculados automaticamente com o equipamento selecionado.')}
-        <div class="detail-grid"><div class="detail-item"><span>Quantidade de módulos</span><strong>${calc.moduleQty}</strong></div><div class="detail-item"><span>Geração por placa</span><strong>${number(calc.generationPerModuleMonth,2)} kWh/mês</strong></div><div class="detail-item"><span>Potência dos módulos</span><strong>${number(calc.moduleItem.power,0)} W cada · ${number(calc.actualPower,2)} kWp</strong></div><div class="detail-item"><span>Quantidade de inversores</span><strong>${calc.inverterQty}</strong></div><div class="detail-item"><span>Potência AC total</span><strong>${number(calc.inverterPowerTotal,2)} kW</strong></div><div class="detail-item"><span>Área ocupada</span><strong>${number(calc.occupiedArea,1)} m²</strong></div><div class="detail-item"><span>Peso total</span><strong>${number(calc.totalWeight)} kg</strong></div><div class="detail-item"><span>Módulo</span><strong>${escapeHtml(calc.moduleItem.brand)} ${number(calc.moduleItem.power,0)} W</strong></div><div class="detail-item"><span>Inversores</span><strong>${escapeHtml(calc.inverterSummary)}</strong></div></div>
+        <div class="detail-grid"><div class="detail-item"><span>Quantidade final de módulos</span><strong>${calc.moduleQty}</strong></div><div class="detail-item"><span>Geração por placa</span><strong>${number(calc.generationPerModuleMonth,0)} kWh/mês</strong></div><div class="detail-item"><span>Meta de geração mensal</span><strong>${number(calc.targetMonthlyGeneration,0)} kWh/mês</strong></div><div class="detail-item"><span>Mínimo de placas para a meta</span><strong>${calc.automaticModuleQty}</strong></div>${calc.addedModulesToReachTarget>0?`<div class="detail-item"><span>Placas acrescentadas automaticamente</span><strong>+${calc.addedModulesToReachTarget}</strong></div>`:''}<div class="detail-item"><span>Potência dos módulos</span><strong>${number(calc.moduleItem.power,0)} W cada · ${number(calc.actualPower,2)} kWp</strong></div><div class="detail-item"><span>Quantidade de inversores</span><strong>${calc.inverterQty}</strong></div><div class="detail-item"><span>Potência AC total</span><strong>${number(calc.inverterPowerTotal,2)} kW</strong></div><div class="detail-item"><span>Área ocupada</span><strong>${number(calc.occupiedArea,1)} m²</strong></div><div class="detail-item"><span>Peso total</span><strong>${number(calc.totalWeight)} kg</strong></div><div class="detail-item"><span>Módulo</span><strong>${escapeHtml(calc.moduleItem.brand)} ${number(calc.moduleItem.power,0)} W</strong></div><div class="detail-item"><span>Inversores</span><strong>${escapeHtml(calc.inverterSummary)}</strong></div></div>
       </div>${nav}`;
     if(step===3)return `
       <div class="form-section">${heading('Selecione o módulo','O banco pode ser ampliado no módulo de estoque/equipamentos.')}
