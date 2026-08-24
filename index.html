@@ -6497,9 +6497,10 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     const automaticModuleQty=Math.max(1,Math.ceil(targetMonthlyGeneration/generationPerModuleMonth));
     const manualModuleQty=Number(p.technical?.moduleManualQty||0);
     const manualRequestedModuleQty=manualModuleQty>0?Math.max(1,Math.round(manualModuleQty)):0;
-    // Se o usuário informar menos placas que o mínimo necessário, o CRM completa automaticamente.
-    const moduleQty=manualRequestedModuleQty>0?Math.max(manualRequestedModuleQty,automaticModuleQty):automaticModuleQty;
-    const addedModulesToReachTarget=manualRequestedModuleQty>0?Math.max(0,automaticModuleQty-manualRequestedModuleQty):0;
+    // Quando houver configuração manual, ela passa a definir o escopo final da proposta.
+    // O cálculo automático continua disponível apenas como referência/sugestão.
+    const moduleQty=manualRequestedModuleQty>0?manualRequestedModuleQty:automaticModuleQty;
+    const addedModulesToReachTarget=0;
     const actualPower=moduleQty*moduleItem.power/1000;
     const requiredPower=automaticModuleQty*moduleItem.power/1000;
     const monthlyGeneration=moduleQty*generationPerModuleMonth;
