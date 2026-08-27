@@ -2700,14 +2700,17 @@ service cloud.firestore {
           'status',
           'acceptance',
           'acceptedAt',
+          'contractStatus',
           'updatedAt'
         ])
         && request.resource.data.status == 'Aceita'
+        && (!request.resource.data.keys().hasAny(['contractStatus']) || request.resource.data.contractStatus == 'Aguardando assinatura')
         && request.resource.data.acceptance is map
         && request.resource.data.acceptance.proposalId == proposalId
         && request.resource.data.acceptance.document is string
         && (
-          resource.data.clientDocument == ''
+          !resource.data.keys().hasAny(['clientDocument'])
+          || resource.data.clientDocument == ''
           || request.resource.data.acceptance.document == resource.data.clientDocument
         );
 
@@ -2728,7 +2731,8 @@ service cloud.firestore {
         && request.resource.data.contractAcceptance.signature is string
         && request.resource.data.contractAcceptance.selfie is string
         && (
-          resource.data.clientDocument == ''
+          !resource.data.keys().hasAny(['clientDocument'])
+          || resource.data.clientDocument == ''
           || request.resource.data.contractAcceptance.document == resource.data.clientDocument
         );
 
@@ -4048,6 +4052,9 @@ service cloud.firestore {
       try{
         const unsubscribe=window.FirebaseCRM.watchRecords(item.remote,state.currentCompanyId,rows=>{
           replaceCompanyCollection(item.stateKey,rows);
+          // Aceites e assinaturas feitos pelo cliente na página pública entram
+          // automaticamente na proposta e na aba Contratos do CRM.
+          if(item.stateKey==='public_proposals') applyPublicProposalAcceptances(rows);
           persist();
           if(!document.body.classList.contains('auth-locked')){
             renderSidebar();
@@ -4233,6 +4240,9 @@ service cloud.firestore {
         sharedSettingsLastError=`Alguns módulos não foram atualizados pelo Firebase: ${failures.join(' | ')}`;
         console.warn(sharedSettingsLastError);
       }
+      // Depois que propostas + contratos já foram carregados, incorpora qualquer
+      // aceite/assinatura pública pendente sem criar um contrato paralelo.
+      applyPublicProposalAcceptances(companyRows('public_proposals'));
       await ensureDefaultEquipmentCatalog({saveToCloud:false});
       refreshEquipmentCatalog();
 
@@ -8499,9 +8509,9 @@ ${company.tradeName||company.name}`:''}`;
     const contractSigned=Boolean(contractAcceptance.signature&&contractAcceptance.selfie);
     const contractSignedAt=proposal.contractSignedAt||contractAcceptance.signedAt||'';
     let contract=companyRows('contracts').find(row=>row.proposalId===proposal.id);
-    if(!contract){contract={id:newId('contract'),companyId:state.currentCompanyId,proposalId:proposal.id,leadId:lead?.id||'',clientId:client.id,clientName:proposal.client.name,value:Number(proposal.commercial.price||0),signedAt:contractSigned?(contractSignedAt||todayISO()):'',status:contractSigned?'Assinado':'Aguardando assinatura',paymentMethod:proposal.commercial.paymentMethod||'',contractAcceptance:contractSigned?deepClone(contractAcceptance):null,clientSignature:contractSigned?contractAcceptance.signature:'',clientPhoto:contractSigned?contractAcceptance.selfie:'',signatureIp:contractSigned?(contractAcceptance.ip||''):'',notes:`Criado automaticamente após o aceite da proposta ${proposal.number}. ${contractSigned?'Contrato assinado digitalmente com registro fotográfico.':'Aguardando assinatura contratual do cliente.'}`,createdAt:todayISO(),updatedAt:now};state.contracts.unshift(contract);}else{
+    if(!contract){contract={id:newId('contract'),companyId:state.currentCompanyId,proposalId:proposal.id,leadId:lead?.id||'',clientId:client.id,clientName:proposal.client.name,clientDocument:proposal.client.document||client.document||'',value:Number(proposal.commercial.price||0),signedAt:contractSigned?(contractSignedAt||todayISO()):'',status:contractSigned?'Assinado':'Aguardando assinatura',paymentMethod:proposal.commercial.paymentMethod||'',contractAcceptance:contractSigned?deepClone(contractAcceptance):null,clientSignature:contractSigned?contractAcceptance.signature:'',clientPhoto:contractSigned?contractAcceptance.selfie:'',signatureIp:contractSigned?(contractAcceptance.ip||''):'',notes:`Criado automaticamente após o aceite da proposta ${proposal.number}. ${contractSigned?'Contrato assinado digitalmente com registro fotográfico.':'Aguardando assinatura contratual do cliente.'}`,createdAt:todayISO(),updatedAt:now};state.contracts.unshift(contract);}else{
       const preserveSigned=contract.status==='Assinado'&&contract.signedAt&&!contractSigned;
-      Object.assign(contract,{leadId:contract.leadId||lead?.id||'',clientId:contract.clientId||client.id,status:contractSigned?'Assinado':(preserveSigned?'Assinado':'Aguardando assinatura'),signedAt:contractSigned?(contractSignedAt||contract.signedAt||todayISO()):(preserveSigned?contract.signedAt:''),paymentMethod:contract.paymentMethod||proposal.commercial.paymentMethod||'',updatedAt:now});
+      Object.assign(contract,{leadId:contract.leadId||lead?.id||'',clientId:contract.clientId||client.id,clientDocument:contract.clientDocument||proposal.client.document||client.document||'',status:contractSigned?'Assinado':(preserveSigned?'Assinado':'Aguardando assinatura'),signedAt:contractSigned?(contractSignedAt||contract.signedAt||todayISO()):(preserveSigned?contract.signedAt:''),paymentMethod:contract.paymentMethod||proposal.commercial.paymentMethod||'',updatedAt:now});
       if(contractSigned)Object.assign(contract,{contractAcceptance:deepClone(contractAcceptance),clientSignature:contractAcceptance.signature,clientPhoto:contractAcceptance.selfie,signatureIp:contractAcceptance.ip||'',notes:`Contrato assinado digitalmente após o aceite da proposta ${proposal.number}, com assinatura e foto capturada pela câmera.`});
     }
     let work=companyRows('works').find(row=>row.proposalId===proposal.id);
