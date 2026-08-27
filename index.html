@@ -1168,6 +1168,41 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
 @media(max-width:620px){.offgrid-form-grid,.offgrid-form-grid.cols-3,.offgrid-form-grid.cols-2{grid-template-columns:1fr}.offgrid-kpi-grid{grid-template-columns:1fr}.offgrid-bank-flow{grid-template-columns:1fr}.offgrid-bank-arrow{transform:rotate(90deg)}.offgrid-load-toolbar>*{width:100%}}
 </style>
 
+
+<style id="proposal-schedule-guarantees-css">
+/* Página premium de cronograma e garantias */
+.vp-sg-page .vp-header{margin-bottom:24px}
+.vp-sg-page .vp-header h2{font-size:38px;margin-top:16px;margin-bottom:8px}
+.vp-sg-page .vp-header p{font-size:15px;max-width:590px}
+.vp-sg-intro{display:grid;grid-template-columns:1.25fr .75fr;gap:14px;margin-bottom:16px}
+.vp-sg-intro>div{border:2px solid #d9e4ef;border-radius:20px;background:#fff;padding:15px 18px}
+.vp-sg-intro span{display:block;color:#708195;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.06em}
+.vp-sg-intro strong{display:block;margin-top:5px;color:#10273d;font-size:17px;line-height:1.2}
+.vp-schedule-card{padding:18px 20px!important;border-radius:24px!important}
+.vp-sg-section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:12px}
+.vp-sg-section-head h3{margin:0!important;color:#10273d!important;font-size:22px!important;letter-spacing:-.025em}
+.vp-sg-section-head p{margin:4px 0 0!important;color:#65768a!important;font-size:10px!important;line-height:1.35}
+.vp-sg-count{display:inline-flex;align-items:center;justify-content:center;min-width:82px;height:28px;padding:0 10px;border-radius:999px;background:#fff4d3;border:1px solid #f0d88e;color:#8a6500;font-size:9px;font-weight:900;text-transform:uppercase}
+.vp-schedule-list{display:flex;flex-direction:column;gap:6px}
+.vp-schedule-row-premium{display:grid;grid-template-columns:32px minmax(0,1fr) 104px;gap:10px;align-items:center;min-height:48px;padding:8px 10px;border:1px solid #dce5ed;border-radius:13px;background:#f8fbfe}
+.vp-schedule-row-premium:nth-child(even){background:#f3f7fb}
+.vp-schedule-index{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:#102b46;color:#ffd166;font-size:10px;font-weight:950}
+.vp-schedule-copy strong{display:block;color:#10273d;font-size:11px;line-height:1.1}
+.vp-schedule-copy span{display:block;margin-top:3px;color:#65768a;font-size:8px;line-height:1.25}
+.vp-schedule-deadline{text-align:right;color:#174f80;font-size:9px;font-weight:900;line-height:1.2}
+.vp-guarantees-wrap{margin-top:14px;padding:16px 18px;border-radius:24px;background:#102b46;color:#fff;position:relative;overflow:hidden}
+.vp-guarantees-wrap:after{content:"";position:absolute;width:220px;height:220px;border-radius:50%;right:-100px;top:-120px;background:rgba(90,169,255,.16)}
+.vp-guarantees-wrap .vp-sg-section-head{position:relative;z-index:1;margin-bottom:11px}
+.vp-guarantees-wrap .vp-sg-section-head h3{color:#fff!important;font-size:21px!important}
+.vp-guarantees-wrap .vp-sg-section-head p{color:#c5d5e4!important}
+.vp-guarantee-grid-premium{position:relative;z-index:1;display:grid;grid-template-columns:repeat(4,1fr);gap:9px}
+.vp-guarantee-premium{min-height:105px;border-radius:16px;background:#fff;padding:12px 12px 11px;display:flex;flex-direction:column;justify-content:space-between}
+.vp-guarantee-icon-premium{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:#fff1c4;color:#9d6900;font-size:13px;font-weight:950}
+.vp-guarantee-premium span{display:block;margin-top:8px;color:#708195;font-size:8px;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
+.vp-guarantee-premium strong{display:block;margin-top:5px;color:#0f8c54;font-size:13px;line-height:1.13;word-break:break-word}
+.vp-sg-note{margin-top:10px;color:#c9d8e6;font-size:8px;line-height:1.35;position:relative;z-index:1}
+</style>
+
 <style id="representativePdfEarlyStyle">
 html.representative-pdf-mode #loginScreen,
 html.representative-pdf-mode #appShell,
@@ -5385,6 +5420,7 @@ service cloud.firestore {
       annualGeneration:Number(c.annualGeneration||0), monthlyGeneration:Number(c.monthlyGeneration||0), avgConsumption:Number(c.avgConsumption||0), currentTariff:Number(proposal.currentTariff||0),
       investment:Number(proposal.commercial?.price||0), monthlySaving:Number(c.monthlySaving||0), annualSaving:Number(c.annualSaving||0), payback:Number(c.payback||0), roi:Number(c.roi||0), paymentMethod:proposal.commercial?.paymentMethod||'',
       additionalItemsTitle:String(proposal.additionalItemsTitle||'Itens adicionais e escopo complementar'), additionalItems:normalizeProposalAdditionalItems(proposal.additionalItems),
+      schedule:normalizeProposalSchedule(proposal.schedule).map(row=>({stage:row[0],description:row[1],deadline:row[2]})), guarantees:{panels:proposal.guarantees?.panels||'',inverters:proposal.guarantees?.inverters||'',structure:proposal.guarantees?.structure||'',installation:proposal.guarantees?.installation||''},
       coverTitle:'Projeto Solar Fotovoltaico',
       summaryText:'Solução fotovoltaica com alta performance, economia e previsibilidade energética.',
       investmentFormatted:shortCurrency(proposal.commercial?.price||0), monthlySavingFormatted:shortCurrency(c.monthlySaving||0), annualSavingFormatted:shortCurrency(c.annualSaving||0)
@@ -5395,6 +5431,7 @@ service cloud.firestore {
       companyName:company.tradeName||company.name||'Empresa', companyWebsite:company.website||'', companyEmail:company.email||'', companyPhone:company.phone||'', companyLogo:logoUrl,
       actualPower:Number(c.actualPower||0), annualGeneration:Number(c.annualGeneration||0), monthlyGeneration:Number(c.monthlyGeneration||0), monthlySaving:Number(c.monthlySaving||0), annualSaving:Number(c.annualSaving||0), investment:Number(proposal.commercial?.price||0), payback:Number(c.payback||0),
       additionalItemsTitle:String(proposal.additionalItemsTitle||'Itens adicionais e escopo complementar'), additionalItems:normalizeProposalAdditionalItems(proposal.additionalItems),
+      schedule:normalizeProposalSchedule(proposal.schedule).map(row=>({stage:row[0],description:row[1],deadline:row[2]})), guarantees:{panels:proposal.guarantees?.panels||'',inverters:proposal.guarantees?.inverters||'',structure:proposal.guarantees?.structure||'',installation:proposal.guarantees?.installation||''},
       publicPdfUrl:pdfUrl||proposal.publicPdfUrl||'', publicUrl:proposalPublicUrl(proposal,pdfUrl||proposal.publicPdfUrl||''), clientPortalUrl:clientPortalUrl(client.document||''), presentation,
       pdfProposal:publicProposalPdfSnapshot(proposal), pdfCompany:publicProposalCompanySnapshot(company),
       noStorage:true, publishedAt:proposal.publishedAt||new Date().toISOString(), updatedAt:new Date().toISOString()
@@ -8537,7 +8574,9 @@ ${company.tradeName||company.name}`:''}`;
     const charger={...defaultEvChargerData(),...(p.evCharger||{})};const hasEvCharger=Boolean(charger.enabled);
     const workPhotos=(Array.isArray(company.workPhotos)?company.workPhotos:[]).filter(Boolean).slice(0,4);const hasWorkGallery=workPhotos.length>0;
     const additionalItems=normalizeProposalAdditionalItems(p.additionalItems).filter(item=>item.description);const additionalItemChunks=chunkProposalAdditionalItems(additionalItems,12);const additionalItemPageCount=additionalItemChunks.length;
-    const hasFinancing=String(p.commercial?.paymentMethod||'').toLowerCase().includes('financi');const summaryPage=2;const worksPage=hasWorkGallery?3:null;const diagnosisPage=hasWorkGallery?4:3;const technicalPage=diagnosisPage+1;const evPage=hasEvCharger?technicalPage+1:null;const additionalItemsFirstPage=technicalPage+(hasEvCharger?1:0)+1;const financialPage=additionalItemsFirstPage+additionalItemPageCount;const financingPage=hasFinancing?financialPage+1:null;const finalPage=financialPage+(hasFinancing?2:1);const totalPages=finalPage;const safe=v=>escapeHtml(v||'—');
+    const proposalSchedule=normalizeProposalSchedule(p.schedule).filter(row=>row.some(value=>String(value||'').trim()));
+    const proposalGuarantees={panels:'12 anos produto / 30 anos desempenho',inverters:'10 anos',structure:'10 anos',installation:'5 anos',...(p.guarantees||{})};
+    const hasFinancing=String(p.commercial?.paymentMethod||'').toLowerCase().includes('financi');const summaryPage=2;const worksPage=hasWorkGallery?3:null;const diagnosisPage=hasWorkGallery?4:3;const technicalPage=diagnosisPage+1;const evPage=hasEvCharger?technicalPage+1:null;const additionalItemsFirstPage=technicalPage+(hasEvCharger?1:0)+1;const financialPage=additionalItemsFirstPage+additionalItemPageCount;const financingPage=hasFinancing?financialPage+1:null;const scheduleGuaranteePage=(financingPage||financialPage)+1;const finalPage=scheduleGuaranteePage+1;const totalPages=finalPage;const safe=v=>escapeHtml(v||'—');
     const footer=page=>`<div class="vp-footer"><span>${safe(companyName)} · ${safe(company.website||company.email||'')}</span><span>Proposta comercial confidencial · ${page}/${totalPages}</span></div>`;
     const header=(page,title,subtitle)=>`<div class="vp-bg-blob top"></div><div class="vp-bg-blob bottom"></div><div class="vp-inner"><div class="vp-header"><div><span class="vp-kicker">Proposta comercial</span><h2>${escapeHtml(title)}</h2><p>${escapeHtml(subtitle)}</p></div><div class="vp-page-badge">PÁGINA ${page}</div></div>`;
     const metric=(label,value,caption,accent='#ffb703')=>`<div class="vp-metric" style="--accent:${accent}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong><p>${escapeHtml(caption)}</p></div>`;
@@ -8626,6 +8665,11 @@ ${company.tradeName||company.name}`:''}`;
         <div class="vp-grid-2"><div class="vp-card"><h3>Indicadores financeiros</h3><table class="vp-table"><tbody><tr><th>Indicador</th><th>Valor</th></tr><tr><td>Economia mensal</td><td>${shortCurrency(c.monthlySaving)}</td></tr><tr><td>Economia anual</td><td>${shortCurrency(c.annualSaving)}</td></tr><tr><td>Payback simples</td><td>${number(c.payback,1)} anos</td></tr><tr><td>ROI 25 anos</td><td>${number(c.roi,0)}%</td></tr><tr><td>Condição comercial</td><td>${safe(p.commercial.paymentMethod)}</td></tr><tr><td>Vida útil do ativo</td><td>25 anos ou mais</td></tr></tbody></table><p style="color:#65768a;font-size:15px;margin:18px 0 0">Premissas: reajuste tarifário anual de ${number(p.commercial.annualTariffIncrease||0,1)}%, degradação dos módulos de ${number(p.commercial.moduleDegradation||0,1)}% ao ano.</p></div><div class="vp-card"><h3>Custo acumulado</h3><div class="vp-chart"><canvas id="pdfSavingsChart"></canvas></div></div></div>
         ${footer(financialPage)}</div></section>
       ${financingPageHtml}
+      <section class="proposal-page vp-page vp-sg-page">${header(scheduleGuaranteePage,'Cronograma e garantias','Etapas previstas para implantação do sistema e coberturas consideradas nesta proposta comercial.')}
+        <div class="vp-sg-intro"><div><span>Planejamento da implantação</span><strong>${proposalSchedule.length} etapa${proposalSchedule.length===1?'':'s'} prevista${proposalSchedule.length===1?'':'s'} do projeto à operação</strong></div><div><span>Responsabilidade</span><strong>Acompanhamento técnico até a entrega</strong></div></div>
+        <div class="vp-card vp-schedule-card"><div class="vp-sg-section-head"><div><h3>Cronograma previsto</h3><p>Os prazos podem variar conforme disponibilidade de materiais, condições de obra e análise da concessionária.</p></div><div class="vp-sg-count">${proposalSchedule.length} etapas</div></div><div class="vp-schedule-list">${proposalSchedule.map((row,index)=>`<div class="vp-schedule-row-premium"><div class="vp-schedule-index">${index+1}</div><div class="vp-schedule-copy"><strong>${safe(row[0])}</strong><span>${safe(row[1])}</span></div><div class="vp-schedule-deadline">${safe(row[2])}</div></div>`).join('')}</div></div>
+        <div class="vp-guarantees-wrap"><div class="vp-sg-section-head"><div><h3>Garantias do projeto</h3><p>Coberturas comerciais e de equipamentos conforme condições desta proposta e dos respectivos fabricantes.</p></div></div><div class="vp-guarantee-grid-premium"><div class="vp-guarantee-premium"><div class="vp-guarantee-icon-premium">☀</div><div><span>Módulos</span><strong>${safe(proposalGuarantees.panels)}</strong></div></div><div class="vp-guarantee-premium"><div class="vp-guarantee-icon-premium">⚡</div><div><span>Inversores</span><strong>${safe(proposalGuarantees.inverters)}</strong></div></div><div class="vp-guarantee-premium"><div class="vp-guarantee-icon-premium">⌂</div><div><span>Estrutura</span><strong>${safe(proposalGuarantees.structure)}</strong></div></div><div class="vp-guarantee-premium"><div class="vp-guarantee-icon-premium">✓</div><div><span>Instalação</span><strong>${safe(proposalGuarantees.installation)}</strong></div></div></div><div class="vp-sg-note">As garantias de equipamentos seguem as condições do fabricante. Garantias de instalação e serviços consideram o escopo contratado, uso adequado do sistema e ausência de intervenções por terceiros.</div></div>
+        ${footer(scheduleGuaranteePage)}</div></section>
       <section class="proposal-page vp-final-cover">
         <img class="vp-final-bg" src="${cover}" alt="Encerramento da proposta"><div class="vp-final-overlay"></div>
         <div class="vp-final-inner">
@@ -9610,7 +9654,8 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
       check('Cadastro de bancos disponível',companyFinancingBanks().length>=1&&companyFinancingBanks().every(bank=>bank.name&&bank.rates[36]>=0),'bancos e taxas válidos');
       const documentHtml=renderProposalDocument(proposal);const pages=(documentHtml.match(/class="proposal-page(?:\s|")/g)||[]).length;
       check('Proposta exibe página de financiamento',documentHtml.includes('vp-financing-page')&&documentHtml.includes('36x')&&documentHtml.includes('48x')&&documentHtml.includes('72x'),'página presente');
-      const galleryExtra=(Array.isArray(state.company?.workPhotos)?state.company.workPhotos:[]).filter(Boolean).length?1:0;check(`Proposta sem recarga contém ${7+galleryExtra} páginas`,pages===7+galleryExtra,`${pages} páginas`);proposal.evCharger.enabled=true;const evPages=(renderProposalDocument(proposal).match(/class="proposal-page(?:\s|")/g)||[]).length;check(`Proposta com recarga contém ${8+galleryExtra} páginas`,evPages===8+galleryExtra,`${evPages} páginas`);
+      check('Proposta exibe cronograma e garantias',documentHtml.includes('vp-sg-page')&&documentHtml.includes('Cronograma previsto')&&documentHtml.includes('Garantias do projeto')&&documentHtml.includes(proposal.guarantees.panels),'cronograma e garantias presentes');
+      const galleryExtra=(Array.isArray(state.company?.workPhotos)?state.company.workPhotos:[]).filter(Boolean).length?1:0;check(`Proposta sem recarga contém ${8+galleryExtra} páginas`,pages===8+galleryExtra,`${pages} páginas`);proposal.evCharger.enabled=true;const evPages=(renderProposalDocument(proposal).match(/class="proposal-page(?:\s|")/g)||[]).length;check(`Proposta com recarga contém ${9+galleryExtra} páginas`,evPages===9+galleryExtra,`${evPages} páginas`);
       const bill=extractBillFields('CELESC_HEADER_UC 123456789\nClasse: Residencial Grupo tarifário: B1 Tarifa 0,92345 600 kWh 620 kWh 640 kWh 660 kWh 680 kWh 700 kWh 720 kWh 740 kWh 760 kWh 780 kWh 800 kWh 820 kWh');
       check('Leitura local identifica UC pelo cabeçalho',bill.client.consumerUnit==='123456789',bill.client.consumerUnit);
       const maskedUcBill=extractBillFields('CELESC_HEADER_UC 507.376.011-65\nClasse: Residencial Grupo tarifário: B1 Tarifa 0,92345');
@@ -9743,6 +9788,8 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     proposal.financing.downPayment=proposal.commercial.price*.2;
     proposal.additionalItemsTitle=record.additionalItemsTitle||view.additionalItemsTitle||proposal.additionalItemsTitle;
     proposal.additionalItems=normalizeProposalAdditionalItems(record.additionalItems||view.additionalItems||[]);
+    proposal.schedule=normalizeProposalSchedule(record.schedule||view.schedule||proposal.schedule);
+    proposal.guarantees={...proposal.guarantees,...(view.guarantees||{}),...(record.guarantees||{})};
     proposal.seller={name:'Representante',email:''};
     proposal.updatedAt=record.updatedAt||new Date().toISOString();
     return proposal;
