@@ -6500,7 +6500,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
         body.cw-compact-print .cw-system-power span,
         body.cw-compact-print .cw-system-power strong{color:#fff!important}
       }
-      </style></head><body><div class="cw-actions"><button class="cw-secondary" onclick="window.close()">Fechar</button><button class="cw-secondary" onclick="document.body.classList.add('cw-compact-print');setTimeout(function(){window.print();setTimeout(function(){document.body.classList.remove('cw-compact-print')},800)},80)">Baixar em PDF</button><button class="cw-primary" onclick="document.body.classList.remove('cw-compact-print');window.print()">Imprimir / salvar PDF</button></div>${pages.join('')}</body></html>`;
+      </style></head><body><div class="cw-actions"><button class="cw-secondary" onclick="window.close()">Fechar</button><button class="cw-secondary" onclick="try{parent.document.getElementById('contractPreviewCompactPrint')?.click()}catch(e){}">Baixar em PDF</button><button class="cw-primary" onclick="document.body.classList.remove('cw-compact-print');window.print()">Imprimir / salvar PDF</button></div>${pages.join('')}</body></html>`;
   }
 
   function ensureContractPreviewModal(){
@@ -6540,7 +6540,39 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     if(title)title.textContent=`Contrato · ${contract.clientName||'Cliente'}`;
     if(frame)frame.srcdoc=html;
     const compactPrintBtn=modal.querySelector('#contractPreviewCompactPrint');
-    if(compactPrintBtn)compactPrintBtn.onclick=()=>{try{const win=frame?.contentWindow;win?.document?.body?.classList.add('cw-compact-print');win?.focus();setTimeout(()=>{win?.print();setTimeout(()=>win?.document?.body?.classList.remove('cw-compact-print'),800);},80);}catch(error){toast('Não foi possível baixar o PDF',error?.message||'Use o menu do navegador para imprimir.','error');}};
+    if(compactPrintBtn)compactPrintBtn.onclick=async()=>{
+      if(compactPrintBtn.disabled)return;
+      try{
+        if(!window.jspdf?.jsPDF||!window.html2canvas)throw new Error('Bibliotecas de geração de PDF indisponíveis.');
+        const doc=frame?.contentDocument||frame?.contentWindow?.document;
+        if(!doc)throw new Error('A pré-visualização do contrato ainda não está pronta.');
+        const pages=[...doc.querySelectorAll('.cw-page')];
+        if(!pages.length)throw new Error('Nenhuma página do contrato foi encontrada.');
+        compactPrintBtn.disabled=true;
+        const originalText=compactPrintBtn.textContent;
+        compactPrintBtn.textContent='Gerando PDF...';
+        const {jsPDF}=window.jspdf;
+        const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
+        for(let i=0;i<pages.length;i++){
+          const page=pages[i];
+          const canvas=await window.html2canvas(page,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,windowWidth:794,windowHeight:1123});
+          const image=canvas.toDataURL('image/jpeg',0.96);
+          if(i>0)pdf.addPage('a4','portrait');
+          pdf.addImage(image,'JPEG',0,0,210,297,undefined,'FAST');
+          compactPrintBtn.textContent=`Gerando PDF ${i+1}/${pages.length}`;
+          await new Promise(resolve=>setTimeout(resolve,20));
+        }
+        const filename=`contrato-soolarwin-${slugify(contract.clientName||contract.id)}.pdf`;
+        pdf.save(filename);
+        compactPrintBtn.textContent=originalText;
+        compactPrintBtn.disabled=false;
+        toast('PDF baixado',filename,'success');
+      }catch(error){
+        compactPrintBtn.disabled=false;
+        compactPrintBtn.textContent='Baixar em PDF';
+        toast('Não foi possível gerar o PDF',error?.message||'Tente novamente após a pré-visualização carregar.','error');
+      }
+    };
     const printBtn=modal.querySelector('#contractPreviewPrint');
     if(printBtn)printBtn.onclick=()=>{try{const win=frame?.contentWindow;win?.document?.body?.classList.remove('cw-compact-print');win?.focus();win?.print();}catch(error){toast('Não foi possível imprimir',error?.message||'Use o menu do navegador para imprimir.','error');}};
     const downloadBtn=modal.querySelector('#contractPreviewDownload');
