@@ -6404,7 +6404,9 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
       .cw-cover-info .cw-system-power span,.cw-cover-info .cw-system-power strong{color:#fff!important}
       .cw-page h2,.cw-page h3{color:var(--sw-navy-2)}
       .cw-page h2:after{content:"";display:block;width:34mm;height:1.2mm;margin:3mm auto 0;border-radius:999px;background:linear-gradient(90deg,var(--sw-yellow),var(--sw-blue))}
-      .cw-strip{background:linear-gradient(135deg,var(--sw-navy-2),#174f80);color:#fff;border-left:5px solid var(--sw-yellow)}
+      .cw-strip{background:linear-gradient(135deg,var(--sw-navy-2),#174f80);color:#fff!important;border-left:5px solid var(--sw-yellow)}
+      .cw-page h3.cw-strip,.cw-page h3.cw-strip *{color:#fff!important}
+      .cw-table th,.cw-table th *{color:#fff!important}
       .cw-text{color:#2b4056}
       .cw-data{border-bottom-color:var(--sw-line)}
       .cw-table{border-radius:9px;overflow:hidden}
@@ -6498,7 +6500,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
         body.cw-compact-print .cw-system-power span,
         body.cw-compact-print .cw-system-power strong{color:#fff!important}
       }
-      </style></head><body><div class="cw-actions"><button class="cw-secondary" onclick="window.close()">Fechar</button><button class="cw-secondary" onclick="document.body.classList.add('cw-compact-print');setTimeout(function(){window.print();setTimeout(function(){document.body.classList.remove('cw-compact-print')},800)},80)">PDF adaptativo</button><button class="cw-primary" onclick="document.body.classList.remove('cw-compact-print');window.print()">Imprimir / salvar PDF</button></div>${pages.join('')}</body></html>`;
+      </style></head><body><div class="cw-actions"><button class="cw-secondary" onclick="window.close()">Fechar</button><button class="cw-secondary" onclick="document.body.classList.add('cw-compact-print');setTimeout(function(){window.print();setTimeout(function(){document.body.classList.remove('cw-compact-print')},800)},80)">Baixar em PDF</button><button class="cw-primary" onclick="document.body.classList.remove('cw-compact-print');window.print()">Imprimir / salvar PDF</button></div>${pages.join('')}</body></html>`;
   }
 
   function ensureContractPreviewModal(){
@@ -6512,7 +6514,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
       <div class="modal-header">
         <div><p class="eyebrow">Documento comercial</p><h2 id="contractPreviewTitle">Contrato SoolarWin</h2></div>
         <div class="header-actions">
-          <button id="contractPreviewCompactPrint" class="btn btn-secondary" type="button">PDF adaptativo</button>
+          <button id="contractPreviewCompactPrint" class="btn btn-secondary" type="button">Baixar em PDF</button>
           <button id="contractPreviewPrint" class="btn btn-primary" type="button">Imprimir / salvar PDF</button>
           <button id="contractPreviewDownload" class="btn btn-ghost" type="button">Baixar HTML</button>
           <button id="contractPreviewClose" class="icon-btn" type="button">✕</button>
@@ -6538,7 +6540,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     if(title)title.textContent=`Contrato · ${contract.clientName||'Cliente'}`;
     if(frame)frame.srcdoc=html;
     const compactPrintBtn=modal.querySelector('#contractPreviewCompactPrint');
-    if(compactPrintBtn)compactPrintBtn.onclick=()=>{try{const win=frame?.contentWindow;win?.document?.body?.classList.add('cw-compact-print');win?.focus();setTimeout(()=>{win?.print();setTimeout(()=>win?.document?.body?.classList.remove('cw-compact-print'),800);},80);}catch(error){toast('Não foi possível gerar o PDF adaptativo',error?.message||'Use o menu do navegador para imprimir.','error');}};
+    if(compactPrintBtn)compactPrintBtn.onclick=()=>{try{const win=frame?.contentWindow;win?.document?.body?.classList.add('cw-compact-print');win?.focus();setTimeout(()=>{win?.print();setTimeout(()=>win?.document?.body?.classList.remove('cw-compact-print'),800);},80);}catch(error){toast('Não foi possível baixar o PDF',error?.message||'Use o menu do navegador para imprimir.','error');}};
     const printBtn=modal.querySelector('#contractPreviewPrint');
     if(printBtn)printBtn.onclick=()=>{try{const win=frame?.contentWindow;win?.document?.body?.classList.remove('cw-compact-print');win?.focus();win?.print();}catch(error){toast('Não foi possível imprimir',error?.message||'Use o menu do navegador para imprimir.','error');}};
     const downloadBtn=modal.querySelector('#contractPreviewDownload');
