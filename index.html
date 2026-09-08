@@ -6585,6 +6585,57 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
         captureHost.setAttribute('data-contract-pdf-capture','1');
         Object.assign(captureHost.style,{position:'fixed',left:'-10000px',top:'0',width:'794px',height:'1123px',margin:'0',padding:'0',background:'#fff',overflow:'hidden',zIndex:'-1'});
         doc.body.appendChild(captureHost);
+        // Estilo específico da captura PDF. O html2canvas pode rasterizar de forma incorreta
+        // gradientes + box-shadow inset + border-radius usados nos cards da capa.
+        // Na tela mantemos o visual original; no download usamos formas equivalentes e estáveis.
+        const captureStyle=doc.createElement('style');
+        captureStyle.setAttribute('data-contract-pdf-capture-style','1');
+        captureStyle.textContent=`
+          [data-contract-pdf-capture] .cw-cover-info > div{
+            background:#ffffff!important;
+            background-image:none!important;
+            box-shadow:none!important;
+            border:1px solid #d7e1ea!important;
+            border-left:5px solid #ffb703!important;
+            border-radius:14px!important;
+            padding:12px 14px!important;
+            min-height:66px!important;
+            height:66px!important;
+            overflow:hidden!important;
+            display:flex!important;
+            flex-direction:column!important;
+            justify-content:center!important;
+            align-items:flex-start!important;
+            gap:5px!important;
+          }
+          [data-contract-pdf-capture] .cw-cover-info > div > span{
+            color:#607086!important;
+            margin:0!important;
+            line-height:1.1!important;
+          }
+          [data-contract-pdf-capture] .cw-cover-info > div > strong{
+            color:#0d2438!important;
+            margin:0!important;
+            line-height:1.08!important;
+            font-size:16px!important;
+          }
+          [data-contract-pdf-capture] .cw-cover-info > .cw-system-power{
+            background:#123b5c!important;
+            background-image:none!important;
+            border:1px solid #123b5c!important;
+            border-left:5px solid #ffb703!important;
+            box-shadow:none!important;
+          }
+          [data-contract-pdf-capture] .cw-cover-info > .cw-system-power > span,
+          [data-contract-pdf-capture] .cw-cover-info > .cw-system-power > strong{
+            color:#ffffff!important;
+          }
+          [data-contract-pdf-capture] .cw-cover-info > .cw-system-power > strong{
+            font-size:18px!important;
+            font-weight:900!important;
+          }
+        `;
+        doc.head.appendChild(captureStyle);
         try{
           for(let i=0;i<pages.length;i++){
             captureHost.innerHTML='';
@@ -6600,14 +6651,15 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
             await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
             const canvas=await window.html2canvas(clone,{scale:2,useCORS:true,allowTaint:false,backgroundColor:'#ffffff',logging:false,width:794,height:1123,windowWidth:794,windowHeight:1123,scrollX:0,scrollY:0});
             if(!canvas.width||!canvas.height)throw new Error(`Falha ao renderizar a página ${i+1}.`);
-            const image=canvas.toDataURL('image/jpeg',0.96);
+            const image=canvas.toDataURL('image/png');
             if(i>0)pdf.addPage([A4_W,A4_H],'portrait');
-            pdf.addImage(image,'JPEG',0,0,A4_W,A4_H,undefined,'FAST');
+            pdf.addImage(image,'PNG',0,0,A4_W,A4_H,undefined,'FAST');
             compactPrintBtn.textContent=`Gerando PDF ${i+1}/${pages.length}`;
             await new Promise(resolve=>setTimeout(resolve,20));
           }
         }finally{
           captureHost.remove();
+          captureStyle.remove();
         }
         const filename=`contrato-soolarwin-${slugify(contract.clientName||contract.id)}.pdf`;
         pdf.save(filename);
