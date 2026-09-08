@@ -3454,7 +3454,7 @@ service cloud.firestore {
       schedule: [
         ['Projeto','Levantamento e projeto executivo','2 dias'], ['Homologação','Protocolo junto à distribuidora','15 a 30 dias'], ['Compras','Aquisição e separação dos equipamentos','5 dias'], ['Instalação','Montagem mecânica e elétrica','2 dias'], ['Vistoria','Inspeção da distribuidora','7 a 15 dias'], ['Troca do medidor','Substituição por medidor bidirecional','Até 7 dias'], ['Operação','Ativação, treinamento e monitoramento','Imediato']
       ],
-      guarantees: { panels:'12 anos produto / 30 anos desempenho', inverters:'10 anos', structure:'10 anos', installation:'5 anos' },
+      guarantees: { panels:'12 anos produto / 30 anos desempenho', inverters:'10 anos', structure:'10 anos', installation:'1 ano' },
       acceptance:null, seller:{ name:'Lucas Machado', email:'lucas@solarprime.com.br' }, updatedAt:new Date().toISOString()
     };
   }
@@ -6361,7 +6361,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
       ['Módulos fotovoltaicos',guarantees.panels||'Conforme fabricante e proposta comercial'],
       ['Inversores',guarantees.inverters||'Conforme fabricante e proposta comercial'],
       ['Estrutura de fixação',guarantees.structure||'Conforme fabricante e proposta comercial'],
-      ['Instalação',guarantees.installation||'Conforme condições comerciais aprovadas']
+      ['Instalação','1 ano']
     ];
     const header=page=>`<header class="cw-head"><div class="cw-brand"><img src="${attr(contractLogoBlack)}" alt="SoolarWin"></div><div class="cw-contact"><strong>${escapeHtml(companyAddress)}</strong><span>${escapeHtml(companyContact)}</span><span>${escapeHtml(companyDoc)}</span></div><div class="cw-mark">SW</div></header>`;
     const footer=page=>`<footer class="cw-foot"><span>${escapeHtml(companyName)} - Contrato comercial</span><strong>${page}</strong></footer>`;
@@ -6447,14 +6447,14 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
       .cw-clause + .cw-clause{margin-top:0!important}
       .cw-system-power span,.cw-system-power strong{color:#fff!important}
       @media print{
-        body{background:#fff}.cw-actions{display:none!important}.cw-page{margin:0;box-shadow:none;page-break-after:always}.cw-page:last-child{page-break-after:auto}.cw-page.final{page-break-before:always;break-before:page}.cw-page.final .cw-final-block{break-inside:avoid-page;page-break-inside:avoid}
+        html,body{margin:0!important;padding:0!important;background:#fff!important}.cw-actions{display:none!important}.cw-page{width:210mm!important;height:296.4mm!important;min-height:296.4mm!important;max-height:296.4mm!important;margin:0!important;box-shadow:none!important;overflow:hidden!important;break-before:auto!important;page-break-before:auto!important;break-after:page!important;page-break-after:always!important}.cw-page:last-child{break-after:auto!important;page-break-after:auto!important}.cw-page.final{break-before:auto!important;page-break-before:auto!important}.cw-page.final .cw-final-block{break-inside:avoid-page!important;page-break-inside:avoid!important}
         /* PDF compacto adaptativo: fluxo contínuo, sem cortar conteúdo */
         @page cw-cover{size:A4 portrait;margin:0}
         @page cw-content{size:A4 portrait;margin:12mm 13mm 12mm}
         @page cw-final{size:A4 portrait;margin:12mm 13mm 12mm}
         body.cw-compact-print{background:#fff!important;overflow:visible!important}
         body.cw-compact-print .cw-page.cover{
-          page:cw-cover;width:210mm!important;height:297mm!important;min-height:297mm!important;
+          page:cw-cover;width:210mm!important;height:296.4mm!important;min-height:296.4mm!important;max-height:296.4mm!important;
           margin:0!important;padding:35mm 20mm 18mm!important;overflow:hidden!important;
           page-break-after:always!important;break-after:page!important;box-shadow:none!important
         }
@@ -6568,21 +6568,46 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
         if(!window.jspdf?.jsPDF||!window.html2canvas)throw new Error('Bibliotecas de geração de PDF indisponíveis.');
         const doc=frame?.contentDocument||frame?.contentWindow?.document;
         if(!doc)throw new Error('A pré-visualização do contrato ainda não está pronta.');
-        const pages=[...doc.querySelectorAll('.cw-page')];
+        const pages=[...doc.querySelectorAll('.cw-page')].filter(page=>{
+          const text=String(page.innerText||'').replace(/\s+/g,'').trim();
+          return Boolean(text||page.querySelector('img,table,.cw-cover-logo,.cw-signatures'));
+        });
         if(!pages.length)throw new Error('Nenhuma página do contrato foi encontrada.');
         compactPrintBtn.disabled=true;
         const originalText=compactPrintBtn.textContent;
         compactPrintBtn.textContent='Gerando PDF...';
         const {jsPDF}=window.jspdf;
-        const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
-        for(let i=0;i<pages.length;i++){
-          const page=pages[i];
-          const canvas=await window.html2canvas(page,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false,windowWidth:794,windowHeight:1123});
-          const image=canvas.toDataURL('image/jpeg',0.96);
-          if(i>0)pdf.addPage('a4','portrait');
-          pdf.addImage(image,'JPEG',0,0,210,297,undefined,'FAST');
-          compactPrintBtn.textContent=`Gerando PDF ${i+1}/${pages.length}`;
-          await new Promise(resolve=>setTimeout(resolve,20));
+        // A4 em pontos evita o arredondamento de 210x297 mm que em alguns navegadores
+        // criava uma folha extra em branco entre as páginas renderizadas.
+        const A4_W=595.28,A4_H=841.89;
+        const pdf=new jsPDF({orientation:'portrait',unit:'pt',format:[A4_W,A4_H],compress:true,hotfixes:['px_scaling']});
+        const captureHost=doc.createElement('div');
+        captureHost.setAttribute('data-contract-pdf-capture','1');
+        Object.assign(captureHost.style,{position:'fixed',left:'-10000px',top:'0',width:'794px',height:'1123px',margin:'0',padding:'0',background:'#fff',overflow:'hidden',zIndex:'-1'});
+        doc.body.appendChild(captureHost);
+        try{
+          for(let i=0;i<pages.length;i++){
+            captureHost.innerHTML='';
+            const clone=pages[i].cloneNode(true);
+            clone.style.margin='0';
+            clone.style.width='794px';
+            clone.style.height='1123px';
+            clone.style.minHeight='1123px';
+            clone.style.maxHeight='1123px';
+            clone.style.boxShadow='none';
+            clone.style.overflow='hidden';
+            captureHost.appendChild(clone);
+            await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+            const canvas=await window.html2canvas(clone,{scale:2,useCORS:true,allowTaint:false,backgroundColor:'#ffffff',logging:false,width:794,height:1123,windowWidth:794,windowHeight:1123,scrollX:0,scrollY:0});
+            if(!canvas.width||!canvas.height)throw new Error(`Falha ao renderizar a página ${i+1}.`);
+            const image=canvas.toDataURL('image/jpeg',0.96);
+            if(i>0)pdf.addPage([A4_W,A4_H],'portrait');
+            pdf.addImage(image,'JPEG',0,0,A4_W,A4_H,undefined,'FAST');
+            compactPrintBtn.textContent=`Gerando PDF ${i+1}/${pages.length}`;
+            await new Promise(resolve=>setTimeout(resolve,20));
+          }
+        }finally{
+          captureHost.remove();
         }
         const filename=`contrato-soolarwin-${slugify(contract.clientName||contract.id)}.pdf`;
         pdf.save(filename);
@@ -8795,7 +8820,7 @@ ${company.tradeName||company.name}`:''}`;
     const workPhotos=(Array.isArray(company.workPhotos)?company.workPhotos:[]).filter(Boolean).slice(0,4);const hasWorkGallery=workPhotos.length>0;
     const additionalItems=normalizeProposalAdditionalItems(p.additionalItems).filter(item=>item.description);const additionalItemChunks=chunkProposalAdditionalItems(additionalItems,12);const additionalItemPageCount=additionalItemChunks.length;
     const proposalSchedule=normalizeProposalSchedule(p.schedule).filter(row=>row.some(value=>String(value||'').trim()));
-    const proposalGuarantees={panels:'12 anos produto / 30 anos desempenho',inverters:'10 anos',structure:'10 anos',installation:'5 anos',...(p.guarantees||{})};
+    const proposalGuarantees={panels:'12 anos produto / 30 anos desempenho',inverters:'10 anos',structure:'10 anos',...(p.guarantees||{}),installation:'1 ano'};
     const hasFinancing=String(p.commercial?.paymentMethod||'').toLowerCase().includes('financi');const summaryPage=2;const worksPage=hasWorkGallery?3:null;const diagnosisPage=hasWorkGallery?4:3;const technicalPage=diagnosisPage+1;const evPage=hasEvCharger?technicalPage+1:null;const additionalItemsFirstPage=technicalPage+(hasEvCharger?1:0)+1;const financialPage=additionalItemsFirstPage+additionalItemPageCount;const financingPage=hasFinancing?financialPage+1:null;const scheduleGuaranteePage=(financingPage||financialPage)+1;const finalPage=scheduleGuaranteePage+1;const totalPages=finalPage;const safe=v=>escapeHtml(v||'—');
     const footer=page=>`<div class="vp-footer"><span>${safe(companyName)} · ${safe(company.website||company.email||'')}</span><span>Proposta comercial confidencial · ${page}/${totalPages}</span></div>`;
     const header=(page,title,subtitle)=>`<div class="vp-bg-blob top"></div><div class="vp-bg-blob bottom"></div><div class="vp-inner"><div class="vp-header"><div><span class="vp-kicker">Proposta comercial</span><h2>${escapeHtml(title)}</h2><p>${escapeHtml(subtitle)}</p></div><div class="vp-page-badge">PÁGINA ${page}</div></div>`;
