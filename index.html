@@ -4584,6 +4584,148 @@ service cloud.firestore {
     syncRecordToFirebase('notifications',record);
     return record;
   }
+
+
+  // ---------- Notificações Comercial ↔ Engenharia (somente vendas fechadas) ----------
+  function notificationIdentity(value=''){
+    return String(value||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  }
+  function currentNotificationViewerKey(){
+    return String(state.currentUser?.id||window.FirebaseCRM?.auth?.currentUser?.uid||state.currentUser?.email||state.currentUser?.name||'usuario');
+  }
+  function currentUserIsEngineering(){
+    const u=state.currentUser||{};
+    const role=notificationIdentity(state.role||u.role||u.permission||'');
+    const descriptor=notificationIdentity([u.jobTitle,u.team,u.bio].filter(Boolean).join(' '));
+    return role==='technical'||/(engenh|projet|homolog|tecnic)/.test(descriptor);
+  }
+  function engineeringMemberLike(member={}){
+    if(String(member.status||'Ativo').toLowerCase()==='inativo')return false;
+    const role=notificationIdentity(member.role||member.permission||'');
+    const descriptor=notificationIdentity([member.jobTitle,member.role,member.team,member.bio].filter(Boolean).join(' '));
+    return role==='technical'||/(engenh|projet|homolog)/.test(descriptor);
+  }
+  function engineeringNotificationRecipients(){
+    const source=[...(state.users||[]),...companyRows('teams')];
+    const seen=new Set();
+    return source.filter(member=>{
+      const companyIds=Array.isArray(member.companyIds)?member.companyIds:[];
+      const belongs=!member.companyId&&!companyIds.length||member.companyId===state.currentCompanyId||companyIds.includes(state.currentCompanyId);
+      return belongs&&engineeringMemberLike(member);
+    }).map(member=>{
+      const id=String(member.id||member.uid||'').trim();
+      const email=String(member.email||'').trim();
+      const name=String(member.name||'').trim();
+      const key=notificationIdentity(id||email||name);
+      if(!key||seen.has(key))return null;
+      seen.add(key);
+      return {id,email,name};
+    }).filter(Boolean);
+  }
+  function notificationVisibleToCurrentUser(notification={}){
+    if(notification.companyId&&notification.companyId!==state.currentCompanyId)return false;
+    if(!notification.targeted)return true;
+    const u=state.currentUser||{};
+    const uid=notificationIdentity(u.id||window.FirebaseCRM?.auth?.currentUser?.uid||'');
+    const email=notificationIdentity(u.email||window.FirebaseCRM?.auth?.currentUser?.email||'');
+    const name=notificationIdentity(u.name||'');
+    if(notification.recipientId&&notificationIdentity(notification.recipientId)===uid)return true;
+    if(notification.recipientEmail&&notificationIdentity(notification.recipientEmail)===email)return true;
+    if(notification.recipientName&&notificationIdentity(notification.recipientName)===name)return true;
+    if(notification.recipientDepartment==='engineering'&&currentUserIsEngineering())return true;
+    return false;
+  }
+  function notificationUnreadForCurrentUser(notification={}){
+    if(notification.targeted){
+      const key=currentNotificationViewerKey();
+      return !(Array.isArray(notification.readBy)&&notification.readBy.includes(key));
+    }
+    return !notification.read;
+  }
+  function visibleNotifications(){
+    return companyRows('notifications').filter(notificationVisibleToCurrentUser).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+  }
+  function markNotificationReadForCurrentUser(notification){
+    if(!notification)return;
+    if(notification.targeted){
+      const key=currentNotificationViewerKey();
+      notification.readBy=Array.isArray(notification.readBy)?notification.readBy:[];
+      if(!notification.readBy.includes(key))notification.readBy.push(key);
+    }else notification.read=true;
+    syncRecordToFirebase('notifications',notification);
+  }
+  function addTargetedNotification({title,text,type='info',recipientId='',recipientEmail='',recipientName='',recipientDepartment='',sourceArea='',leadId='',projectId='',proposalId='',targetView='kanban',targetMode=''}){
+    const record={id:newId('n'),companyId:state.currentCompanyId,title,text,type,targeted:true,recipientId,recipientEmail,recipientName,recipientDepartment,sourceArea,leadId,projectId,proposalId,targetView,targetMode,readBy:[],read:false,createdAt:new Date().toISOString(),createdBy:state.currentUser?.name||state.currentUser?.email||'Sistema'};
+    state.notifications.unshift(record);
+    syncRecordToFirebase('notifications',record);
+    return record;
+  }
+  function closedLeadForWork(work={}){
+    const name=notificationIdentity(work.clientName||'');
+    return companyRows('leads').find(lead=>lead.stage==='Fechado'&&(
+      (work.leadId&&lead.id===work.leadId)||
+      (work.proposalId&&lead.proposalId===work.proposalId)||
+      (name&&notificationIdentity(lead.name)===name)
+    ))||null;
+  }
+  function closedLeadForProposal(proposal={}){
+    const name=notificationIdentity(proposal.client?.name||'');
+    return companyRows('leads').find(lead=>lead.stage==='Fechado'&&(
+      lead.proposalId===proposal.id||
+      (proposal.client?.email&&notificationIdentity(lead.email)===notificationIdentity(proposal.client.email))||
+      (name&&notificationIdentity(lead.name)===name)
+    ))||null;
+  }
+  function currentUserOwnsClosedLead(lead={}){
+    if(!lead||lead.stage!=='Fechado')return false;
+    const owner=notificationIdentity(lead.owner||'');
+    if(!owner)return false;
+    const u=state.currentUser||{};
+    return [u.id,u.name,u.email].some(value=>value&&notificationIdentity(value)===owner);
+  }
+  function resolveCardOwner(lead={}){
+    const owner=notificationIdentity(lead.owner||'');
+    const candidates=[...(state.users||[]),...companyRows('teams')];
+    const member=candidates.find(item=>[item.id,item.name,item.email].some(value=>value&&notificationIdentity(value)===owner));
+    return {id:String(member?.id||member?.uid||'').trim(),email:String(member?.email||'').trim(),name:String(member?.name||lead.owner||'').trim()};
+  }
+  function notifyCommercialOwnerFromEngineering(work,detail='Projeto atualizado'){
+    if(!currentUserIsEngineering())return 0;
+    const lead=closedLeadForWork(work);if(!lead)return 0;
+    const owner=resolveCardOwner(lead);
+    const actor=notificationIdentity(state.currentUser?.id||state.currentUser?.email||state.currentUser?.name||'');
+    if([owner.id,owner.email,owner.name].some(v=>v&&notificationIdentity(v)===actor))return 0;
+    addTargetedNotification({
+      title:'Engenharia atualizou uma venda fechada',
+      text:`${work.clientName||lead.name}: ${detail}`,
+      type:'info',recipientId:owner.id,recipientEmail:owner.email,recipientName:owner.name,
+      sourceArea:'engineering',leadId:lead.id,projectId:work.id,proposalId:work.proposalId||lead.proposalId||'',targetView:'kanban',targetMode:'commercial'
+    });
+    return 1;
+  }
+  function notifyEngineeringFromCommercial(lead,detail='Dados comerciais atualizados'){
+    if(!lead||lead.stage!=='Fechado'||!currentUserOwnsClosedLead(lead))return 0;
+    const work=companyRows('works').find(item=>item.leadId===lead.id||(lead.proposalId&&item.proposalId===lead.proposalId)||notificationIdentity(item.clientName)===notificationIdentity(lead.name));
+    const recipients=engineeringNotificationRecipients();
+    const payload={title:'Comercial atualizou uma venda fechada',text:`${lead.name}: ${detail}`,type:'info',sourceArea:'commercial',leadId:lead.id,projectId:work?.id||'',proposalId:lead.proposalId||work?.proposalId||'',targetView:'kanban',targetMode:'projects'};
+    if(recipients.length){
+      recipients.forEach(recipient=>addTargetedNotification({...payload,recipientId:recipient.id,recipientEmail:recipient.email,recipientName:recipient.name}));
+      return recipients.length;
+    }
+    addTargetedNotification({...payload,recipientDepartment:'engineering'});
+    return 1;
+  }
+  function changedRecordFields(before={},after={},keys=[]){
+    return keys.filter(key=>JSON.stringify(before?.[key]??'')!==JSON.stringify(after?.[key]??''));
+  }
+  function engineeringProposalFingerprint(proposal={}){
+    const clone=deepClone(proposal||{});
+    ['commercial','acceptance','publishedAt','publicUrl','updatedAt','createdAt','status','seller','number','id','companyId','origin'].forEach(key=>delete clone[key]);
+    return JSON.stringify(clone);
+  }
+  function unreadCardNotificationCount({leadId='',projectId='',sourceArea=''}){
+    return visibleNotifications().filter(n=>notificationUnreadForCurrentUser(n)&&(!leadId||n.leadId===leadId)&&(!projectId||n.projectId===projectId)&&(!sourceArea||n.sourceArea===sourceArea)).length;
+  }
   function templateText(template,values={}){
     return String(template||'').replace(/\{([a-zA-Z0-9_]+)\}/g,(_,key)=>values[key]??'');
   }
@@ -5084,8 +5226,10 @@ service cloud.firestore {
     document.getElementById('viewTitle').textContent=item?.label||'SolarCRM';
     document.getElementById('companyBreadcrumb').textContent=state.company.tradeName||state.company.name;
     document.getElementById('roleSwitcher').value=state.role||'admin';
-    document.getElementById('notificationCount').textContent=companyRows('notifications').filter(n=>!n.read).length;
-    document.getElementById('notificationCount').style.display=companyRows('notifications').some(n=>!n.read)?'grid':'none';
+    const userNotifications=visibleNotifications();
+    const unreadNotifications=userNotifications.filter(notificationUnreadForCurrentUser);
+    document.getElementById('notificationCount').textContent=unreadNotifications.length;
+    document.getElementById('notificationCount').style.display=unreadNotifications.length?'grid':'none';
     const userButton=document.getElementById('userMenuBtn');
     if(state.currentUser.avatar){userButton.innerHTML=`<img src="${state.currentUser.avatar}" alt="${attr(state.currentUser.name||'Usuário')}">`;}else userButton.textContent=state.currentUser.initials||initials(state.currentUser.name)||'US';
   }
@@ -5272,11 +5416,12 @@ service cloud.firestore {
   function renderCommercialKanban(tabs=''){
     const leads=filteredRows('leads');
     const total=sum(leads.filter(l=>!['Fechado','Perdido'].includes(l.stage)).map(l=>l.estimatedValue));
+    const unreadEngineeringUpdates=visibleNotifications().filter(n=>notificationUnreadForCurrentUser(n)&&n.sourceArea==='engineering');
     return `${pageHead('Kanban','Acompanhe o funil comercial e as etapas operacionais dos projetos.',`<button class="btn btn-primary" data-action="new-lead">＋ Novo lead</button>`)}${tabs}
       <div class="pipeline-summary"><div class="pipeline-pill"><span>Pipeline aberto</span><strong>${currency(total,0)}</strong></div><div class="pipeline-pill"><span>Oportunidades</span><strong>${leads.filter(l=>!['Fechado','Perdido'].includes(l.stage)).length}</strong></div><div class="pipeline-pill"><span>Fechados</span><strong>${leads.filter(l=>l.stage==='Fechado').length}</strong></div><div class="pipeline-pill"><span>Ticket médio</span><strong>${currency(leads.length?sum(leads.map(l=>l.estimatedValue))/leads.length:0,0)}</strong></div></div>
       <div class="kanban-wrap"><div class="kanban">${pipelineStages.map(stage=>{
         const stageLeads=leads.filter(l=>l.stage===stage.id);
-        return `<section class="kanban-column lead-kanban-column" data-stage="${stage.id}"><div class="kanban-head"><strong>${escapeHtml(stage.id)}</strong><span class="kanban-count">${stageLeads.length}</span></div><div class="kanban-body">${stageLeads.map(l=>`<article class="kanban-card lead-kanban-card" draggable="true" data-id="${l.id}"><div class="kanban-card-top"><strong>${escapeHtml(l.name)}</strong><span class="lead-score">${number(l.score||0)}</span></div><p>${escapeHtml(l.city||'Sem cidade')} · ${escapeHtml(l.source||'Origem não informada')}</p><div class="kanban-card-foot"><span>${currency(l.estimatedValue||0,0)}</span><span>${escapeHtml(l.owner||'Sem responsável')}</span></div><select class="kanban-stage-select" data-kanban-stage="${l.id}" aria-label="Alterar etapa de ${attr(l.name)}">${pipelineStages.map(option=>`<option value="${attr(option.id)}" ${option.id===l.stage?'selected':''}>${escapeHtml(option.id)}</option>`).join('')}</select></article>`).join('')}</div></section>`;
+        return `<section class="kanban-column lead-kanban-column" data-stage="${stage.id}"><div class="kanban-head"><strong>${escapeHtml(stage.id)}</strong><span class="kanban-count">${stageLeads.length}</span></div><div class="kanban-body">${stageLeads.map(l=>{const engUnread=unreadEngineeringUpdates.filter(n=>n.leadId===l.id).length;return `<article class="kanban-card lead-kanban-card" draggable="true" data-id="${l.id}"><div class="kanban-card-top"><strong>${escapeHtml(l.name)}</strong><span class="lead-score">${number(l.score||0)}</span></div><p>${escapeHtml(l.city||'Sem cidade')} · ${escapeHtml(l.source||'Origem não informada')}</p>${engUnread?`<div style="margin:7px 0;padding:7px 9px;border-radius:9px;background:rgba(77,163,255,.12);border:1px solid rgba(77,163,255,.35);font-size:9px;font-weight:900;color:var(--text)">⚙ Engenharia atualizou · ${engUnread} aviso${engUnread>1?'s':''}</div>`:''}<div class="kanban-card-foot"><span>${currency(l.estimatedValue||0,0)}</span><span>${escapeHtml(l.owner||'Sem responsável')}</span></div><select class="kanban-stage-select" data-kanban-stage="${l.id}" aria-label="Alterar etapa de ${attr(l.name)}">${pipelineStages.map(option=>`<option value="${attr(option.id)}" ${option.id===l.stage?'selected':''}>${escapeHtml(option.id)}</option>`).join('')}</select></article>`;}).join('')}</div></section>`;
       }).join('')}</div></div>`;
   }
 
@@ -5284,6 +5429,7 @@ service cloud.firestore {
     const works=filteredRows('works');
     const docs=companyRows('projectDocuments');
     const tasks=companyRows('tasks');
+    const unreadCommercialUpdates=visibleNotifications().filter(n=>notificationUnreadForCurrentUser(n)&&n.sourceArea==='commercial');
     const delayed=works.filter(work=>work.deadline&&work.deadline<todayISO()&&normalizeProjectStage(work.projectStage)!=='Operação').length;
     return `${pageHead('Kanban','Cada projeto percorre as sete etapas do pós-venda e possui Kanban, tarefas e dossiê próprios.',`<button class="btn btn-primary" data-action="add-entity" data-collection="works">＋ Novo projeto</button>`)}${tabs}
       <div class="pipeline-summary"><div class="pipeline-pill"><span>Projetos ativos</span><strong>${works.filter(w=>normalizeProjectStage(w.projectStage)!=='Operação').length}</strong></div><div class="pipeline-pill"><span>Concluídos</span><strong>${works.filter(w=>normalizeProjectStage(w.projectStage)==='Operação').length}</strong></div><div class="pipeline-pill"><span>Documentos</span><strong>${docs.length}</strong></div><div class="pipeline-pill"><span>Atrasados</span><strong style="color:${delayed?'var(--red)':'var(--green)'}">${delayed}</strong></div></div>
@@ -5291,7 +5437,8 @@ service cloud.firestore {
         const rows=works.filter(work=>normalizeProjectStage(work.projectStage)===stage.id);
         return `<section class="kanban-column project-portfolio-column" data-project-stage="${attr(stage.id)}"><div class="kanban-head"><strong>${escapeHtml(stage.id)}</strong><span class="kanban-count">${rows.length}</span></div><div class="kanban-body">${rows.map(work=>{
           const docCount=docs.filter(doc=>doc.projectId===work.id).length;const taskRows=tasks.filter(task=>task.projectId===work.id);const completed=taskRows.filter(task=>task.status==='Concluída').length;
-          return `<article class="kanban-card project-kanban-card" draggable="true" data-project-id="${work.id}"><div class="kanban-card-top"><strong>${escapeHtml(work.clientName)}</strong><span class="status ${colorClass(stage.id)}">${number(work.progress||stage.progress)}%</span></div><div class="project-power">${number(work.systemPower,2)} kWp</div><p>${escapeHtml(work.city||'Cidade não informada')} · ${escapeHtml(work.team||'Equipe a definir')}</p><div class="kanban-card-foot"><span>▤ ${docCount} docs</span><span>✓ ${completed}/${taskRows.length||7} tarefas</span></div><select class="kanban-stage-select" data-project-stage-select="${work.id}">${projectStages.map(option=>`<option value="${attr(option.id)}" ${option.id===stage.id?'selected':''}>${escapeHtml(option.id)}</option>`).join('')}</select><div class="project-card-actions"><button class="btn btn-primary btn-sm" data-action="open-project" data-id="${work.id}" type="button">Abrir projeto</button><button class="btn btn-ghost btn-sm" data-action="project-documents" data-id="${work.id}" type="button">Documentos</button></div></article>`;
+          const commercialUnread=unreadCommercialUpdates.filter(n=>n.projectId===work.id||(!n.projectId&&n.leadId&&closedLeadForWork(work)?.id===n.leadId)).length;
+          return `<article class="kanban-card project-kanban-card" draggable="true" data-project-id="${work.id}"><div class="kanban-card-top"><strong>${escapeHtml(work.clientName)}</strong><span class="status ${colorClass(stage.id)}">${number(work.progress||stage.progress)}%</span></div><div class="project-power">${number(work.systemPower,2)} kWp</div><p>${escapeHtml(work.city||'Cidade não informada')} · ${escapeHtml(work.team||'Equipe a definir')}</p>${commercialUnread?`<div style="margin:7px 0;padding:7px 9px;border-radius:9px;background:rgba(255,194,71,.13);border:1px solid rgba(255,194,71,.38);font-size:9px;font-weight:900;color:var(--text)">↔ Comercial atualizou · ${commercialUnread} aviso${commercialUnread>1?'s':''}</div>`:''}<div class="kanban-card-foot"><span>▤ ${docCount} docs</span><span>✓ ${completed}/${taskRows.length||7} tarefas</span></div><select class="kanban-stage-select" data-project-stage-select="${work.id}">${projectStages.map(option=>`<option value="${attr(option.id)}" ${option.id===stage.id?'selected':''}>${escapeHtml(option.id)}</option>`).join('')}</select><div class="project-card-actions"><button class="btn btn-primary btn-sm" data-action="open-project" data-id="${work.id}" type="button">Abrir projeto</button><button class="btn btn-ghost btn-sm" data-action="project-documents" data-id="${work.id}" type="button">Documentos</button></div></article>`;
         }).join('')}</div></section>`;
       }).join('')}</div></div>`;
   }
@@ -5299,9 +5446,10 @@ service cloud.firestore {
   function updateLeadStage(leadId,stage){
     if(!hasPermission('leads','edit')){denyPermission('leads','edit');renderView('kanban');return;}
     const lead=getCompanyRecord('leads',leadId);if(!lead||!pipelineStages.some(item=>item.id===stage))return;
-    const previous=lead.stage;lead.stage=stage;lead.updatedAt=new Date().toISOString();
+    const previous=lead.stage;const wasOwnedByCurrentUser=currentUserOwnsClosedLead({...lead,stage:'Fechado'});lead.stage=stage;lead.updatedAt=new Date().toISOString();
     let closure=null;
     if(stage==='Fechado') closure=ensureLeadClosedWorkflows(lead,previous);
+    if(wasOwnedByCurrentUser&&(stage==='Fechado'||previous==='Fechado'))notifyEngineeringFromCommercial({...lead,stage:'Fechado'},`etapa comercial alterada de ${previous} para ${stage}`);
     addActivity('◎','Lead avançou no funil',`${lead.name}: ${previous} → ${stage}`);persist();syncRecordToFirebase('leads',lead);renderView('kanban');renderSidebar();
     toast('Etapa atualizada',closure?`${lead.name} → ${stage}. Contrato e homologação criados automaticamente.`:`${lead.name} → ${stage}`);
   }
@@ -5392,6 +5540,7 @@ service cloud.firestore {
     if(stageId==='Operação'){projectTasksFor(projectId).forEach(task=>{task.status='Concluída';task.updatedAt=new Date().toISOString();syncRecordToFirebase('tasks',task);});work.progress=100;work.status='Concluída';ensureAfterSalesFromWork(work);}
     if(previous!==stageId&&work.portalPublishedAt)publishClientPortalStatus(work,{silent:true});
     if(previous!==stageId)executeAutomationRules('project_stage_enter',work,{stage:stageId,previous,eventKey:`project-stage-${projectId}-${stageId}-${Date.now()}`});
+    if(previous!==stageId)notifyCommercialOwnerFromEngineering(work,`etapa da Engenharia alterada de ${previous} para ${stageId}`);
     addActivity('⌁','Projeto avançou',`${work.clientName}: ${previous} → ${stageId}`);persist();syncRecordToFirebase('works',work);if(notify)toast('Etapa do projeto atualizada',`${work.clientName} → ${stageId}`);if(render){renderSidebar();if(activeView==='kanban')renderView('kanban');if(activeProjectId===projectId)renderProjectWorkspace();}
   }
 
@@ -6341,6 +6490,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     const fd=new FormData(event.currentTarget); const record={};
     schema.fields.forEach(([key,,type])=>{ const raw=fd.get(key); record[key]=type==='number'?(raw===''?'':Number(raw)):raw; });
     const previous=id?(state[collection]||[]).find(r=>r.id===id):null;
+    const previousSnapshot=previous?deepClone(previous):null;
     if(collection==='equipmentCatalog')Object.assign(record,normalizeEquipmentRecord(record));
     record.id=id||newId(collection==='equipmentCatalog'?(record.type==='Inversor'?'inv':'mod'):collection.slice(0,3)); record.companyId=state.currentCompanyId; record.updatedAt=new Date().toISOString(); if(!id)record.createdAt=todayISO();
     if(collection==='commissions' && !record.value && record.proposalValue && record.percentage) record.value=record.proposalValue*record.percentage/100;
@@ -6369,10 +6519,26 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     }
     if(collection==='works'){
       const saved=state.works.find(item=>item.id===record.id);
-      if(previous&&normalizeProjectStage(previous.projectStage)!==normalizeProjectStage(saved.projectStage))updateProjectStage(saved.id,saved.projectStage,{render:false,notify:false});
-      else ensureProjectStructure(saved);
+      const stageChanged=previousSnapshot&&normalizeProjectStage(previousSnapshot.projectStage)!==normalizeProjectStage(saved.projectStage);
+      if(stageChanged){
+        updateProjectStage(saved.id,saved.projectStage,{render:false,notify:false});
+        if(currentUserIsEngineering())notifyCommercialOwnerFromEngineering(saved,`etapa da Engenharia alterada de ${normalizeProjectStage(previousSnapshot.projectStage)} para ${normalizeProjectStage(saved.projectStage)}`);
+      }else ensureProjectStructure(saved);
+      if(previousSnapshot&&!stageChanged&&currentUserIsEngineering()){
+        const changed=changedRecordFields(previousSnapshot,saved,['clientName','clientDocument','city','systemPower','team','startDate','deadline','status','notes','clientPortalMessage']);
+        if(changed.length)notifyCommercialOwnerFromEngineering(saved,`dados do card de Engenharia alterados (${changed.join(', ')})`);
+      }
       if(saved.portalPublishedAt)publishClientPortalStatus(saved,{silent:true});
       if(saved.status==='Concluída'||saved.projectStage==='Operação')ensureAfterSalesFromWork(saved);
+    }
+    if(collection==='leads'&&previousSnapshot){
+      const savedLead=state.leads.find(item=>item.id===record.id);
+      const wasClosed=previousSnapshot.stage==='Fechado',isClosed=savedLead?.stage==='Fechado';
+      const ownerReference={...(isClosed?savedLead:previousSnapshot),stage:'Fechado'};
+      if((wasClosed||isClosed)&&currentUserOwnsClosedLead(ownerReference)){
+        const changed=changedRecordFields(previousSnapshot,savedLead,['stage','name','phone','email','city','estimatedValue','notes','proposalId']);
+        if(changed.length)notifyEngineeringFromCommercial(ownerReference,`dados do card comercial alterados (${changed.join(', ')})`);
+      }
     }
     addActivity('✓',`${schema.title} ${id?'atualizado':'criado'}`,record.name||record.clientName||record.subject||record.description||record.id);
     if(collection==='equipmentCatalog')refreshEquipmentCatalog();
@@ -6879,11 +7045,22 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
   }
 
   function showNotifications(){
-    companyRows('notifications').forEach(n=>n.read=true);persist();updateTopbar();
-    const rows=companyRows('notifications');
-    const html=`${rows.length?rows.map(n=>`<div class="activity-item"><div class="activity-avatar">${n.type==='error'?'!':'♢'}</div><div class="activity-copy"><strong>${escapeHtml(n.title)}</strong><span>${escapeHtml(n.text)} · ${dateTimeBR(n.createdAt)}</span></div></div>`).join(''):'<div class="empty-state">Nenhuma notificação.</div>'}${rows.length?'<button class="btn btn-ghost" data-clear-notifications type="button" style="width:100%;margin-top:12px">Limpar notificações</button>':''}`;
+    const rows=visibleNotifications();
+    rows.forEach(markNotificationReadForCurrentUser);persist();updateTopbar();
+    const html=`${rows.length?rows.map(n=>`<div class="activity-item"><div class="activity-avatar">${n.type==='error'?'!':n.sourceArea==='engineering'?'⚙':n.sourceArea==='commercial'?'↔':'♢'}</div><div class="activity-copy"><strong>${escapeHtml(n.title)}</strong><span>${escapeHtml(n.text)} · ${dateTimeBR(n.createdAt)}</span>${n.targetView?`<button class="btn btn-ghost btn-sm" data-open-crm-notification="${n.id}" type="button" style="margin-top:7px">Abrir ${n.targetMode==='projects'?'na Engenharia':'no Comercial'}</button>`:''}</div></div>`).join(''):'<div class="empty-state">Nenhuma notificação para você.</div>'}${rows.length?'<button class="btn btn-ghost" data-mark-notifications-read type="button" style="width:100%;margin-top:12px">Marcar todas como lidas</button>':''}`;
     openDrawer('Notificações','Central de alertas',html);
-    document.querySelector('[data-clear-notifications]')?.addEventListener('click',()=>{state.notifications=state.notifications.filter(n=>n.companyId!==state.currentCompanyId);persist();updateTopbar();showNotifications();});
+    document.querySelectorAll('[data-open-crm-notification]').forEach(button=>button.addEventListener('click',()=>{
+      const n=state.notifications.find(item=>item.id===button.dataset.openCrmNotification);if(!n)return;
+      closeDrawer();
+      if(n.targetMode==='projects'){
+        kanbanMode='projects';state.kanbanMode='projects';navigate('kanban');
+        if(n.projectId)setTimeout(()=>document.querySelector(`[data-project-id="${CSS.escape(n.projectId)}"]`)?.scrollIntoView({behavior:'smooth',block:'center',inline:'center'}),80);
+      }else{
+        kanbanMode='commercial';state.kanbanMode='commercial';navigate('kanban');
+        if(n.leadId)setTimeout(()=>document.querySelector(`[data-id="${CSS.escape(n.leadId)}"]`)?.scrollIntoView({behavior:'smooth',block:'center',inline:'center'}),80);
+      }
+    }));
+    document.querySelector('[data-mark-notifications-read]')?.addEventListener('click',()=>{rows.forEach(markNotificationReadForCurrentUser);persist();updateTopbar();showNotifications();});
   }
 
   function showAutomationLog(){
@@ -8793,8 +8970,18 @@ ${historyText}`.trim(),historyText);
   async function saveActiveProposal(){
     const button=document.getElementById('proposalSaveBtn');
     const oldLabel=button?.textContent||'Salvar proposta';
+    const previousProposal=deepClone(state.proposals.find(item=>item.id===activeProposal?.id)||{});
+    const linkedClosedLead=closedLeadForProposal(activeProposal||{});
+    const engineeringChanged=Boolean(previousProposal?.id&&linkedClosedLead&&engineeringProposalFingerprint(previousProposal)!==engineeringProposalFingerprint(activeProposal));
     if(button){button.disabled=true;button.textContent='Salvando...';}
-    try{return await saveProposalRecord(activeProposal);}finally{if(button){button.disabled=false;button.textContent=oldLabel;}}
+    try{
+      const saved=await saveProposalRecord(activeProposal);
+      if(saved&&engineeringChanged&&currentUserOwnsClosedLead(linkedClosedLead)){
+        notifyEngineeringFromCommercial(linkedClosedLead,`proposta ${activeProposal.number||''} alterada após o fechamento da venda`);
+        persist();updateTopbar();
+      }
+      return saved;
+    }finally{if(button){button.disabled=false;button.textContent=oldLabel;}}
   }
 
   function buildCommercialProposalWhatsapp(proposal,link){
