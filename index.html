@@ -653,6 +653,8 @@ body[data-theme="light"] .ai-output { background:#f5f7fa; color:#25364a; }
 .document-drop{border:1px dashed var(--line-strong);border-radius:14px;padding:16px;background:var(--panel-2)}
 .document-drop input[type=file]{width:100%;margin-top:10px;color:var(--muted);font-size:10px}
 .document-filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.document-filter-row .compact-select{max-width:none}
+@media(max-width:1050px){[data-proposal-filter="name"]{min-width:0}.card-body>div[style*="grid-template-columns:minmax(220px"]{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:620px){.card-body>div[style*="grid-template-columns:minmax(220px"]{grid-template-columns:1fr!important}}
 .project-doc-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:14px}
 .project-doc-summary>div{padding:12px;border-radius:12px;background:var(--panel-2);border:1px solid var(--line)}.project-doc-summary span{display:block;color:var(--muted);font-size:9px}.project-doc-summary strong{display:block;margin-top:5px;font-size:16px}
 .profile-card{display:grid;grid-template-columns:150px minmax(0,1fr);gap:18px;align-items:start}
@@ -3490,7 +3492,7 @@ service cloud.firestore {
   let signaturePad = null;
   let settingsTab = 'company';
   let searchTerm = '';
-  let proposalFilters = { from:'', to:'', representative:'all', status:'open' };
+  let proposalFilters = { name:'', from:'', to:'', representative:'all', status:'open' };
   let kanbanMode = state.kanbanMode || 'commercial';
   let activeProjectId = null;
   let projectWorkspaceTab = 'overview';
@@ -5772,6 +5774,11 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
   function proposalFilterRows(baseRows=[]){
     return baseRows.filter(proposal=>{
       const date=proposalDateKey(proposal);
+      const nameTerm=String(proposalFilters.name||'').trim().toLowerCase();
+      if(nameTerm){
+        const proposalName=[proposal.client?.name,proposal.name,proposal.title,proposal.number,proposal.id].filter(Boolean).join(' ').toLowerCase();
+        if(!proposalName.includes(nameTerm))return false;
+      }
       if(proposalFilters.from && (!date || date<proposalFilters.from))return false;
       if(proposalFilters.to && (!date || date>proposalFilters.to))return false;
       if(proposalFilters.representative!=='all' && proposalOwnerKey(proposal)!==proposalFilters.representative)return false;
@@ -5795,7 +5802,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     });
     const representativeOptions=[...representativeMap.entries()].sort((a,b)=>String(a[1]).localeCompare(String(b[1]),'pt-BR'));
     const statusLabel=proposalFilters.status==='closed'?'Fechadas/aprovadas':proposalFilters.status==='all'?'Todas':'Não aprovadas';
-    const filters=`<section class="card" style="margin-bottom:16px"><div class="card-body" style="padding:14px 16px"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px"><div><strong style="font-size:12px">Filtros de propostas</strong><span style="display:block;color:var(--muted);font-size:9px;margin-top:3px">Por padrão são exibidas somente propostas ainda não aprovadas.</span></div><span class="status blue">${rows.length} de ${baseRows.length} exibida(s)</span></div><div class="grid grid-4" style="align-items:end"><label class="field"><span>Data inicial</span><input type="date" data-proposal-filter="from" value="${attr(proposalFilters.from)}"></label><label class="field"><span>Data final</span><input type="date" data-proposal-filter="to" value="${attr(proposalFilters.to)}"></label><label class="field"><span>Representante</span><select data-proposal-filter="representative"><option value="all">Todos os representantes</option>${representativeOptions.map(([key,label])=>`<option value="${attr(key)}" ${proposalFilters.representative===key?'selected':''}>${escapeHtml(label)}</option>`).join('')}</select></label><label class="field"><span>Status</span><select data-proposal-filter="status"><option value="open" ${proposalFilters.status==='open'?'selected':''}>Não aprovadas</option><option value="closed" ${proposalFilters.status==='closed'?'selected':''}>Fechadas / aprovadas</option><option value="all" ${proposalFilters.status==='all'?'selected':''}>Todas</option></select></label></div><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px"><small style="color:var(--muted)">Visualização atual: <strong style="color:var(--text)">${escapeHtml(statusLabel)}</strong></small><button class="btn btn-ghost btn-sm" data-proposal-filter-clear type="button">Limpar filtros</button></div></div></section>`;
+    const filters=`<section class="card" style="margin-bottom:16px"><div class="card-body" style="padding:14px 16px"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px"><div><strong style="font-size:12px">Filtros de propostas</strong><span style="display:block;color:var(--muted);font-size:9px;margin-top:3px">Por padrão são exibidas somente propostas ainda não aprovadas.</span></div><span class="status blue">${rows.length} de ${baseRows.length} exibida(s)</span></div><div style="display:grid;grid-template-columns:minmax(220px,1.45fr) repeat(4,minmax(145px,1fr));gap:10px;align-items:end"><label class="field"><span>Buscar proposta</span><input type="search" data-proposal-filter="name" value="${attr(proposalFilters.name||'')}" placeholder="Nome do cliente ou proposta" autocomplete="off"></label><label class="field"><span>Data inicial</span><input type="date" data-proposal-filter="from" value="${attr(proposalFilters.from)}"></label><label class="field"><span>Data final</span><input type="date" data-proposal-filter="to" value="${attr(proposalFilters.to)}"></label><label class="field"><span>Representante</span><select data-proposal-filter="representative"><option value="all">Todos os representantes</option>${representativeOptions.map(([key,label])=>`<option value="${attr(key)}" ${proposalFilters.representative===key?'selected':''}>${escapeHtml(label)}</option>`).join('')}</select></label><label class="field"><span>Status</span><select data-proposal-filter="status"><option value="open" ${proposalFilters.status==='open'?'selected':''}>Não aprovadas</option><option value="closed" ${proposalFilters.status==='closed'?'selected':''}>Fechadas / aprovadas</option><option value="all" ${proposalFilters.status==='all'?'selected':''}>Todas</option></select></label></div><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px"><small style="color:var(--muted)">Visualização atual: <strong style="color:var(--text)">${escapeHtml(statusLabel)}</strong></small><button class="btn btn-ghost btn-sm" data-proposal-filter-clear type="button">Limpar filtros</button></div></div></section>`;
     return `${pageHead('Propostas','Crie dimensionamentos e PDFs comerciais profissionais em 10 páginas.',`<button class="btn btn-ghost" data-action="equipment-bank">Banco de equipamentos</button>${hasPermission('proposals','create')?'<button class="btn btn-primary" data-action="new-proposal">＋ Nova proposta</button>':''}`)}
       ${filters}
       <div class="pipeline-summary"><div class="pipeline-pill"><span>Valor exibido</span><strong>${currency(total,0)}</strong></div><div class="pipeline-pill"><span>Não aprovadas</span><strong>${openRows.length}</strong></div><div class="pipeline-pill"><span>Fechadas / aprovadas</span><strong>${closedRows.length}</strong></div><div class="pipeline-pill"><span>Exibindo</span><strong>${rows.length} de ${baseRows.length}</strong></div></div>
@@ -6117,13 +6124,28 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     document.getElementById('automationRuleForm')?.addEventListener('submit',saveAutomationRule);
     document.querySelectorAll('[data-insert-rule-variable]').forEach(btn=>btn.addEventListener('click',()=>insertRuleVariable(btn.dataset.insertRuleVariable)));
     if(view==='proposals'){
-      document.querySelectorAll('[data-proposal-filter]').forEach(input=>input.addEventListener('change',()=>{
+      document.querySelectorAll('[data-proposal-filter]').forEach(input=>{
         const key=input.dataset.proposalFilter;
-        proposalFilters[key]=input.value||((key==='representative')?'all':(key==='status'?'open':''));
-        renderView('proposals');
-      }));
+        if(key==='name'){
+          input.addEventListener('input',()=>{
+            const value=input.value;
+            const cursor=input.selectionStart??value.length;
+            proposalFilters.name=value;
+            renderView('proposals');
+            requestAnimationFrame(()=>{
+              const next=document.querySelector('[data-proposal-filter="name"]');
+              if(next){next.focus();try{next.setSelectionRange(cursor,cursor);}catch(e){}}
+            });
+          });
+        }else{
+          input.addEventListener('change',()=>{
+            proposalFilters[key]=input.value||((key==='representative')?'all':(key==='status'?'open':''));
+            renderView('proposals');
+          });
+        }
+      });
       document.querySelector('[data-proposal-filter-clear]')?.addEventListener('click',()=>{
-        proposalFilters={from:'',to:'',representative:'all',status:'open'};
+        proposalFilters={name:'',from:'',to:'',representative:'all',status:'open'};
         renderView('proposals');
       });
     }
