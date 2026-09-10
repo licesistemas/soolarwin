@@ -303,6 +303,8 @@ body[data-theme="light"] .kanban-column { background:rgba(255,255,255,.45); }
 .upload-drop strong { display:block; font-size:11px; }
 .upload-drop span { display:block; margin-top:5px; color:var(--muted); font-size:9px; }
 .upload-preview { margin-top:10px; border-radius:13px; max-height:180px; object-fit:cover; width:100%; }
+
+.project-images-admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.project-image-admin-card{position:relative;border:1px solid var(--line);border-radius:14px;padding:8px;background:var(--panel)}.project-image-admin-card .upload-preview{width:100%;height:150px;object-fit:cover;border-radius:10px}.project-image-admin-card .btn{margin-top:7px;width:100%}
 .notice { border:1px solid rgba(90,169,255,.2); border-radius:12px; background:var(--blue-soft); color:var(--text-soft); padding:11px 12px; font-size:10px; line-height:1.5; }
 .warning { border-color:rgba(255,183,3,.22); background:var(--primary-soft); }
 .danger-note { border-color:rgba(255,107,107,.22); background:var(--red-soft); }
@@ -653,6 +655,8 @@ body[data-theme="light"] .ai-output { background:#f5f7fa; color:#25364a; }
 .document-drop{border:1px dashed var(--line-strong);border-radius:14px;padding:16px;background:var(--panel-2)}
 .document-drop input[type=file]{width:100%;margin-top:10px;color:var(--muted);font-size:10px}
 .document-filter-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.document-filter-row .compact-select{max-width:none}
+@media(max-width:1050px){[data-proposal-filter="name"]{min-width:0}.card-body>div[style*="grid-template-columns:minmax(220px"]{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:620px){.card-body>div[style*="grid-template-columns:minmax(220px"]{grid-template-columns:1fr!important}}
 .project-doc-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-bottom:14px}
 .project-doc-summary>div{padding:12px;border-radius:12px;background:var(--panel-2);border:1px solid var(--line)}.project-doc-summary span{display:block;color:var(--muted);font-size:9px}.project-doc-summary strong{display:block;margin-top:5px;font-size:16px}
 .profile-card{display:grid;grid-template-columns:150px minmax(0,1fr);gap:18px;align-items:start}
@@ -963,8 +967,8 @@ body[data-theme="light"] .login-benefit {
 
 
 /* ===== PROPOSTA VISUAL PREMIUM V2 ===== */
-.proposal-page.vp-page{background:#f8fafd;color:#10273d;font-family:Inter,Arial,sans-serif;}
-.vp-bg-blob{position:absolute;border-radius:50%;background:#edf3fa;pointer-events:none;z-index:0}.vp-bg-blob.top{width:460px;height:460px;right:-170px;top:-170px}.vp-bg-blob.bottom{width:360px;height:360px;left:-180px;bottom:-220px;background:#f0f5fb}.vp-inner{position:relative;z-index:1;height:100%;padding:48px 52px;display:flex;flex-direction:column}.vp-kicker{display:inline-flex;align-items:center;height:28px;padding:0 14px;border-radius:999px;background:#fff4d3;border:1px solid #f0d88e;color:#8a6500;text-transform:uppercase;font-size:12px;font-weight:900;letter-spacing:.02em}.vp-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:54px}.vp-header h2{margin:20px 0 10px;color:#10273d;font-size:43px;line-height:1.02;letter-spacing:-.04em}.vp-header p{margin:0;color:#65768a;font-size:18px;line-height:1.35;max-width:560px}.vp-page-badge{width:140px;height:48px;border-radius:999px;background:#f2f7fc;border:2px solid #d9e4ef;display:flex;align-items:center;justify-content:center;color:#6d7f93;font-size:18px;font-weight:900;line-height:1}.vp-footer{margin-top:auto;padding-top:14px;border-top:1px solid #d9e4ef;display:flex;justify-content:space-between;color:#6f8195;font-size:13px}.vp-card{background:#fff;border:2px solid #d9e4ef;border-radius:28px;padding:26px;position:relative}.vp-dark{background:#102b46;color:#fff;border-color:#102b46}.vp-dark h3,.vp-dark p,.vp-dark span,.vp-dark strong{color:#fff}.vp-hero{display:flex;align-items:stretch;gap:24px;background:#102b46;border-radius:30px;padding:34px 34px 30px;color:#fff;margin-bottom:48px;overflow:hidden;position:relative;min-height:238px}.vp-hero:after{content:"";position:absolute;right:-35px;top:-20px;width:330px;height:210px;background:repeating-linear-gradient(60deg,rgba(90,169,255,.28) 0 3px,transparent 3px 36px);transform:rotate(-5deg)}.vp-hero-copy{position:relative;z-index:2;flex:1 1 auto;min-width:0;max-width:calc(100% - 272px)}.vp-hero h3{margin:0 0 16px;color:#fff;font-size:28px;line-height:1.02;letter-spacing:-.03em;max-width:280px}.vp-hero p{margin:0;color:#d8e6f4;font-size:16px;line-height:1.45;max-width:390px}.vp-hero-kpis{position:relative;z-index:2;flex:0 0 248px;display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start}.vp-mini{background:#fff;border-radius:16px;padding:12px 14px;min-height:82px;display:flex;flex-direction:column;justify-content:flex-start}.vp-mini span,.vp-metric span{display:block;color:#708195;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.02em;line-height:1.1}.vp-mini strong{display:block;color:#10273d;font-size:18px;margin-top:6px;line-height:1.08;letter-spacing:-.02em;word-break:break-word}.vp-metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-bottom:46px}.vp-metric{min-height:140px;padding:24px 24px 22px;border-radius:24px;background:#fff;border:2px solid #d9e4ef;position:relative;overflow:hidden}.vp-metric:before{content:"";position:absolute;left:0;top:0;bottom:0;width:7px;background:var(--accent,#ffb703)}.vp-metric strong{display:block;color:#10273d;font-size:32px;line-height:1.05;margin-top:14px;letter-spacing:-.03em}.vp-metric p{margin:10px 0 0;color:#65768a;font-size:16px;line-height:1.35}.vp-reasons{padding:32px;border-radius:28px;background:#fff;border:2px solid #d9e4ef}.vp-reasons h3,.vp-card h3{margin:0 0 20px;color:#10273d;font-size:29px;letter-spacing:-.03em}.vp-reason-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:34px}.vp-reason-number{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:#ffb703;color:#10273d;font-size:24px;font-weight:900;margin-bottom:14px}.vp-reason h4{margin:0 0 8px;color:#10273d;font-size:21px}.vp-reason p{margin:0;color:#65768a;font-size:15px;line-height:1.35}.vp-grid-2{display:grid;grid-template-columns:1.1fr .9fr;gap:28px}.vp-chart{height:270px;position:relative}.vp-chart canvas{width:100%!important;height:100%!important}.vp-dark-list{background:#102b46;border-radius:28px;padding:34px;color:#fff}.vp-dark-list h3{margin:0 0 28px;color:#fff;font-size:30px}.vp-data-row{padding:0 0 16px;margin-bottom:16px;border-bottom:2px solid rgba(120,167,204,.35)}.vp-data-row span{display:block;color:#aabbd0;font-size:13px;text-transform:uppercase;font-weight:900;letter-spacing:.04em}.vp-data-row strong{display:block;color:#fff;font-size:22px;margin-top:6px}.vp-project-wrap{height:360px;border-radius:28px;overflow:hidden;background:#102b46;position:relative;border:2px solid #d9e4ef}.vp-project-wrap img{width:100%;height:100%;object-fit:cover}.vp-project-placeholder{height:100%;display:grid;place-items:center;text-align:center;padding:34px;background:linear-gradient(135deg,#102b46,#1f6e97);color:#fff}.vp-project-placeholder strong{display:block;font-size:28px}.vp-project-placeholder span{display:block;margin-top:12px;color:#d9e8f6;font-size:16px}.vp-table{width:100%;border-collapse:collapse;font-size:15px}.vp-table th{background:#f2f6fb;color:#354b62;text-align:left;font-size:13px;text-transform:uppercase;letter-spacing:.04em}.vp-table th,.vp-table td{border:1px solid #d9e4ef;padding:12px 14px}.vp-table td{color:#10273d}.vp-additional-summary{display:grid;grid-template-columns:1.4fr .6fr;gap:18px;margin-bottom:24px}.vp-additional-summary>div{padding:20px 22px;border-radius:22px;border:2px solid #d9e4ef;background:#fff}.vp-additional-summary span{display:block;color:#708195;font-size:11px;font-weight:900;text-transform:uppercase}.vp-additional-summary strong{display:block;margin-top:8px;color:#10273d;font-size:23px}.vp-additional-table{font-size:13px}.vp-additional-table th,.vp-additional-table td{padding:10px 12px}.vp-additional-table th:first-child,.vp-additional-table td:first-child{width:66px;text-align:center}.vp-additional-table th:nth-child(3),.vp-additional-table td:nth-child(3){width:76px;text-align:center}.vp-additional-table th:nth-child(4),.vp-additional-table td:nth-child(4){width:74px;text-align:center}.vp-additional-table th:nth-child(5),.vp-additional-table td:nth-child(5){width:190px}.vp-additional-group td{background:#102b46!important;color:#fff!important;font-weight:900;font-size:14px}.vp-additional-note{margin-top:18px;padding:14px 16px;border-radius:16px;background:#fff7dc;border:1px solid #efd88c;color:#6d5918;font-size:12px;line-height:1.45}.vp-timeline{height:250px;background:#fff;border:2px solid #d9e4ef;border-radius:28px;padding:30px}.vp-timeline h3{margin:0 0 52px;color:#10273d;font-size:28px}.vp-steps{display:grid;grid-template-columns:repeat(6,1fr);position:relative}.vp-steps:before{content:"";position:absolute;left:44px;right:44px;top:21px;height:3px;background:#cbd9e7}.vp-step{position:relative;text-align:center}.vp-step b{width:42px;height:42px;border-radius:50%;background:#102b46;color:#fff;display:grid;place-items:center;margin:0 auto 14px;font-size:18px;position:relative;z-index:2}.vp-step strong{display:block;color:#10273d;font-size:15px}.vp-step span{display:block;color:#65768a;font-size:13px}.vp-sign-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:46px}.vp-sign{height:104px;background:#f7fafd;border:2px solid #d9e4ef;border-radius:22px;display:flex;align-items:flex-end;justify-content:center;padding:18px}.vp-sign-line{width:85%;border-top:2px solid #b8cadb;text-align:center;padding-top:10px;color:#65768a;font-size:14px}.vp-cover{background:#071421;color:#fff}.vp-cover-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.vp-cover-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,14,24,.15),rgba(5,14,24,.45) 40%,rgba(5,14,24,.92) 100%)}.vp-cover-inner{position:relative;z-index:2;height:100%;padding:52px;display:flex;flex-direction:column;justify-content:space-between}.vp-cover-top{display:flex;justify-content:space-between;align-items:flex-start}.vp-logo-box{display:flex;align-items:center;gap:16px}.vp-logo-box img{max-width:210px;max-height:70px;object-fit:contain}.vp-cover-qr{width:132px;height:132px;padding:12px;border-radius:18px;background:rgba(255,255,255,.88);display:grid;place-items:center}.vp-cover-main{max-width:630px}.vp-cover-main .vp-kicker{background:rgba(255,183,3,.18);border-color:rgba(255,183,3,.45);color:#ffcf58}.vp-cover-main h1{margin:20px 0 12px;font-size:72px;line-height:.93;letter-spacing:-.07em;color:#fff}.vp-cover-main p{margin:0;color:#dbe8f4;font-size:21px;line-height:1.35}.vp-cover-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}.vp-cover-card{min-height:130px;border-radius:24px;border:1px solid rgba(255,255,255,.22);background:rgba(9,21,34,.56);backdrop-filter:blur(8px);padding:22px}.vp-cover-card span{display:block;color:#bfcedd;font-size:13px}.vp-cover-card strong{display:block;color:#fff;font-size:24px;margin-top:10px}.vp-cover-card small{display:block;color:#d5e2ef;margin-top:7px;font-size:14px}.vp-cover-foot{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;color:#dbe8f4}.vp-cover-foot div{border-top:1px solid rgba(255,255,255,.25);padding-top:13px}.vp-cover-foot strong{display:block;color:#fff;font-size:16px}.vp-cover-foot span{font-size:14px;color:#cbd9e7}.vp-final-cover{background:#071421;color:#fff}.vp-final-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.vp-final-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,14,24,.22),rgba(5,14,24,.62) 42%,rgba(5,14,24,.94) 100%)}.vp-final-inner{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:52px}.vp-final-logo{display:flex;align-items:center;justify-content:center;min-height:150px;margin-bottom:34px}.vp-final-logo img{max-width:430px;max-height:150px;object-fit:contain;filter:drop-shadow(0 18px 40px rgba(0,0,0,.35))}.vp-final-site{font-size:34px;line-height:1.2;font-weight:900;letter-spacing:-.02em;color:#fff;text-shadow:0 8px 28px rgba(0,0,0,.34)}.vp-final-line{width:220px;height:3px;border-radius:999px;background:#ffb703;margin:30px auto 0}.vp-final-small{position:absolute;bottom:54px;left:52px;right:52px;display:flex;justify-content:center;color:#dbe8f4;font-size:16px;letter-spacing:.04em;text-transform:uppercase}
+.proposal-page.vp-page{background:#f8fafd;color:#10273d;font-family:Inter,Arial,sans-serif;}.vp-tech-id{font-size:12px;font-weight:850;letter-spacing:.01em;color:#40566d}.vp-final-cover .vp-tech-id{position:absolute;left:52px;right:52px;bottom:90px;color:#fff;text-align:center;font-size:13px;font-weight:850;letter-spacing:.015em;text-shadow:0 4px 18px rgba(0,0,0,.45)}
+.vp-bg-blob{position:absolute;border-radius:50%;background:#edf3fa;pointer-events:none;z-index:0}.vp-bg-blob.top{width:460px;height:460px;right:-170px;top:-170px}.vp-bg-blob.bottom{width:360px;height:360px;left:-180px;bottom:-220px;background:#f0f5fb}.vp-inner{position:relative;z-index:1;height:100%;padding:48px 52px;display:flex;flex-direction:column}.vp-kicker{display:inline-flex;align-items:center;height:28px;padding:0 14px;border-radius:999px;background:#fff4d3;border:1px solid #f0d88e;color:#8a6500;text-transform:uppercase;font-size:12px;font-weight:900;letter-spacing:.02em}.vp-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:54px}.vp-header h2{margin:20px 0 10px;color:#10273d;font-size:43px;line-height:1.02;letter-spacing:-.04em}.vp-header p{margin:0;color:#65768a;font-size:18px;line-height:1.35;max-width:560px}.vp-page-badge{width:140px;height:48px;border-radius:999px;background:#f2f7fc;border:2px solid #d9e4ef;display:flex;align-items:center;justify-content:center;color:#6d7f93;font-size:18px;font-weight:900;line-height:1}.vp-footer{margin-top:auto;padding-top:14px;border-top:1px solid #d9e4ef;display:grid;grid-template-columns:1fr 1fr;align-items:center;gap:14px;color:#6f8195;font-size:12px}.vp-footer span:last-child{text-align:right}.vp-card{background:#fff;border:2px solid #d9e4ef;border-radius:28px;padding:26px;position:relative}.vp-dark{background:#102b46;color:#fff;border-color:#102b46}.vp-dark h3,.vp-dark p,.vp-dark span,.vp-dark strong{color:#fff}.vp-hero{display:flex;align-items:stretch;gap:24px;background:#102b46;border-radius:30px;padding:34px 34px 30px;color:#fff;margin-bottom:48px;overflow:hidden;position:relative;min-height:238px}.vp-hero:after{content:"";position:absolute;right:-35px;top:-20px;width:330px;height:210px;background:repeating-linear-gradient(60deg,rgba(90,169,255,.28) 0 3px,transparent 3px 36px);transform:rotate(-5deg)}.vp-hero-copy{position:relative;z-index:2;flex:1 1 auto;min-width:0;max-width:calc(100% - 272px)}.vp-hero h3{margin:0 0 16px;color:#fff;font-size:28px;line-height:1.02;letter-spacing:-.03em;max-width:280px}.vp-hero p{margin:0;color:#d8e6f4;font-size:16px;line-height:1.45;max-width:390px}.vp-hero-kpis{position:relative;z-index:2;flex:0 0 248px;display:grid;grid-template-columns:1fr 1fr;gap:12px;align-content:start}.vp-mini{background:#fff;border-radius:16px;padding:12px 14px;min-height:82px;display:flex;flex-direction:column;justify-content:flex-start}.vp-mini span,.vp-metric span{display:block;color:#708195;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.02em;line-height:1.1}.vp-mini strong{display:block;color:#10273d;font-size:18px;margin-top:6px;line-height:1.08;letter-spacing:-.02em;word-break:break-word}.vp-metric-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:28px;margin-bottom:46px}.vp-metric{min-height:140px;padding:24px 24px 22px;border-radius:24px;background:#fff;border:2px solid #d9e4ef;position:relative;overflow:hidden}.vp-metric:before{content:"";position:absolute;left:0;top:0;bottom:0;width:7px;background:var(--accent,#ffb703)}.vp-metric strong{display:block;color:#10273d;font-size:32px;line-height:1.05;margin-top:14px;letter-spacing:-.03em}.vp-metric p{margin:10px 0 0;color:#65768a;font-size:16px;line-height:1.35}.vp-reasons{padding:32px;border-radius:28px;background:#fff;border:2px solid #d9e4ef}.vp-reasons h3,.vp-card h3{margin:0 0 20px;color:#10273d;font-size:29px;letter-spacing:-.03em}.vp-reason-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:34px}.vp-reason-number{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;background:#ffb703;color:#10273d;font-size:24px;font-weight:900;margin-bottom:14px}.vp-reason h4{margin:0 0 8px;color:#10273d;font-size:21px}.vp-reason p{margin:0;color:#65768a;font-size:15px;line-height:1.35}.vp-grid-2{display:grid;grid-template-columns:1.1fr .9fr;gap:28px}.vp-chart{height:270px;position:relative}.vp-chart canvas{width:100%!important;height:100%!important}.vp-dark-list{background:#102b46;border-radius:28px;padding:34px;color:#fff}.vp-dark-list h3{margin:0 0 28px;color:#fff;font-size:30px}.vp-data-row{padding:0 0 16px;margin-bottom:16px;border-bottom:2px solid rgba(120,167,204,.35)}.vp-data-row span{display:block;color:#aabbd0;font-size:13px;text-transform:uppercase;font-weight:900;letter-spacing:.04em}.vp-data-row strong{display:block;color:#fff;font-size:22px;margin-top:6px}.vp-technical-equipment-page .vp-header{margin-bottom:28px}.vp-technical-equipment-page .vp-metric-grid{margin-bottom:28px}.vp-equipment-main{padding:34px 36px;min-height:545px;display:flex;flex-direction:column;flex:1}.vp-equipment-head{display:flex;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:24px}.vp-equipment-head h3{margin:0;color:#10273d;font-size:31px}.vp-equipment-head p{margin:7px 0 0;color:#65768a;font-size:15px}.vp-equipment-power{text-align:right;padding:14px 18px;border-radius:18px;background:#102b46;color:#fff;min-width:190px}.vp-equipment-power span{display:block;font-size:10px;text-transform:uppercase;font-weight:900;letter-spacing:.05em;color:#b9cce0}.vp-equipment-power strong{display:block;margin-top:5px;font-size:25px}.vp-equipment-table{font-size:17px;flex:1;height:100%}.vp-equipment-table th,.vp-equipment-table td{padding:17px 18px}.vp-equipment-table tr{height:52px}.vp-equipment-table td:first-child{width:34%;font-weight:800;color:#29445f}.vp-irradiation-page .vp-header{margin-bottom:30px}.vp-irradiation-grid{display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,1fr);gap:18px;height:790px}.vp-irradiation-grid.count-1{grid-template-columns:1fr;grid-template-rows:1fr}.vp-irradiation-grid.count-2{grid-template-columns:1fr 1fr;grid-template-rows:1fr}.vp-irradiation-grid.count-3 .vp-irradiation-card:first-child{grid-row:1/3}.vp-irradiation-card{margin:0;border-radius:24px;overflow:hidden;border:2px solid #d9e4ef;background:#fff;position:relative;display:grid;place-items:center}.vp-irradiation-card img{width:100%;height:100%;object-fit:contain;display:block;background:#fff}.vp-irradiation-card figcaption{position:absolute;left:14px;bottom:14px;padding:8px 11px;border-radius:999px;background:rgba(7,17,31,.80);color:#fff;font-size:11px;font-weight:900}.vp-irradiation-note{margin-top:16px;color:#697c8f;font-size:12px;line-height:1.45;text-align:center}.vp-project-3d-page .vp-header{margin-bottom:30px}.vp-project-3d-grid{display:grid;grid-template-columns:repeat(2,1fr);grid-template-rows:repeat(2,1fr);gap:18px;height:780px}.vp-project-3d-grid.count-1{grid-template-columns:1fr;grid-template-rows:1fr;height:790px}.vp-project-3d-grid.count-2{grid-template-columns:1fr 1fr;grid-template-rows:1fr;height:790px}.vp-project-3d-grid.count-3 .vp-project-3d-card:first-child{grid-row:1/3}.vp-project-3d-card{margin:0;border-radius:24px;overflow:hidden;border:2px solid #d9e4ef;background:#102b46;position:relative}.vp-project-3d-card img{width:100%;height:100%;object-fit:cover;display:block}.vp-project-3d-card figcaption{position:absolute;left:14px;bottom:14px;padding:8px 11px;border-radius:999px;background:rgba(7,17,31,.80);color:#fff;font-size:11px;font-weight:900}.vp-project-3d-empty{height:790px;border-radius:28px;border:2px dashed #cbd8e5;background:#f7fafd;display:grid;place-content:center;text-align:center;padding:40px;color:#60758a}.vp-project-3d-empty strong{display:block;color:#10273d;font-size:28px}.vp-project-3d-empty span{display:block;margin-top:12px;font-size:16px;max-width:520px}.vp-project-3d-note{margin-top:16px;color:#697c8f;font-size:12px;line-height:1.45;text-align:center}.project-images-admin-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.project-image-admin-card{position:relative;border:1px solid var(--line);border-radius:14px;padding:8px;background:var(--panel)}.project-image-admin-card .upload-preview{width:100%;height:150px;object-fit:cover;border-radius:10px}.project-image-admin-card .btn{margin-top:7px;width:100%}..vp-project-wrap{height:360px;border-radius:28px;overflow:hidden;background:#102b46;position:relative;border:2px solid #d9e4ef}.vp-project-wrap img{width:100%;height:100%;object-fit:cover}.vp-project-placeholder{height:100%;display:grid;place-items:center;text-align:center;padding:34px;background:linear-gradient(135deg,#102b46,#1f6e97);color:#fff}.vp-project-placeholder strong{display:block;font-size:28px}.vp-project-placeholder span{display:block;margin-top:12px;color:#d9e8f6;font-size:16px}.vp-table{width:100%;border-collapse:collapse;font-size:15px}.vp-table th{background:#f2f6fb;color:#354b62;text-align:left;font-size:13px;text-transform:uppercase;letter-spacing:.04em}.vp-table th,.vp-table td{border:1px solid #d9e4ef;padding:12px 14px}.vp-table td{color:#10273d}.vp-additional-summary{display:grid;grid-template-columns:1.4fr .6fr;gap:18px;margin-bottom:24px}.vp-additional-summary>div{padding:20px 22px;border-radius:22px;border:2px solid #d9e4ef;background:#fff}.vp-additional-summary span{display:block;color:#708195;font-size:11px;font-weight:900;text-transform:uppercase}.vp-additional-summary strong{display:block;margin-top:8px;color:#10273d;font-size:23px}.vp-additional-table{font-size:13px}.vp-additional-table th,.vp-additional-table td{padding:10px 12px}.vp-additional-table th:first-child,.vp-additional-table td:first-child{width:66px;text-align:center}.vp-additional-table th:nth-child(3),.vp-additional-table td:nth-child(3){width:76px;text-align:center}.vp-additional-table th:nth-child(4),.vp-additional-table td:nth-child(4){width:74px;text-align:center}.vp-additional-table th:nth-child(5),.vp-additional-table td:nth-child(5){width:190px}.vp-additional-group td{background:#102b46!important;color:#fff!important;font-weight:900;font-size:14px}.vp-additional-note{margin-top:18px;padding:14px 16px;border-radius:16px;background:#fff7dc;border:1px solid #efd88c;color:#6d5918;font-size:12px;line-height:1.45}.vp-timeline{height:250px;background:#fff;border:2px solid #d9e4ef;border-radius:28px;padding:30px}.vp-timeline h3{margin:0 0 52px;color:#10273d;font-size:28px}.vp-steps{display:grid;grid-template-columns:repeat(6,1fr);position:relative}.vp-steps:before{content:"";position:absolute;left:44px;right:44px;top:21px;height:3px;background:#cbd9e7}.vp-step{position:relative;text-align:center}.vp-step b{width:42px;height:42px;border-radius:50%;background:#102b46;color:#fff;display:grid;place-items:center;margin:0 auto 14px;font-size:18px;position:relative;z-index:2}.vp-step strong{display:block;color:#10273d;font-size:15px}.vp-step span{display:block;color:#65768a;font-size:13px}.vp-sign-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:46px}.vp-sign{height:104px;background:#f7fafd;border:2px solid #d9e4ef;border-radius:22px;display:flex;align-items:flex-end;justify-content:center;padding:18px}.vp-sign-line{width:85%;border-top:2px solid #b8cadb;text-align:center;padding-top:10px;color:#65768a;font-size:14px}.vp-cover{background:#071421;color:#fff}.vp-cover-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.vp-cover-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,14,24,.15),rgba(5,14,24,.45) 40%,rgba(5,14,24,.92) 100%)}.vp-cover-inner{position:relative;z-index:2;height:100%;padding:52px;display:flex;flex-direction:column;justify-content:space-between}.vp-cover-top{display:flex;justify-content:space-between;align-items:flex-start}.vp-logo-box{display:flex;align-items:center;gap:16px}.vp-logo-box img{max-width:210px;max-height:70px;object-fit:contain}.vp-cover-qr{width:132px;height:132px;padding:12px;border-radius:18px;background:rgba(255,255,255,.88);display:grid;place-items:center}.vp-cover-main{max-width:630px}.vp-cover-main .vp-kicker{background:rgba(255,183,3,.18);border-color:rgba(255,183,3,.45);color:#ffcf58}.vp-cover-main h1{margin:20px 0 12px;font-size:72px;line-height:.93;letter-spacing:-.07em;color:#fff}.vp-cover-main p{margin:0;color:#dbe8f4;font-size:21px;line-height:1.35}.vp-cover-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:20px}.vp-cover-card{min-height:130px;border-radius:24px;border:1px solid rgba(255,255,255,.22);background:rgba(9,21,34,.56);backdrop-filter:blur(8px);padding:22px}.vp-cover-card span{display:block;color:#bfcedd;font-size:13px}.vp-cover-card strong{display:block;color:#fff;font-size:24px;margin-top:10px}.vp-cover-card small{display:block;color:#d5e2ef;margin-top:7px;font-size:14px}.vp-cover-foot{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;color:#dbe8f4}.vp-cover-foot div{border-top:1px solid rgba(255,255,255,.25);padding-top:13px}.vp-cover-foot strong{display:block;color:#fff;font-size:16px}.vp-cover-foot span{font-size:14px;color:#cbd9e7}.vp-final-cover{background:#071421;color:#fff}.vp-final-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}.vp-final-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(5,14,24,.22),rgba(5,14,24,.62) 42%,rgba(5,14,24,.94) 100%)}.vp-final-inner{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:52px}.vp-final-logo{display:flex;align-items:center;justify-content:center;min-height:150px;margin-bottom:34px}.vp-final-logo img{max-width:430px;max-height:150px;object-fit:contain;filter:drop-shadow(0 18px 40px rgba(0,0,0,.35))}.vp-final-site{font-size:34px;line-height:1.2;font-weight:900;letter-spacing:-.02em;color:#fff;text-shadow:0 8px 28px rgba(0,0,0,.34)}.vp-final-line{width:220px;height:3px;border-radius:999px;background:#ffb703;margin:30px auto 0}.vp-final-small{position:absolute;bottom:54px;left:52px;right:52px;display:flex;justify-content:center;color:#dbe8f4;font-size:16px;letter-spacing:.04em;text-transform:uppercase}
 /* Página de financiamento da proposta */
 .vp-financing-page .vp-header{margin-bottom:30px}
 .vp-financing-page .vp-header h2{font-size:39px;margin-top:16px;margin-bottom:8px}
@@ -1009,6 +1013,10 @@ body[data-theme="light"] .login-benefit {
 /* Cadastro de bancos e alternativas dentro do construtor */
 .financing-main-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:12px}.financing-option-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px;margin-top:14px}.financing-option-card{border:1px solid var(--line);border-radius:15px;background:var(--panel-2);color:var(--text);padding:14px;text-align:left;transition:.18s ease;position:relative}.financing-option-card:hover{border-color:var(--line-strong);transform:translateY(-1px)}.financing-option-card.selected{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft);background:linear-gradient(145deg,var(--panel-2),var(--panel-3))}.financing-option-card.selected:after{content:'✓';position:absolute;right:10px;top:10px;width:22px;height:22px;border-radius:50%;display:grid;place-items:center;background:var(--primary);color:#17202a;font-size:11px;font-weight:950}.financing-option-card>span{display:block;color:var(--muted);font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.08em}.financing-option-card>strong{display:block;margin-top:8px;font-size:22px;letter-spacing:-.035em}.financing-option-card>small{display:block;margin-top:5px;color:var(--muted);font-size:9px;line-height:1.4}.financing-option-meta{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:11px}.financing-option-meta div{padding:8px;border-radius:9px;background:rgba(255,255,255,.035)}.financing-option-meta span{display:block;color:var(--muted);font-size:8px}.financing-option-meta b{display:block;margin-top:3px;font-size:9px;color:var(--text-soft)}
 .bank-config-list{display:flex;flex-direction:column;gap:10px}.bank-config-row{display:grid;grid-template-columns:minmax(170px,1.5fr) repeat(3,minmax(105px,.75fr)) 42px;gap:9px;align-items:end;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--panel-2)}.bank-config-row .field{gap:5px}.bank-config-row .field span{font-size:9px}.bank-config-row .field input{min-height:38px;padding:8px 10px}.bank-config-actions{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px}.bank-config-actions p{margin:0;color:var(--muted);font-size:10px;line-height:1.45}.bank-config-selected{display:inline-flex;align-items:center;gap:6px;margin-top:6px;color:var(--green);font-size:8px;font-weight:900;text-transform:uppercase}.bank-config-selected:before{content:'';width:6px;height:6px;border-radius:50%;background:var(--green)}
+
+.beneficiary-editor-list{display:flex;flex-direction:column;gap:10px}.beneficiary-editor-row{display:grid;grid-template-columns:minmax(180px,1.25fr) minmax(135px,.85fr) minmax(140px,.85fr) minmax(155px,.8fr) 42px;gap:9px;align-items:end;padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--panel-2)}.beneficiary-editor-row .field{gap:5px}.beneficiary-editor-row .field span{font-size:9px}.beneficiary-editor-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}.beneficiary-editor-summary>div{padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--panel-3)}.beneficiary-editor-summary span{display:block;color:var(--muted);font-size:8px;font-weight:900;text-transform:uppercase}.beneficiary-editor-summary strong{display:block;margin-top:5px;font-size:16px}.beneficiary-editor-summary .total{border-color:rgba(255,183,3,.45);box-shadow:inset 4px 0 0 var(--primary)}
+@media(max-width:980px){.beneficiary-editor-row{grid-template-columns:repeat(2,minmax(0,1fr))}.beneficiary-editor-row .beneficiary-remove-cell{grid-column:2;justify-self:end}}@media(max-width:620px){.beneficiary-editor-row{grid-template-columns:1fr}.beneficiary-editor-row .beneficiary-remove-cell{grid-column:1;justify-self:stretch}.beneficiary-editor-row .beneficiary-remove-cell button{width:100%}.beneficiary-editor-summary{grid-template-columns:1fr}}
+
 @media(max-width:820px){.financing-main-grid{grid-template-columns:1fr}.financing-option-grid{grid-template-columns:1fr}.bank-config-row{grid-template-columns:repeat(2,minmax(0,1fr))}.bank-config-row .bank-name-field{grid-column:1/-1}.bank-config-row .bank-delete-cell{grid-column:2;justify-self:end}}@media(max-width:560px){.bank-config-row{grid-template-columns:1fr}.bank-config-row .bank-name-field,.bank-config-row .bank-delete-cell{grid-column:1}.bank-config-row .bank-delete-cell{justify-self:stretch}.bank-config-row .bank-delete-cell button{width:100%}}
 
 .vp-page .pdf-page-number{display:none!important}
@@ -1030,6 +1038,9 @@ body[data-theme="light"] .login-benefit {
 .vp-diagnosis-page .vp-metric{min-height:108px!important;padding:18px 18px 16px!important;border-radius:22px!important}
 .vp-diagnosis-page .vp-metric strong{font-size:25px!important;margin-top:8px!important;line-height:1.03!important}
 .vp-diagnosis-page .vp-metric p{font-size:12px!important;line-height:1.25!important;margin-top:7px!important}
+.vp-beneficiary-page .vp-header{margin-bottom:30px}.vp-beneficiary-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px}.vp-beneficiary-summary>div{padding:18px 20px;border-radius:20px;border:2px solid #d9e4ef;background:#fff}.vp-beneficiary-summary span{display:block;color:#708195;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.05em}.vp-beneficiary-summary strong{display:block;margin-top:7px;color:#10273d;font-size:24px}.vp-beneficiary-summary .total{background:#102b46;border-color:#102b46}.vp-beneficiary-summary .total span{color:#bcd0e2}.vp-beneficiary-summary .total strong{color:#fff}.vp-beneficiary-table-wrap{border:2px solid #d9e4ef;border-radius:22px;overflow:hidden;background:#fff}.vp-beneficiary-table{width:100%;border-collapse:collapse}.vp-beneficiary-table th{background:#102b46;color:#fff;padding:13px 15px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.05em}.vp-beneficiary-table td{padding:14px 15px;border-top:1px solid #e2e8ef;color:#10273d;font-size:13px}.vp-beneficiary-table tbody tr:nth-child(even){background:#f7fafc}.vp-beneficiary-table td:last-child,.vp-beneficiary-table th:last-child{text-align:right}.vp-beneficiary-note{margin-top:18px;padding:15px 18px;border-radius:16px;background:#fff7dc;border:1px solid #efd88c;color:#6d5918;font-size:11px;line-height:1.45}
+
+.vp-diagnosis-generation-highlight{display:grid;grid-template-columns:1.15fr .85fr;gap:18px;align-items:center;margin:-4px 0 22px;padding:20px 24px;border-radius:24px;background:linear-gradient(135deg,#102b46,#174f80);color:#fff;box-shadow:0 14px 30px rgba(16,43,70,.14);position:relative;overflow:hidden}.vp-diagnosis-generation-highlight:after{content:"";position:absolute;right:-50px;top:-70px;width:220px;height:220px;border-radius:50%;border:32px solid rgba(255,183,3,.18)}.vp-diagnosis-generation-highlight>div{position:relative;z-index:1}.vp-diagnosis-generation-highlight span{display:block;font-size:11px;font-weight:900;letter-spacing:.07em;text-transform:uppercase;color:#bcd0e2}.vp-diagnosis-generation-highlight strong{display:block;margin-top:7px;font-size:34px;line-height:1;color:#fff;letter-spacing:-.03em}.vp-diagnosis-generation-highlight p{margin:8px 0 0;font-size:12px;line-height:1.35;color:#d9e7f3}.vp-diagnosis-generation-side{text-align:right}.vp-diagnosis-generation-side strong{font-size:22px}.vp-diagnosis-generation-side small{display:block;margin-top:5px;color:#d9e7f3;font-size:10px;line-height:1.3}
 .vp-diagnosis-chart{padding:14px 16px 12px!important;margin-bottom:12px!important;border-radius:22px!important}
 .vp-diagnosis-chart h3{font-size:21px!important;margin:0 0 3px!important;line-height:1.05!important}
 .vp-diagnosis-chart p{font-size:10px!important;line-height:1.18!important;margin:0!important}
@@ -1042,7 +1053,7 @@ body[data-theme="light"] .login-benefit {
 .vp-consumption-month{font-size:8px!important;color:#10273d;line-height:1;font-weight:900}
 .vp-consumption-value{font-size:8px!important;color:#65768a;line-height:1}
 .vp-diagnosis-chart-canvas{height:168px;margin-top:2px}
-.vp-diagnosis-compare-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:8px}
+.vp-diagnosis-compare-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:8px}
 .vp-compare-pill{padding:8px 10px;border-radius:13px;background:#f4f8fc;border:1px solid #d9e4ef;min-height:50px}
 .vp-compare-pill span{display:block;color:#708195;font-size:7px;font-weight:900;text-transform:uppercase;letter-spacing:.035em;line-height:1.05}
 .vp-compare-pill strong{display:block;color:#10273d;font-size:14px;line-height:1.05;margin-top:4px}
@@ -3424,6 +3435,59 @@ service cloud.firestore {
     });
   }
 
+
+  function normalizeProposalBeneficiaries(items){
+    if(!Array.isArray(items))return [];
+    return items.filter(item=>item&&typeof item==='object').map((item,index)=>({
+      id:String(item?.id||`benef-${index+1}`),
+      name:String(item?.name||item?.clientName||'').trim(),
+      consumerUnit:String(item?.consumerUnit||item?.uc||'').trim(),
+      city:String(item?.city||'').trim(),
+      averageConsumption:Math.max(0,Number(item?.averageConsumption??item?.consumption??item?.avgConsumption??0)||0)
+    }));
+  }
+
+  function ensureProposalBeneficiaries(proposal){
+    if(!proposal)return [];
+    proposal.beneficiaries=normalizeProposalBeneficiaries(proposal.beneficiaries);
+    return proposal.beneficiaries;
+  }
+
+  function createProposalBeneficiary(){
+    return {id:newId('benef'),name:'',consumerUnit:'',city:'',averageConsumption:0};
+  }
+
+  function proposalConsumptionBreakdown(proposal){
+    const generatorValues=(Array.isArray(proposal?.consumption)?proposal.consumption:Array(12).fill(0)).map(value=>Math.max(0,Number(value||0)));
+    const generatorStats=consumptionStats(generatorValues);
+    const beneficiaries=normalizeProposalBeneficiaries(proposal?.beneficiaries).filter(item=>item.name||item.consumerUnit||item.city||item.averageConsumption>0);
+    const beneficiaryAverageConsumption=beneficiaries.reduce((total,item)=>total+Math.max(0,Number(item.averageConsumption||0)),0);
+    const generatorAverageConsumption=Number(generatorStats.averageConsumption||0);
+    const averageConsumption=generatorAverageConsumption+beneficiaryAverageConsumption;
+    const generatorAnnualConsumption=generatorAverageConsumption*12;
+    const beneficiaryAnnualConsumption=beneficiaryAverageConsumption*12;
+    return {
+      generatorValues,
+      beneficiaries,
+      beneficiaryCount:beneficiaries.length,
+      informedMonths:generatorStats.informedMonths,
+      generatorAverageConsumption,
+      beneficiaryAverageConsumption,
+      averageConsumption,
+      generatorAnnualConsumption,
+      beneficiaryAnnualConsumption,
+      annualConsumption:generatorAnnualConsumption+beneficiaryAnnualConsumption
+    };
+  }
+
+  function combinedProposalConsumptionProfile(proposal){
+    const info=proposalConsumptionBreakdown(proposal);
+    return info.generatorValues.map(value=>{
+      const generator=value>0?value:info.generatorAverageConsumption;
+      return generator+info.beneficiaryAverageConsumption;
+    });
+  }
+
   function ensureProposalAdditionalItems(proposal) {
     if(!proposal)return [];
     proposal.additionalItemsTitle=String(proposal.additionalItemsTitle||'Itens adicionais e escopo complementar').trim()||'Itens adicionais e escopo complementar';
@@ -3444,8 +3508,9 @@ service cloud.firestore {
     return {
       id, companyId:state?.currentCompanyId||defaultCompany.id, number:`PROP-${String(id).replace(/[^a-zA-Z0-9]/g,'').slice(-6).toUpperCase()}`, status, createdAt: todayISO(), validUntil:addDaysISO(10),
       client: { name: clientName, document:'', phone:'47999999999', email:'cliente@email.com', city, address:'', consumerUnit:'123456789', className:'Residencial', tariffGroup:'B1', distributor:'CELESC' },
+      beneficiaries: [],
       coverPhoto:'', billFileName:'', billText:'', consumption, currentTariff:0.92, tariffHistory:consumption.map((_,i)=>+(0.76+i*0.014).toFixed(3)),
-      technical: { specificYield:120, targetCoverage:100, systemLosses:17, moduleId:moduleItem.id, moduleManualQty:null, moduleManualPower:null, inverterId:inverter.id, inverterOverload:1.3, inverters:[], structureType:'Telhado cerâmico', orientation:'Norte', areaExtra:15, projectImage:'' },
+      technical: { specificYield:120, targetCoverage:100, systemLosses:17, moduleId:moduleItem.id, moduleManualQty:null, moduleManualPower:null, inverterId:inverter.id, inverterOverload:1.3, inverters:[], structureType:'Telhado cerâmico', orientation:'Norte', areaExtra:15, projectImage:'', projectImages:[], irradiationImage:'', irradiationImages:[] },
       commercial: { price, annualTariffIncrease:7, discountRate:10, annualMaintenance:450, moduleDegradation:0.5, residualBill:75, paymentMethod:'Financiamento', notes:'Instalação completa, homologação e monitoramento inclusos.' },
       financing: { bankId:'sicredi', bank:'Sicredi', downPayment:price*0.2, months:72, monthlyRate:1.25, rates:{36:1.45,48:1.35,72:1.25} },
       evCharger: defaultEvChargerData(),
@@ -3468,9 +3533,10 @@ service cloud.firestore {
     proposal.billText='';
     proposal.billAnalysis=null;
     proposal.consumption=Array(12).fill(0);
+    proposal.beneficiaries=[];
     proposal.currentTariff=0;
     proposal.tariffHistory=Array(12).fill(0);
-    proposal.technical={...proposal.technical,targetCoverage:100,projectImage:''};
+    proposal.technical={...proposal.technical,targetCoverage:100,projectImage:'',projectImages:[],irradiationImage:'',irradiationImages:[]};
     proposal.seller={name:state?.currentUser?.name||'',email:state?.currentUser?.email||state?.company?.email||''};
     return proposal;
   }
@@ -3490,6 +3556,7 @@ service cloud.firestore {
   let signaturePad = null;
   let settingsTab = 'company';
   let searchTerm = '';
+  let proposalFilters = { name:'', from:'', to:'', representative:'all', status:'open' };
   let kanbanMode = state.kanbanMode || 'commercial';
   let activeProjectId = null;
   let projectWorkspaceTab = 'overview';
@@ -4256,9 +4323,9 @@ service cloud.firestore {
     clean.coverPhoto='';
     clean.billText='';
     clean.billHistoryText='';
-    if(clean.technical)clean.technical.projectImage='';
+    if(clean.technical){clean.technical.projectImage='';clean.technical.projectImages=[];clean.technical.irradiationImage='';clean.technical.irradiationImages=[];}
     if(clean.acceptance?.signature)clean.acceptance.signature='';
-    clean.localAssetsStored=Boolean(proposal.coverPhoto||proposal.technical?.projectImage||proposal.billText||proposal.billHistoryText||proposal.acceptance?.signature);
+    clean.localAssetsStored=Boolean(proposal.coverPhoto||proposal.technical?.projectImage||(Array.isArray(proposal.technical?.projectImages)&&proposal.technical.projectImages.length)||proposal.technical?.irradiationImage||(Array.isArray(proposal.technical?.irradiationImages)&&proposal.technical.irradiationImages.length)||proposal.billText||proposal.billHistoryText||proposal.acceptance?.signature);
     return clean;
   }
 
@@ -4458,6 +4525,9 @@ service cloud.firestore {
     if(!base.billText&&cached.billText)merged.billText=cached.billText;
     if(!base.billHistoryText&&cached.billHistoryText)merged.billHistoryText=cached.billHistoryText;
     if(!base.technical?.projectImage&&cached.technical?.projectImage)merged.technical.projectImage=cached.technical.projectImage;
+    if((!Array.isArray(base.technical?.projectImages)||!base.technical.projectImages.length)&&Array.isArray(cached.technical?.projectImages)&&cached.technical.projectImages.length)merged.technical.projectImages=[...cached.technical.projectImages];
+    if(!base.technical?.irradiationImage&&cached.technical?.irradiationImage)merged.technical.irradiationImage=cached.technical.irradiationImage;
+    if((!Array.isArray(base.technical?.irradiationImages)||!base.technical.irradiationImages.length)&&Array.isArray(cached.technical?.irradiationImages)&&cached.technical.irradiationImages.length)merged.technical.irradiationImages=[...cached.technical.irradiationImages];
     if(!base.acceptance?.signature&&cached.acceptance?.signature)merged.acceptance={...(cached.acceptance||{}),...(base.acceptance||{}),signature:cached.acceptance.signature};
     return merged;
   }
@@ -4493,7 +4563,7 @@ service cloud.firestore {
     clean.billHistoryText='';
     clean.cloudAssetNotice='Imagens grandes e OCR completo permanecem protegidos na base local do navegador.';
     const maxDocumentBytes=850000;
-    if(approximateJsonBytes(clean)>maxDocumentBytes&&clean.technical)clean.technical.projectImage='';
+    if(approximateJsonBytes(clean)>maxDocumentBytes&&clean.technical){clean.technical.projectImage='';clean.technical.projectImages=[];}
     if(approximateJsonBytes(clean)>maxDocumentBytes)clean.coverPhoto='';
     if(approximateJsonBytes(clean)>maxDocumentBytes&&clean.acceptance?.signature)clean.acceptance.signature='';
     return clean;
@@ -4513,6 +4583,148 @@ service cloud.firestore {
     state.notifications.unshift(record);
     syncRecordToFirebase('notifications',record);
     return record;
+  }
+
+
+  // ---------- Notificações Comercial ↔ Engenharia (somente vendas fechadas) ----------
+  function notificationIdentity(value=''){
+    return String(value||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  }
+  function currentNotificationViewerKey(){
+    return String(state.currentUser?.id||window.FirebaseCRM?.auth?.currentUser?.uid||state.currentUser?.email||state.currentUser?.name||'usuario');
+  }
+  function currentUserIsEngineering(){
+    const u=state.currentUser||{};
+    const role=notificationIdentity(state.role||u.role||u.permission||'');
+    const descriptor=notificationIdentity([u.jobTitle,u.team,u.bio].filter(Boolean).join(' '));
+    return role==='technical'||/(engenh|projet|homolog|tecnic)/.test(descriptor);
+  }
+  function engineeringMemberLike(member={}){
+    if(String(member.status||'Ativo').toLowerCase()==='inativo')return false;
+    const role=notificationIdentity(member.role||member.permission||'');
+    const descriptor=notificationIdentity([member.jobTitle,member.role,member.team,member.bio].filter(Boolean).join(' '));
+    return role==='technical'||/(engenh|projet|homolog)/.test(descriptor);
+  }
+  function engineeringNotificationRecipients(){
+    const source=[...(state.users||[]),...companyRows('teams')];
+    const seen=new Set();
+    return source.filter(member=>{
+      const companyIds=Array.isArray(member.companyIds)?member.companyIds:[];
+      const belongs=!member.companyId&&!companyIds.length||member.companyId===state.currentCompanyId||companyIds.includes(state.currentCompanyId);
+      return belongs&&engineeringMemberLike(member);
+    }).map(member=>{
+      const id=String(member.id||member.uid||'').trim();
+      const email=String(member.email||'').trim();
+      const name=String(member.name||'').trim();
+      const key=notificationIdentity(id||email||name);
+      if(!key||seen.has(key))return null;
+      seen.add(key);
+      return {id,email,name};
+    }).filter(Boolean);
+  }
+  function notificationVisibleToCurrentUser(notification={}){
+    if(notification.companyId&&notification.companyId!==state.currentCompanyId)return false;
+    if(!notification.targeted)return true;
+    const u=state.currentUser||{};
+    const uid=notificationIdentity(u.id||window.FirebaseCRM?.auth?.currentUser?.uid||'');
+    const email=notificationIdentity(u.email||window.FirebaseCRM?.auth?.currentUser?.email||'');
+    const name=notificationIdentity(u.name||'');
+    if(notification.recipientId&&notificationIdentity(notification.recipientId)===uid)return true;
+    if(notification.recipientEmail&&notificationIdentity(notification.recipientEmail)===email)return true;
+    if(notification.recipientName&&notificationIdentity(notification.recipientName)===name)return true;
+    if(notification.recipientDepartment==='engineering'&&currentUserIsEngineering())return true;
+    return false;
+  }
+  function notificationUnreadForCurrentUser(notification={}){
+    if(notification.targeted){
+      const key=currentNotificationViewerKey();
+      return !(Array.isArray(notification.readBy)&&notification.readBy.includes(key));
+    }
+    return !notification.read;
+  }
+  function visibleNotifications(){
+    return companyRows('notifications').filter(notificationVisibleToCurrentUser).sort((a,b)=>new Date(b.createdAt||0)-new Date(a.createdAt||0));
+  }
+  function markNotificationReadForCurrentUser(notification){
+    if(!notification)return;
+    if(notification.targeted){
+      const key=currentNotificationViewerKey();
+      notification.readBy=Array.isArray(notification.readBy)?notification.readBy:[];
+      if(!notification.readBy.includes(key))notification.readBy.push(key);
+    }else notification.read=true;
+    syncRecordToFirebase('notifications',notification);
+  }
+  function addTargetedNotification({title,text,type='info',recipientId='',recipientEmail='',recipientName='',recipientDepartment='',sourceArea='',leadId='',projectId='',proposalId='',targetView='kanban',targetMode=''}){
+    const record={id:newId('n'),companyId:state.currentCompanyId,title,text,type,targeted:true,recipientId,recipientEmail,recipientName,recipientDepartment,sourceArea,leadId,projectId,proposalId,targetView,targetMode,readBy:[],read:false,createdAt:new Date().toISOString(),createdBy:state.currentUser?.name||state.currentUser?.email||'Sistema'};
+    state.notifications.unshift(record);
+    syncRecordToFirebase('notifications',record);
+    return record;
+  }
+  function closedLeadForWork(work={}){
+    const name=notificationIdentity(work.clientName||'');
+    return companyRows('leads').find(lead=>lead.stage==='Fechado'&&(
+      (work.leadId&&lead.id===work.leadId)||
+      (work.proposalId&&lead.proposalId===work.proposalId)||
+      (name&&notificationIdentity(lead.name)===name)
+    ))||null;
+  }
+  function closedLeadForProposal(proposal={}){
+    const name=notificationIdentity(proposal.client?.name||'');
+    return companyRows('leads').find(lead=>lead.stage==='Fechado'&&(
+      lead.proposalId===proposal.id||
+      (proposal.client?.email&&notificationIdentity(lead.email)===notificationIdentity(proposal.client.email))||
+      (name&&notificationIdentity(lead.name)===name)
+    ))||null;
+  }
+  function currentUserOwnsClosedLead(lead={}){
+    if(!lead||lead.stage!=='Fechado')return false;
+    const owner=notificationIdentity(lead.owner||'');
+    if(!owner)return false;
+    const u=state.currentUser||{};
+    return [u.id,u.name,u.email].some(value=>value&&notificationIdentity(value)===owner);
+  }
+  function resolveCardOwner(lead={}){
+    const owner=notificationIdentity(lead.owner||'');
+    const candidates=[...(state.users||[]),...companyRows('teams')];
+    const member=candidates.find(item=>[item.id,item.name,item.email].some(value=>value&&notificationIdentity(value)===owner));
+    return {id:String(member?.id||member?.uid||'').trim(),email:String(member?.email||'').trim(),name:String(member?.name||lead.owner||'').trim()};
+  }
+  function notifyCommercialOwnerFromEngineering(work,detail='Projeto atualizado'){
+    if(!currentUserIsEngineering())return 0;
+    const lead=closedLeadForWork(work);if(!lead)return 0;
+    const owner=resolveCardOwner(lead);
+    const actor=notificationIdentity(state.currentUser?.id||state.currentUser?.email||state.currentUser?.name||'');
+    if([owner.id,owner.email,owner.name].some(v=>v&&notificationIdentity(v)===actor))return 0;
+    addTargetedNotification({
+      title:'Engenharia atualizou uma venda fechada',
+      text:`${work.clientName||lead.name}: ${detail}`,
+      type:'info',recipientId:owner.id,recipientEmail:owner.email,recipientName:owner.name,
+      sourceArea:'engineering',leadId:lead.id,projectId:work.id,proposalId:work.proposalId||lead.proposalId||'',targetView:'kanban',targetMode:'commercial'
+    });
+    return 1;
+  }
+  function notifyEngineeringFromCommercial(lead,detail='Dados comerciais atualizados'){
+    if(!lead||lead.stage!=='Fechado'||!currentUserOwnsClosedLead(lead))return 0;
+    const work=companyRows('works').find(item=>item.leadId===lead.id||(lead.proposalId&&item.proposalId===lead.proposalId)||notificationIdentity(item.clientName)===notificationIdentity(lead.name));
+    const recipients=engineeringNotificationRecipients();
+    const payload={title:'Comercial atualizou uma venda fechada',text:`${lead.name}: ${detail}`,type:'info',sourceArea:'commercial',leadId:lead.id,projectId:work?.id||'',proposalId:lead.proposalId||work?.proposalId||'',targetView:'kanban',targetMode:'projects'};
+    if(recipients.length){
+      recipients.forEach(recipient=>addTargetedNotification({...payload,recipientId:recipient.id,recipientEmail:recipient.email,recipientName:recipient.name}));
+      return recipients.length;
+    }
+    addTargetedNotification({...payload,recipientDepartment:'engineering'});
+    return 1;
+  }
+  function changedRecordFields(before={},after={},keys=[]){
+    return keys.filter(key=>JSON.stringify(before?.[key]??'')!==JSON.stringify(after?.[key]??''));
+  }
+  function engineeringProposalFingerprint(proposal={}){
+    const clone=deepClone(proposal||{});
+    ['commercial','acceptance','publishedAt','publicUrl','updatedAt','createdAt','status','seller','number','id','companyId','origin'].forEach(key=>delete clone[key]);
+    return JSON.stringify(clone);
+  }
+  function unreadCardNotificationCount({leadId='',projectId='',sourceArea=''}){
+    return visibleNotifications().filter(n=>notificationUnreadForCurrentUser(n)&&(!leadId||n.leadId===leadId)&&(!projectId||n.projectId===projectId)&&(!sourceArea||n.sourceArea===sourceArea)).length;
   }
   function templateText(template,values={}){
     return String(template||'').replace(/\{([a-zA-Z0-9_]+)\}/g,(_,key)=>values[key]??'');
@@ -5014,8 +5226,10 @@ service cloud.firestore {
     document.getElementById('viewTitle').textContent=item?.label||'SolarCRM';
     document.getElementById('companyBreadcrumb').textContent=state.company.tradeName||state.company.name;
     document.getElementById('roleSwitcher').value=state.role||'admin';
-    document.getElementById('notificationCount').textContent=companyRows('notifications').filter(n=>!n.read).length;
-    document.getElementById('notificationCount').style.display=companyRows('notifications').some(n=>!n.read)?'grid':'none';
+    const userNotifications=visibleNotifications();
+    const unreadNotifications=userNotifications.filter(notificationUnreadForCurrentUser);
+    document.getElementById('notificationCount').textContent=unreadNotifications.length;
+    document.getElementById('notificationCount').style.display=unreadNotifications.length?'grid':'none';
     const userButton=document.getElementById('userMenuBtn');
     if(state.currentUser.avatar){userButton.innerHTML=`<img src="${state.currentUser.avatar}" alt="${attr(state.currentUser.name||'Usuário')}">`;}else userButton.textContent=state.currentUser.initials||initials(state.currentUser.name)||'US';
   }
@@ -5202,11 +5416,12 @@ service cloud.firestore {
   function renderCommercialKanban(tabs=''){
     const leads=filteredRows('leads');
     const total=sum(leads.filter(l=>!['Fechado','Perdido'].includes(l.stage)).map(l=>l.estimatedValue));
+    const unreadEngineeringUpdates=visibleNotifications().filter(n=>notificationUnreadForCurrentUser(n)&&n.sourceArea==='engineering');
     return `${pageHead('Kanban','Acompanhe o funil comercial e as etapas operacionais dos projetos.',`<button class="btn btn-primary" data-action="new-lead">＋ Novo lead</button>`)}${tabs}
       <div class="pipeline-summary"><div class="pipeline-pill"><span>Pipeline aberto</span><strong>${currency(total,0)}</strong></div><div class="pipeline-pill"><span>Oportunidades</span><strong>${leads.filter(l=>!['Fechado','Perdido'].includes(l.stage)).length}</strong></div><div class="pipeline-pill"><span>Fechados</span><strong>${leads.filter(l=>l.stage==='Fechado').length}</strong></div><div class="pipeline-pill"><span>Ticket médio</span><strong>${currency(leads.length?sum(leads.map(l=>l.estimatedValue))/leads.length:0,0)}</strong></div></div>
       <div class="kanban-wrap"><div class="kanban">${pipelineStages.map(stage=>{
         const stageLeads=leads.filter(l=>l.stage===stage.id);
-        return `<section class="kanban-column lead-kanban-column" data-stage="${stage.id}"><div class="kanban-head"><strong>${escapeHtml(stage.id)}</strong><span class="kanban-count">${stageLeads.length}</span></div><div class="kanban-body">${stageLeads.map(l=>`<article class="kanban-card lead-kanban-card" draggable="true" data-id="${l.id}"><div class="kanban-card-top"><strong>${escapeHtml(l.name)}</strong><span class="lead-score">${number(l.score||0)}</span></div><p>${escapeHtml(l.city||'Sem cidade')} · ${escapeHtml(l.source||'Origem não informada')}</p><div class="kanban-card-foot"><span>${currency(l.estimatedValue||0,0)}</span><span>${escapeHtml(l.owner||'Sem responsável')}</span></div><select class="kanban-stage-select" data-kanban-stage="${l.id}" aria-label="Alterar etapa de ${attr(l.name)}">${pipelineStages.map(option=>`<option value="${attr(option.id)}" ${option.id===l.stage?'selected':''}>${escapeHtml(option.id)}</option>`).join('')}</select></article>`).join('')}</div></section>`;
+        return `<section class="kanban-column lead-kanban-column" data-stage="${stage.id}"><div class="kanban-head"><strong>${escapeHtml(stage.id)}</strong><span class="kanban-count">${stageLeads.length}</span></div><div class="kanban-body">${stageLeads.map(l=>{const engUnread=unreadEngineeringUpdates.filter(n=>n.leadId===l.id).length;return `<article class="kanban-card lead-kanban-card" draggable="true" data-id="${l.id}"><div class="kanban-card-top"><strong>${escapeHtml(l.name)}</strong><span class="lead-score">${number(l.score||0)}</span></div><p>${escapeHtml(l.city||'Sem cidade')} · ${escapeHtml(l.source||'Origem não informada')}</p>${engUnread?`<div style="margin:7px 0;padding:7px 9px;border-radius:9px;background:rgba(77,163,255,.12);border:1px solid rgba(77,163,255,.35);font-size:9px;font-weight:900;color:var(--text)">⚙ Engenharia atualizou · ${engUnread} aviso${engUnread>1?'s':''}</div>`:''}<div class="kanban-card-foot"><span>${currency(l.estimatedValue||0,0)}</span><span>${escapeHtml(l.owner||'Sem responsável')}</span></div><select class="kanban-stage-select" data-kanban-stage="${l.id}" aria-label="Alterar etapa de ${attr(l.name)}">${pipelineStages.map(option=>`<option value="${attr(option.id)}" ${option.id===l.stage?'selected':''}>${escapeHtml(option.id)}</option>`).join('')}</select></article>`;}).join('')}</div></section>`;
       }).join('')}</div></div>`;
   }
 
@@ -5214,6 +5429,7 @@ service cloud.firestore {
     const works=filteredRows('works');
     const docs=companyRows('projectDocuments');
     const tasks=companyRows('tasks');
+    const unreadCommercialUpdates=visibleNotifications().filter(n=>notificationUnreadForCurrentUser(n)&&n.sourceArea==='commercial');
     const delayed=works.filter(work=>work.deadline&&work.deadline<todayISO()&&normalizeProjectStage(work.projectStage)!=='Operação').length;
     return `${pageHead('Kanban','Cada projeto percorre as sete etapas do pós-venda e possui Kanban, tarefas e dossiê próprios.',`<button class="btn btn-primary" data-action="add-entity" data-collection="works">＋ Novo projeto</button>`)}${tabs}
       <div class="pipeline-summary"><div class="pipeline-pill"><span>Projetos ativos</span><strong>${works.filter(w=>normalizeProjectStage(w.projectStage)!=='Operação').length}</strong></div><div class="pipeline-pill"><span>Concluídos</span><strong>${works.filter(w=>normalizeProjectStage(w.projectStage)==='Operação').length}</strong></div><div class="pipeline-pill"><span>Documentos</span><strong>${docs.length}</strong></div><div class="pipeline-pill"><span>Atrasados</span><strong style="color:${delayed?'var(--red)':'var(--green)'}">${delayed}</strong></div></div>
@@ -5221,7 +5437,8 @@ service cloud.firestore {
         const rows=works.filter(work=>normalizeProjectStage(work.projectStage)===stage.id);
         return `<section class="kanban-column project-portfolio-column" data-project-stage="${attr(stage.id)}"><div class="kanban-head"><strong>${escapeHtml(stage.id)}</strong><span class="kanban-count">${rows.length}</span></div><div class="kanban-body">${rows.map(work=>{
           const docCount=docs.filter(doc=>doc.projectId===work.id).length;const taskRows=tasks.filter(task=>task.projectId===work.id);const completed=taskRows.filter(task=>task.status==='Concluída').length;
-          return `<article class="kanban-card project-kanban-card" draggable="true" data-project-id="${work.id}"><div class="kanban-card-top"><strong>${escapeHtml(work.clientName)}</strong><span class="status ${colorClass(stage.id)}">${number(work.progress||stage.progress)}%</span></div><div class="project-power">${number(work.systemPower,2)} kWp</div><p>${escapeHtml(work.city||'Cidade não informada')} · ${escapeHtml(work.team||'Equipe a definir')}</p><div class="kanban-card-foot"><span>▤ ${docCount} docs</span><span>✓ ${completed}/${taskRows.length||7} tarefas</span></div><select class="kanban-stage-select" data-project-stage-select="${work.id}">${projectStages.map(option=>`<option value="${attr(option.id)}" ${option.id===stage.id?'selected':''}>${escapeHtml(option.id)}</option>`).join('')}</select><div class="project-card-actions"><button class="btn btn-primary btn-sm" data-action="open-project" data-id="${work.id}" type="button">Abrir projeto</button><button class="btn btn-ghost btn-sm" data-action="project-documents" data-id="${work.id}" type="button">Documentos</button></div></article>`;
+          const commercialUnread=unreadCommercialUpdates.filter(n=>n.projectId===work.id||(!n.projectId&&n.leadId&&closedLeadForWork(work)?.id===n.leadId)).length;
+          return `<article class="kanban-card project-kanban-card" draggable="true" data-project-id="${work.id}"><div class="kanban-card-top"><strong>${escapeHtml(work.clientName)}</strong><span class="status ${colorClass(stage.id)}">${number(work.progress||stage.progress)}%</span></div><div class="project-power">${number(work.systemPower,2)} kWp</div><p>${escapeHtml(work.city||'Cidade não informada')} · ${escapeHtml(work.team||'Equipe a definir')}</p>${commercialUnread?`<div style="margin:7px 0;padding:7px 9px;border-radius:9px;background:rgba(255,194,71,.13);border:1px solid rgba(255,194,71,.38);font-size:9px;font-weight:900;color:var(--text)">↔ Comercial atualizou · ${commercialUnread} aviso${commercialUnread>1?'s':''}</div>`:''}<div class="kanban-card-foot"><span>▤ ${docCount} docs</span><span>✓ ${completed}/${taskRows.length||7} tarefas</span></div><select class="kanban-stage-select" data-project-stage-select="${work.id}">${projectStages.map(option=>`<option value="${attr(option.id)}" ${option.id===stage.id?'selected':''}>${escapeHtml(option.id)}</option>`).join('')}</select><div class="project-card-actions"><button class="btn btn-primary btn-sm" data-action="open-project" data-id="${work.id}" type="button">Abrir projeto</button><button class="btn btn-ghost btn-sm" data-action="project-documents" data-id="${work.id}" type="button">Documentos</button></div></article>`;
         }).join('')}</div></section>`;
       }).join('')}</div></div>`;
   }
@@ -5229,9 +5446,10 @@ service cloud.firestore {
   function updateLeadStage(leadId,stage){
     if(!hasPermission('leads','edit')){denyPermission('leads','edit');renderView('kanban');return;}
     const lead=getCompanyRecord('leads',leadId);if(!lead||!pipelineStages.some(item=>item.id===stage))return;
-    const previous=lead.stage;lead.stage=stage;lead.updatedAt=new Date().toISOString();
+    const previous=lead.stage;const wasOwnedByCurrentUser=currentUserOwnsClosedLead({...lead,stage:'Fechado'});lead.stage=stage;lead.updatedAt=new Date().toISOString();
     let closure=null;
     if(stage==='Fechado') closure=ensureLeadClosedWorkflows(lead,previous);
+    if(wasOwnedByCurrentUser&&(stage==='Fechado'||previous==='Fechado'))notifyEngineeringFromCommercial({...lead,stage:'Fechado'},`etapa comercial alterada de ${previous} para ${stage}`);
     addActivity('◎','Lead avançou no funil',`${lead.name}: ${previous} → ${stage}`);persist();syncRecordToFirebase('leads',lead);renderView('kanban');renderSidebar();
     toast('Etapa atualizada',closure?`${lead.name} → ${stage}. Contrato e homologação criados automaticamente.`:`${lead.name} → ${stage}`);
   }
@@ -5322,6 +5540,7 @@ service cloud.firestore {
     if(stageId==='Operação'){projectTasksFor(projectId).forEach(task=>{task.status='Concluída';task.updatedAt=new Date().toISOString();syncRecordToFirebase('tasks',task);});work.progress=100;work.status='Concluída';ensureAfterSalesFromWork(work);}
     if(previous!==stageId&&work.portalPublishedAt)publishClientPortalStatus(work,{silent:true});
     if(previous!==stageId)executeAutomationRules('project_stage_enter',work,{stage:stageId,previous,eventKey:`project-stage-${projectId}-${stageId}-${Date.now()}`});
+    if(previous!==stageId)notifyCommercialOwnerFromEngineering(work,`etapa da Engenharia alterada de ${previous} para ${stageId}`);
     addActivity('⌁','Projeto avançou',`${work.clientName}: ${previous} → ${stageId}`);persist();syncRecordToFirebase('works',work);if(notify)toast('Etapa do projeto atualizada',`${work.clientName} → ${stageId}`);if(render){renderSidebar();if(activeView==='kanban')renderView('kanban');if(activeProjectId===projectId)renderProjectWorkspace();}
   }
 
@@ -5400,6 +5619,9 @@ service cloud.firestore {
     }
     if(String(snap.coverPhoto||'').startsWith('data:'))snap.coverPhoto='';
     if(snap.technical&&String(snap.technical.projectImage||'').startsWith('data:'))snap.technical.projectImage='';
+    if(snap.technical&&Array.isArray(snap.technical.projectImages))snap.technical.projectImages=snap.technical.projectImages.filter(src=>src&&!String(src).startsWith('data:'));
+    if(snap.technical&&String(snap.technical.irradiationImage||'').startsWith('data:'))snap.technical.irradiationImage='';
+    if(snap.technical&&Array.isArray(snap.technical.irradiationImages))snap.technical.irradiationImages=snap.technical.irradiationImages.filter(src=>src&&!String(src).startsWith('data:'));
     return firestoreSafeRecord(snap);
   }
 
@@ -5423,7 +5645,7 @@ service cloud.firestore {
       clientName:client.name||'', city:client.city||'', document:normalizeCpfCnpj(client.document||''), number:proposal.number||'', validUntil:proposal.validUntil||'',
       actualPower:Number(c.actualPower||0), acPower:Number(c.inverterPowerTotal||0), moduleQty:Number(c.moduleQty||0), modulePower:Number(c.moduleItem?.power||0), moduleBrand:c.moduleItem?.brand||'',
       inverterQty:Number(c.inverterQty||0), inverterPower:Number(c.inverterPowerTotal||0), inverterBrand:c.inverters.map(item=>item.brand).filter(Boolean).join(' + '), inverters:c.inverters.map(item=>({...item})), inverterSummary:c.inverterSummary||'', structureType:proposal.technical?.structureType||'', orientation:proposal.technical?.orientation||'',
-      annualGeneration:Number(c.annualGeneration||0), monthlyGeneration:Number(c.monthlyGeneration||0), avgConsumption:Number(c.avgConsumption||0), currentTariff:Number(proposal.currentTariff||0),
+      annualGeneration:Number(c.annualGeneration||0), monthlyGeneration:Number(c.monthlyGeneration||0), avgConsumption:Number(c.avgConsumption||0), generatorAvgConsumption:Number(c.generatorAvgConsumption||0), beneficiaryAvgConsumption:Number(c.beneficiaryAvgConsumption||0), beneficiaries:normalizeProposalBeneficiaries(proposal.beneficiaries).filter(item=>item.name||item.consumerUnit||item.city||item.averageConsumption>0), currentTariff:Number(proposal.currentTariff||0),
       investment:Number(proposal.commercial?.price||0), monthlySaving:Number(c.monthlySaving||0), annualSaving:Number(c.annualSaving||0), payback:Number(c.payback||0), roi:Number(c.roi||0), paymentMethod:proposal.commercial?.paymentMethod||'',
       additionalItemsTitle:String(proposal.additionalItemsTitle||'Itens adicionais e escopo complementar'), additionalItems:normalizeProposalAdditionalItems(proposal.additionalItems),
       schedule:normalizeProposalSchedule(proposal.schedule).map(row=>({stage:row[0],description:row[1],deadline:row[2]})), guarantees:{panels:proposal.guarantees?.panels||'',inverters:proposal.guarantees?.inverters||'',structure:proposal.guarantees?.structure||'',installation:proposal.guarantees?.installation||''},
@@ -5435,7 +5657,7 @@ service cloud.firestore {
       id:proposal.id, companyId:state.currentCompanyId, proposalId:proposal.id, number:proposal.number||'', status:proposal.status||'Enviada',
       clientName:client.name||'', clientDocument:normalizeCpfCnpj(client.document||''), clientPhone:client.phone||'', clientEmail:client.email||'', city:client.city||'',
       companyName:company.tradeName||company.name||'Empresa', companyWebsite:company.website||'', companyEmail:company.email||'', companyPhone:company.phone||'', companyLogo:logoUrl,
-      actualPower:Number(c.actualPower||0), annualGeneration:Number(c.annualGeneration||0), monthlyGeneration:Number(c.monthlyGeneration||0), monthlySaving:Number(c.monthlySaving||0), annualSaving:Number(c.annualSaving||0), investment:Number(proposal.commercial?.price||0), payback:Number(c.payback||0),
+      actualPower:Number(c.actualPower||0), annualGeneration:Number(c.annualGeneration||0), monthlyGeneration:Number(c.monthlyGeneration||0), monthlySaving:Number(c.monthlySaving||0), annualSaving:Number(c.annualSaving||0), investment:Number(proposal.commercial?.price||0), payback:Number(c.payback||0), beneficiaries:normalizeProposalBeneficiaries(proposal.beneficiaries).filter(item=>item.name||item.consumerUnit||item.city||item.averageConsumption>0),
       additionalItemsTitle:String(proposal.additionalItemsTitle||'Itens adicionais e escopo complementar'), additionalItems:normalizeProposalAdditionalItems(proposal.additionalItems),
       schedule:normalizeProposalSchedule(proposal.schedule).map(row=>({stage:row[0],description:row[1],deadline:row[2]})), guarantees:{panels:proposal.guarantees?.panels||'',inverters:proposal.guarantees?.inverters||'',structure:proposal.guarantees?.structure||'',installation:proposal.guarantees?.installation||''},
       publicPdfUrl:pdfUrl||proposal.publicPdfUrl||'', publicUrl:proposalPublicUrl(proposal,pdfUrl||proposal.publicPdfUrl||''), clientPortalUrl:clientPortalUrl(client.document||''), presentation,
@@ -5744,16 +5966,69 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     finally{if(button){button.disabled=false;button.textContent=old;}}
   }
 
+  function proposalOwnerKey(proposal={}){
+    return String(
+      proposal.representative?.uid
+      || proposal.createdByUid
+      || proposal.representative?.email
+      || proposal.seller?.email
+      || proposalOwnerLabel(proposal)
+      || 'sem-responsavel'
+    ).trim().toLowerCase();
+  }
+  function proposalDateKey(proposal={}){
+    const raw=proposal.createdAt||proposal.sentAt||proposal.updatedAt||'';
+    const match=String(raw).match(/^(\d{4}-\d{2}-\d{2})/);
+    if(match)return match[1];
+    const d=new Date(raw);
+    if(Number.isNaN(d.getTime()))return '';
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  function isProposalClosed(proposal={}){
+    const status=String(proposal.status||'').trim().toLowerCase();
+    if(['aceita','aceito','aprovada','aprovado','fechada','fechado','contratada','contratado'].includes(status))return true;
+    const lead=companyRows('leads').find(item=>item.proposalId===proposal.id);
+    return String(lead?.stage||'').trim().toLowerCase()==='fechado';
+  }
+  function proposalFilterRows(baseRows=[]){
+    return baseRows.filter(proposal=>{
+      const date=proposalDateKey(proposal);
+      const nameTerm=String(proposalFilters.name||'').trim().toLowerCase();
+      if(nameTerm){
+        const proposalName=[proposal.client?.name,proposal.name,proposal.title,proposal.number,proposal.id].filter(Boolean).join(' ').toLowerCase();
+        if(!proposalName.includes(nameTerm))return false;
+      }
+      if(proposalFilters.from && (!date || date<proposalFilters.from))return false;
+      if(proposalFilters.to && (!date || date>proposalFilters.to))return false;
+      if(proposalFilters.representative!=='all' && proposalOwnerKey(proposal)!==proposalFilters.representative)return false;
+      const closed=isProposalClosed(proposal);
+      if(proposalFilters.status==='open' && closed)return false;
+      if(proposalFilters.status==='closed' && !closed)return false;
+      return true;
+    });
+  }
+
   function renderProposals() {
-    const rows=filteredRows('proposals');
+    const baseRows=filteredRows('proposals');
+    const rows=proposalFilterRows(baseRows);
     const total=sum(rows.map(p=>p.commercial?.price));
-    const accepted=sum(rows.filter(p=>p.status==='Aceita').map(p=>p.commercial?.price));
+    const closedRows=baseRows.filter(isProposalClosed);
+    const openRows=baseRows.filter(p=>!isProposalClosed(p));
+    const representativeMap=new Map();
+    baseRows.forEach(p=>{
+      const key=proposalOwnerKey(p);
+      if(!representativeMap.has(key))representativeMap.set(key,proposalOwnerLabel(p)||'Sem responsável');
+    });
+    const representativeOptions=[...representativeMap.entries()].sort((a,b)=>String(a[1]).localeCompare(String(b[1]),'pt-BR'));
+    const statusLabel=proposalFilters.status==='closed'?'Fechadas/aprovadas':proposalFilters.status==='all'?'Todas':'Não aprovadas';
+    const filters=`<section class="card" style="margin-bottom:16px"><div class="card-body" style="padding:14px 16px"><div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px"><div><strong style="font-size:12px">Filtros de propostas</strong><span style="display:block;color:var(--muted);font-size:9px;margin-top:3px">Por padrão são exibidas somente propostas ainda não aprovadas.</span></div><span class="status blue">${rows.length} de ${baseRows.length} exibida(s)</span></div><div style="display:grid;grid-template-columns:minmax(220px,1.45fr) repeat(4,minmax(145px,1fr));gap:10px;align-items:end"><label class="field"><span>Buscar proposta</span><input type="search" data-proposal-filter="name" value="${attr(proposalFilters.name||'')}" placeholder="Nome do cliente ou proposta" autocomplete="off"></label><label class="field"><span>Data inicial</span><input type="date" data-proposal-filter="from" value="${attr(proposalFilters.from)}"></label><label class="field"><span>Data final</span><input type="date" data-proposal-filter="to" value="${attr(proposalFilters.to)}"></label><label class="field"><span>Representante</span><select data-proposal-filter="representative"><option value="all">Todos os representantes</option>${representativeOptions.map(([key,label])=>`<option value="${attr(key)}" ${proposalFilters.representative===key?'selected':''}>${escapeHtml(label)}</option>`).join('')}</select></label><label class="field"><span>Status</span><select data-proposal-filter="status"><option value="open" ${proposalFilters.status==='open'?'selected':''}>Não aprovadas</option><option value="closed" ${proposalFilters.status==='closed'?'selected':''}>Fechadas / aprovadas</option><option value="all" ${proposalFilters.status==='all'?'selected':''}>Todas</option></select></label></div><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:10px"><small style="color:var(--muted)">Visualização atual: <strong style="color:var(--text)">${escapeHtml(statusLabel)}</strong></small><button class="btn btn-ghost btn-sm" data-proposal-filter-clear type="button">Limpar filtros</button></div></div></section>`;
     return `${pageHead('Propostas','Crie dimensionamentos e PDFs comerciais profissionais em 10 páginas.',`<button class="btn btn-ghost" data-action="equipment-bank">Banco de equipamentos</button>${hasPermission('proposals','create')?'<button class="btn btn-primary" data-action="new-proposal">＋ Nova proposta</button>':''}`)}
-      <div class="pipeline-summary"><div class="pipeline-pill"><span>Total em propostas</span><strong>${currency(total,0)}</strong></div><div class="pipeline-pill"><span>Aceitas</span><strong>${currency(accepted,0)}</strong></div><div class="pipeline-pill"><span>Em negociação</span><strong>${rows.filter(p=>p.status==='Negociação').length}</strong></div><div class="pipeline-pill"><span>Taxa de aceite</span><strong>${rows.length?number(rows.filter(p=>p.status==='Aceita').length/rows.length*100,1):0}%</strong></div></div>
+      ${filters}
+      <div class="pipeline-summary"><div class="pipeline-pill"><span>Valor exibido</span><strong>${currency(total,0)}</strong></div><div class="pipeline-pill"><span>Não aprovadas</span><strong>${openRows.length}</strong></div><div class="pipeline-pill"><span>Fechadas / aprovadas</span><strong>${closedRows.length}</strong></div><div class="pipeline-pill"><span>Exibindo</span><strong>${rows.length} de ${baseRows.length}</strong></div></div>
       <div class="proposal-card-grid">${rows.map(p=>{
         const calc=calculateProposal(p);
         return `<article class="proposal-card"><div class="proposal-card-head"><div><h3>${escapeHtml(p.client?.name||'Cliente')}</h3><p>${escapeHtml(p.number||p.id)} · ${dateBR(p.createdAt)}${p.origin==='representative-mobile'?' · Representante':''}</p><p style="margin-top:4px;color:var(--text-soft)">Responsável: <strong>${escapeHtml(proposalOwnerLabel(p))}</strong></p></div><span class="status ${colorClass(p.status)}">${escapeHtml(p.status)}</span></div><div class="proposal-value">${currency(p.commercial?.price,0)}</div><div class="proposal-metrics"><div><span>Sistema</span><strong>${number(calc.actualPower,2)} kWp</strong></div><div><span>Módulos</span><strong>${calc.moduleQty}</strong></div><div><span>Payback</span><strong>${number(calc.payback,1)} anos</strong></div></div><div class="proposal-card-actions">${hasPermission('proposals','edit')?`<button class="btn btn-ghost btn-sm" data-action="edit-proposal" data-id="${p.id}">Editar</button>`:''}<button class="btn btn-secondary btn-sm" data-action="preview-proposal" data-id="${p.id}">Visualizar</button>${canTransferProposal()?`<button class="btn btn-ghost btn-sm" data-action="transfer-proposal" data-id="${p.id}">⇄ Transferir</button>`:''}${hasPermission('proposals','approve')?`<button class="btn btn-primary btn-sm" data-action="send-proposal" data-id="${p.id}">Enviar</button>`:''}${hasPermission('proposals','create')?`<button class="btn btn-ghost btn-sm btn-icon" data-action="duplicate-proposal" data-id="${p.id}" title="Duplicar">⧉</button>`:''}${hasPermission('proposals','delete')?`<button class="btn btn-danger btn-sm btn-icon" data-action="delete-proposal" data-id="${p.id}" title="Excluir">×</button>`:''}</div></article>`;
-      }).join('')}</div>`;
+      }).join('')||`<div class="empty-state card" style="grid-column:1/-1"><strong>Nenhuma proposta encontrada</strong><span>Altere o período, representante ou status para visualizar outros registros.</span></div>`}</div>`;
   }
   function renderFinancial() {
     const rows=filteredRows('financial');
@@ -6067,6 +6342,32 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     document.querySelectorAll('[data-cancel-rule]').forEach(btn=>btn.addEventListener('click',()=>{automationRuleEditor=null;renderView('automations');}));
     document.getElementById('automationRuleForm')?.addEventListener('submit',saveAutomationRule);
     document.querySelectorAll('[data-insert-rule-variable]').forEach(btn=>btn.addEventListener('click',()=>insertRuleVariable(btn.dataset.insertRuleVariable)));
+    if(view==='proposals'){
+      document.querySelectorAll('[data-proposal-filter]').forEach(input=>{
+        const key=input.dataset.proposalFilter;
+        if(key==='name'){
+          input.addEventListener('input',()=>{
+            const value=input.value;
+            const cursor=input.selectionStart??value.length;
+            proposalFilters.name=value;
+            renderView('proposals');
+            requestAnimationFrame(()=>{
+              const next=document.querySelector('[data-proposal-filter="name"]');
+              if(next){next.focus();try{next.setSelectionRange(cursor,cursor);}catch(e){}}
+            });
+          });
+        }else{
+          input.addEventListener('change',()=>{
+            proposalFilters[key]=input.value||((key==='representative')?'all':(key==='status'?'open':''));
+            renderView('proposals');
+          });
+        }
+      });
+      document.querySelector('[data-proposal-filter-clear]')?.addEventListener('click',()=>{
+        proposalFilters={name:'',from:'',to:'',representative:'all',status:'open'};
+        renderView('proposals');
+      });
+    }
     if(view==='kanban')bindKanban();
   }
 
@@ -6189,6 +6490,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     const fd=new FormData(event.currentTarget); const record={};
     schema.fields.forEach(([key,,type])=>{ const raw=fd.get(key); record[key]=type==='number'?(raw===''?'':Number(raw)):raw; });
     const previous=id?(state[collection]||[]).find(r=>r.id===id):null;
+    const previousSnapshot=previous?deepClone(previous):null;
     if(collection==='equipmentCatalog')Object.assign(record,normalizeEquipmentRecord(record));
     record.id=id||newId(collection==='equipmentCatalog'?(record.type==='Inversor'?'inv':'mod'):collection.slice(0,3)); record.companyId=state.currentCompanyId; record.updatedAt=new Date().toISOString(); if(!id)record.createdAt=todayISO();
     if(collection==='commissions' && !record.value && record.proposalValue && record.percentage) record.value=record.proposalValue*record.percentage/100;
@@ -6217,10 +6519,26 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     }
     if(collection==='works'){
       const saved=state.works.find(item=>item.id===record.id);
-      if(previous&&normalizeProjectStage(previous.projectStage)!==normalizeProjectStage(saved.projectStage))updateProjectStage(saved.id,saved.projectStage,{render:false,notify:false});
-      else ensureProjectStructure(saved);
+      const stageChanged=previousSnapshot&&normalizeProjectStage(previousSnapshot.projectStage)!==normalizeProjectStage(saved.projectStage);
+      if(stageChanged){
+        updateProjectStage(saved.id,saved.projectStage,{render:false,notify:false});
+        if(currentUserIsEngineering())notifyCommercialOwnerFromEngineering(saved,`etapa da Engenharia alterada de ${normalizeProjectStage(previousSnapshot.projectStage)} para ${normalizeProjectStage(saved.projectStage)}`);
+      }else ensureProjectStructure(saved);
+      if(previousSnapshot&&!stageChanged&&currentUserIsEngineering()){
+        const changed=changedRecordFields(previousSnapshot,saved,['clientName','clientDocument','city','systemPower','team','startDate','deadline','status','notes','clientPortalMessage']);
+        if(changed.length)notifyCommercialOwnerFromEngineering(saved,`dados do card de Engenharia alterados (${changed.join(', ')})`);
+      }
       if(saved.portalPublishedAt)publishClientPortalStatus(saved,{silent:true});
       if(saved.status==='Concluída'||saved.projectStage==='Operação')ensureAfterSalesFromWork(saved);
+    }
+    if(collection==='leads'&&previousSnapshot){
+      const savedLead=state.leads.find(item=>item.id===record.id);
+      const wasClosed=previousSnapshot.stage==='Fechado',isClosed=savedLead?.stage==='Fechado';
+      const ownerReference={...(isClosed?savedLead:previousSnapshot),stage:'Fechado'};
+      if((wasClosed||isClosed)&&currentUserOwnsClosedLead(ownerReference)){
+        const changed=changedRecordFields(previousSnapshot,savedLead,['stage','name','phone','email','city','estimatedValue','notes','proposalId']);
+        if(changed.length)notifyEngineeringFromCommercial(ownerReference,`dados do card comercial alterados (${changed.join(', ')})`);
+      }
     }
     addActivity('✓',`${schema.title} ${id?'atualizado':'criado'}`,record.name||record.clientName||record.subject||record.description||record.id);
     if(collection==='equipmentCatalog')refreshEquipmentCatalog();
@@ -6367,132 +6685,42 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     ];
     const header=page=>`<header class="cw-head"><div class="cw-brand"><img src="${attr(contractLogoBlack)}" alt="SoolarWin"></div><div class="cw-contact"><strong>${escapeHtml(companyAddress)}</strong><span>${escapeHtml(companyContact)}</span><span>${escapeHtml(companyDoc)}</span></div><div class="cw-mark">SW</div></header>`;
     const footer=page=>`<footer class="cw-foot"><span>${escapeHtml(companyName)} - Contrato comercial</span><strong>${page}</strong></footer>`;
-    const page=(num,title,body,extra='')=>`<section class="cw-page ${extra}">${num>1?header(num):''}<div class="cw-content">${title?`<h2>${escapeHtml(title)}</h2>`:''}${body}</div>${footer(num)}</section>`;
+    const page=(num,title,body,extra='')=>`<section class="cw-page ${extra}">${num>1?header(num):''}${title?`<h2>${escapeHtml(title)}</h2>`:''}${body}${footer(num)}</section>`;
     const dataLine=(label,value)=>`<div class="cw-data"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value||'Não informado')}</strong></div>`;
     const table=(rows,heads=['Item','Qtd.','Descrição'])=>`<table class="cw-table"><thead><tr>${heads.map(h=>`<th>${escapeHtml(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(cell=>`<td>${escapeHtml(String(cell??''))}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
     const clause=(title,text)=>`<article class="cw-clause"><strong>${escapeHtml(title)}</strong><p>${escapeHtml(text)}</p></article>`;
     const defaultSoolarwinContractSignature=window.__defaultSoolarwinContractSignature;
     const cover=`<div class="cw-cover-logo"><img src="${attr(contractLogoWhite)}" alt="SoolarWin"></div><div class="cw-cover-title"><span>Contrato comercial</span><h1>Fornecimento de Gerador Fotovoltaico</h1></div><div class="cw-between"><p>Celebrado entre</p><strong>${escapeHtml(companyName)}</strong><small>como CONTRATADA</small><em>e</em><strong>${escapeHtml(clientName)}</strong><small>como CONTRATANTE</small></div><div class="cw-cover-info"><div><span>UC geradora</span><strong>${escapeHtml(consumerUnit||'Não informada')}</strong></div><div class="cw-system-power"><span>Potência do sistema</span><strong>${number(systemPower,2)} kWp</strong></div><div><span>Data</span><strong>${escapeHtml(contractDate)}</strong></div></div>`;
     const p2=`<h3>Contrato de fornecimento de gerador fotovoltaico</h3><div class="cw-parties"><div>${dataLine('Contratada',companyName)}${dataLine('CNPJ',companyDoc)}${dataLine('Endereço',companyAddress)}</div><div>${dataLine('Contratante',clientName)}${dataLine('CPF/CNPJ',clientDoc)}${dataLine('Endereço',address||city)}</div></div>${clause('Cláusula Primeira - Do objeto do contrato',`O presente instrumento tem por objeto o fornecimento de Gerador Fotovoltaico por parte da CONTRATADA em favor do CONTRATANTE, consistindo na compra, venda, instalação, acompanhamento documental e prestação de serviços relacionados ao sistema solar fotovoltaico aprovado comercialmente.`)}<p class="cw-text">O sistema será dimensionado conforme dados de consumo, condições do local, projeto executivo e normas aplicáveis da concessionária. A geração média é estimativa técnica e pode variar conforme clima, sombreamento, sujeira, orientação, temperatura, indisponibilidades e demais fatores externos.</p><h3 class="cw-strip">Gerador fotovoltaico - ${number(systemPower,2)} kWp</h3>${table(equipmentRows)}`;
-    const p3Equipment=`<h2>Especificações dos equipamentos</h2><h3>2.1 Módulos fotovoltaicos</h3>${table([['Potência',modulePower?`${number(modulePower,0)} W`:'Conforme proposta'],['Quantidade',moduleQty?`${number(moduleQty,0)} unidade(s)`:'Conforme projeto'],['Modelo',moduleModel],['Tipo de célula','Módulo monocristalino ou tecnologia equivalente conforme disponibilidade técnica']],['Característica','Descrição'])}<h3>2.2 Inversores</h3>${table([['Potência AC total',inverterPower?`${number(inverterPower,2)} kW`:'Conforme projeto'],['Quantidade total',`${inverterQty||1}`],['Configuração',inverterModel]],['Característica','Descrição'])}`;
-    const p3Clauses=`<div class="cw-equipment-description"><h3 class="cw-tech-title">Condições técnicas do sistema</h3>${clause('Cláusula Terceira - Área estimada',`A área estimada para instalação do sistema é de ${area||'acordo com vistoria técnica'}, podendo sofrer ajustes conforme estrutura, layout final, acessos, normas técnicas e disponibilidade dos equipamentos.`)}${clause('Cláusula Quarta - Geração estimada',`A geração média estimada é meramente exemplificativa e não representa garantia de geração mínima. O desempenho dependerá de fatores climáticos, exposição solar, consumo local, funcionamento da rede, manutenção e condições de operação.`)}${clause('Cláusula Quinta - Substituição técnica',`Na falta de disponibilidade de equipamento especificado, a CONTRATADA poderá fornecer produto similar ou de potência equivalente/superior, desde que preserve a finalidade técnica do sistema, sem prejuízo ao CONTRATANTE.`)}</div>`;
+    const p3=`<h3>2.1 Módulos fotovoltaicos</h3>${table([['Potência',modulePower?`${number(modulePower,0)} W`:'Conforme proposta'],['Quantidade',moduleQty?`${number(moduleQty,0)} unidade(s)`:'Conforme projeto'],['Modelo',moduleModel],['Tipo de célula','Módulo monocristalino ou tecnologia equivalente conforme disponibilidade técnica']],['Característica','Descrição'])}<h3>2.2 Inversores</h3>${table([['Potência AC total',inverterPower?`${number(inverterPower,2)} kW`:'Conforme projeto'],['Quantidade total',`${inverterQty||1}`],['Configuração',inverterModel]],['Característica','Descrição'])}${clause('Cláusula Terceira - Área estimada',`A área estimada para instalação do sistema é de ${area||'acordo com vistoria técnica'}, podendo sofrer ajustes conforme estrutura, layout final, acessos, normas técnicas e disponibilidade dos equipamentos.`)}${clause('Cláusula Quarta - Geração estimada',`A geração média estimada é meramente exemplificativa e não representa garantia de geração mínima. O desempenho dependerá de fatores climáticos, exposição solar, consumo local, funcionamento da rede, manutenção e condições de operação.`)}${clause('Cláusula Quinta - Substituição técnica',`Na falta de disponibilidade de equipamento especificado, a CONTRATADA poderá fornecer produto similar ou de potência equivalente/superior, desde que preserve a finalidade técnica do sistema, sem prejuízo ao CONTRATANTE.`)}`;
     const p4=`<h2>Do valor do contrato e condições de pagamento</h2>${clause('Cláusula Sexta - Valor',`Pelos serviços e equipamentos contratados, o CONTRATANTE pagará à CONTRATADA a importância de ${currency(investment)}, conforme condição comercial: ${paymentMethod}.`) }${clause('Parágrafo Primeiro',`Os pagamentos deverão ser realizados por meio indicado pela CONTRATADA, podendo incluir depósito, transferência, PIX, boleto bancário, financiamento ou outra condição expressamente aprovada entre as partes.`)}${clause('Parágrafo Segundo',`Parcelas não pagas nos respectivos vencimentos poderão ficar sujeitas a multa, correção monetária, juros de mora e demais encargos previstos em proposta, boleto, contrato ou legislação aplicável.`)}<h2>Do prazo de execução</h2>${clause('Cláusula Sétima - Prazo',`O prazo de execução será contado a partir da liberação comercial, faturamento/recebimento dos equipamentos, documentação completa, acesso ao local e condições adequadas para instalação.`)}${clause('Parágrafo Único',`Prazos poderão ser prorrogados por fatores externos, incluindo chuvas, força maior, indisponibilidade de rede, exigências da concessionária, falta de documentos, necessidade de adequações técnicas ou paralisações não atribuíveis à CONTRATADA.`)}`;
     const p5=`<h2>Do local da entrega e instalação</h2>${clause('Cláusula Nona',`O local de entrega e instalação será ${address||city||'o endereço informado pelo CONTRATANTE'}, vinculado à unidade consumidora ${consumerUnit||'não informada'}.`) }<h2>Responsabilidades e obrigações do contratante</h2>${['Disponibilizar local de trabalho, acesso, documentos e condições adequadas para montagem e operação dos equipamentos.','Responsabilizar-se pela integridade da edificação, telhado, estrutura ou local onde será instalado o sistema fotovoltaico.','Executar adequações estruturais, elétricas, civis ou de padrão de entrada quando forem necessárias para viabilizar a instalação/homologação.','Disponibilizar internet ou meio de comunicação quando necessário para monitoramento dos inversores.','Não alterar o projeto por conta própria sem avaliação técnica, sob pena de custos adicionais e perda de garantia.'].map((t,i)=>clause(`${String.fromCharCode(97+i)})`,t)).join('')}<h2>Responsabilidades e obrigações da contratada</h2>${['Executar a instalação de forma técnica, dentro das normas e especificações aplicáveis.','Fornecer materiais, acessórios, equipamentos e mão de obra necessários ao escopo contratado.','Responsabilizar-se pela segurança dos empregados próprios ou subcontratados durante a execução.','Fornecer orientação documental e acompanhamento das etapas de homologação previstas no escopo.'].map((t,i)=>clause(`${String.fromCharCode(97+i)})`,t)).join('')}`;
     const p6=`<h2>Da garantia de produtos</h2><p class="cw-text">As garantias seguem as condições dos fabricantes e da proposta comercial aprovada. A CONTRATADA poderá intermediar suporte, análise e encaminhamento de garantia quando aplicável.</p>${table(warrantyRows,['Família','Condição de garantia'])}${clause('Cláusula Décima Terceira',`Em caso de não funcionamento ou funcionamento inadequado de produto em garantia, os serviços serão realizados a critério técnico da CONTRATADA, nas instalações do CONTRATANTE ou por procedimento indicado pelo fabricante.`)}${clause('Cláusula Décima Quarta',`A garantia não cobre mau uso, alterações por terceiros, surtos, descargas atmosféricas, falta de manutenção, danos por animais, danos estruturais, eventos climáticos extremos ou condições externas não controladas pela CONTRATADA.`)}${clause('Cláusula Décima Quinta',`A manutenção preventiva é recomendada periodicamente, podendo ter custos adicionais quando não estiver expressamente incluída na proposta comercial.`)}`;
     const p7=`<h2>Da rescisão</h2>${clause('Cláusula Décima Sexta',`Poderá o presente contrato ser rescindido de pleno direito caso uma das partes descumpra suas obrigações, sem prejuízo de cobrança de valores devidos, despesas realizadas, equipamentos adquiridos, serviços executados e eventuais penalidades aplicáveis.`)}${clause('Cláusula Décima Sétima',`O valor pago a título de entrada, sinal, arras, despesas de projeto, deslocamento, aquisição de equipamentos ou início de execução poderá ser retido total ou parcialmente conforme estágio do processo e custos já incorridos.`)}${clause('Cláusula Décima Oitava',`Em qualquer hipótese de rescisão, as partes realizarão acerto de contas considerando serviços executados, compromissos assumidos, equipamentos separados/adquiridos e pagamentos recebidos.`)}<h2>Condições técnicas adicionais</h2>${clause('Cláusula Décima Nona',`Serviços ou materiais não previstos, adequações de padrão, reforços estruturais, alterações de projeto, serviços civis, deslocamentos extras, troca de telhas, cabeamento adicional e exigências supervenientes poderão ser orçados separadamente.`)}${clause('Cláusula Vigésima',`O processo junto à concessionária somente será iniciado após o recebimento dos documentos necessários, autorização do CONTRATANTE e validação dos dados da unidade consumidora.`)}`;
     const p8=`<div class="cw-final-block"><h2>Das disposições finais</h2>${clause('Cláusula Vigésima Primeira',`As partes declaram que leram, compreenderam e aceitaram as condições comerciais, técnicas e operacionais deste contrato, vinculadas à proposta aprovada e aos anexos comerciais, quando houver.`)}${clause('Cláusula Vigésima Segunda',`A CONTRATADA não se responsabiliza por perdas de receita, lucros cessantes, interrupções de concessionária, atraso de vistoria, atraso de troca de medidor, condições climáticas, caso fortuito ou força maior.`)}${clause('Cláusula Vigésima Terceira - Foro',`Fica eleito o foro da comarca de ${cityBase}, salvo disposição legal obrigatória em contrário, para dirimir controvérsias relativas ao presente instrumento.`)}<div class="cw-sign-city"><span>${escapeHtml(cityBase)}</span><span>${escapeHtml(contractDate)}</span></div><div class="cw-signatures"><div><i></i><strong>CONTRATANTE</strong><span>${escapeHtml(clientName)}</span></div><div class="cw-company-signature"><img class="cw-signature-img" src="${window.__defaultSoolarwinContractSignature}" alt="Assinatura padrão Soolarwin"><i></i><strong>CONTRATADA</strong><span>${escapeHtml(companyName)}</span></div><div><i></i><strong>TESTEMUNHA</strong></div><div><i></i><strong>TESTEMUNHA</strong></div></div></div>`;
-    // Paginação fixa otimizada: utiliza o espaço útil sem movimentar elementos entre páginas.
-    // A página 3 recebe condições técnicas + valor/prazo em um bloco estável.
+    // Paginação otimizada: evita uma folha inteira para cada seção curta.
+    // A pré-visualização e o PDF direto usam exatamente a mesma composição.
     const sectionGap='<div class="cw-section-gap"></div>';
     const pages=[
       page(1,'',cover,'cover'),
-      page(2,'',p2+p3Equipment,'packed merged-equipment-page'),
-      page(3,'',p3Clauses+p4,'packed contract-page-three'),
-      page(4,'',p5,'packed'),
-      page(5,'',p6,'packed'),
-      page(6,'',p7,'packed'),
-      page(7,'',p8,'final')
+      page(2,'',p2+sectionGap+p3,'packed'),
+      page(3,'',p4+sectionGap+p5,'packed'),
+      page(4,'',p6+sectionGap+p7,'packed'),
+      page(5,'',p8,'final')
     ];
     return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Contrato - ${escapeHtml(clientName)}</title><style>
-      @page{size:A4;margin:0}*{box-sizing:border-box}body{margin:0;background:#dfe8ef;color:#0d2438;font-family:Inter,Arial,sans-serif}.cw-actions{position:sticky;top:0;z-index:99;display:flex;gap:10px;justify-content:flex-end;padding:12px;background:#071626}.cw-actions button{border:0;border-radius:12px;padding:11px 16px;font-weight:900;cursor:pointer}.cw-primary{background:#ffc247;color:#102033}.cw-secondary{background:#193a59;color:#fff}.cw-page{position:relative;width:210mm;height:297mm;margin:18px auto;background:#fff;padding:26mm 13mm 28mm;box-shadow:0 20px 60px rgba(13,36,56,.2);overflow:hidden}.cw-page:before{content:"";position:absolute;right:-72mm;top:-74mm;width:160mm;height:160mm;border-radius:999px;background:linear-gradient(135deg,rgba(28,154,84,.09),rgba(255,194,71,.12));}.cw-page.cover{padding:35mm 20mm 18mm;display:flex;flex-direction:column;justify-content:center;text-align:center}.cw-head{position:absolute;left:13mm;right:13mm;top:11mm;height:15mm;display:grid;grid-template-columns:42mm 1fr 28mm;gap:8mm;align-items:center}.cw-brand img{max-width:48mm;max-height:15mm;object-fit:contain}.cw-brand strong{font-size:18px;color:#0b6b45}.cw-contact{text-align:center;color:#0b6b45;font-size:9px;line-height:1.25;text-decoration:underline}.cw-contact span{display:block}.cw-mark{justify-self:end;border:2px solid #0b6b45;color:#0b6b45;font-weight:900;border-radius:8px;padding:5px 9px;font-size:16px}.cw-foot{position:absolute;left:13mm;right:13mm;bottom:4.5mm;display:flex;justify-content:space-between;align-items:center;color:#607086;font-size:9px}.cw-foot strong{font-size:15px;color:#0d2438}.cw-cover-logo img{max-width:118mm;max-height:40mm;object-fit:contain}.cw-cover-logo div{font-size:44px;font-weight:900;color:#0b6b45}.cw-cover-title span{display:inline-block;margin-top:18mm;padding:7px 13px;border-radius:999px;border:1px solid rgba(255,194,71,.8);background:#fff6db;color:#956400;text-transform:uppercase;font-size:10px;font-weight:900;letter-spacing:.08em}.cw-cover-title h1{font-size:27px;line-height:1.18;margin:10mm auto 8mm;max-width:150mm;text-transform:uppercase}.cw-between{display:grid;gap:4mm;justify-items:center;margin-top:4mm}.cw-between p,.cw-between small{margin:0;text-transform:uppercase;color:#5f6f82;font-size:11px}.cw-between strong{font-size:20px;text-transform:uppercase}.cw-between em{font-style:normal;font-weight:900;color:#0b6b45}.cw-cover-info{display:grid;grid-template-columns:repeat(3,1fr);gap:5mm;margin-top:18mm;text-align:left}.cw-cover-info div{border:1px solid #dce5ee;border-radius:14px;padding:12px 14px;min-height:66px;background:#fbfdff;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:5px;overflow:visible}.cw-cover-info span,.cw-data span{display:block;text-transform:uppercase;color:#607086;font-size:8px;font-weight:900;letter-spacing:.08em;line-height:1.15}.cw-cover-info strong,.cw-data strong{display:block;margin-top:0;font-size:16px;line-height:1.15;color:#0d2438;word-break:break-word}.cw-page h2{position:relative;margin:0 0 5mm;text-align:center;text-transform:uppercase;font-size:15px;line-height:1.3}.cw-page h3{position:relative;margin:0 0 4mm;text-align:center;text-transform:uppercase;font-size:13px;line-height:1.3}.cw-strip{background:#0b6b45;color:#fff;padding:7px;margin-top:7mm!important;margin-bottom:0!important}.cw-text{
-position:relative;
-font-size:10.4px;
-line-height:1.48;
-color:#25384c;
-text-align:justify;
-text-justify:inter-word;
-margin:0 0 3mm;
-}
-.cw-text + .cw-text{margin-top:2mm}
-.cw-parties{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:7mm;margin:8mm 0}.cw-data{border-bottom:1px solid #dfe7ef;padding:6px 0}.cw-table{position:relative;width:100%;border-collapse:collapse;margin:3mm 0 5mm;font-size:10px}.cw-table th{background:#0b6b45;color:#fff;padding:7px;text-transform:uppercase;border:1px solid #0b6b45}.cw-table td{border:1px solid #b9c5d1;padding:7px;vertical-align:top}.cw-table tr:nth-child(even) td{background:#f6faf7}.cw-clause{
-position:relative;
-margin:0 0 2.6mm!important;
-padding:0!important;
-font-size:10.1px;
-line-height:1.46;
-text-align:justify;
-text-justify:inter-word;
-orphans:3;
-widows:3;
-}
-.cw-clause strong{
-display:block;
-font-weight:900;
-line-height:1.3;
-margin:0 0 .8mm;
-}
-.cw-clause p{
-display:block;
-margin:0;
-color:#273a4f;
-text-indent:8mm;
-}
-.cw-clause + .cw-clause{margin-top:1.2mm!important}.cw-sign-city{position:relative;display:flex;justify-content:space-between;margin:18mm 25mm 13mm;font-size:12px}.cw-signatures{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:17mm 24mm;margin:0 18mm}.cw-signatures div{text-align:center;font-size:11px;min-height:22mm}.cw-signatures i{display:block;border-top:1.5px solid #0d2438;margin-bottom:4mm}.cw-signatures strong{display:block}.cw-signatures span{display:block;margin-top:2mm;font-weight:800}.cw-company-signature{display:flex;flex-direction:column;justify-content:flex-end}.cw-signature-img{display:block;max-width:100%;height:22mm;object-fit:contain;object-position:center bottom;margin:0 auto 2mm;background:transparent;opacity:1}.cw-final-block{position:relative;break-inside:avoid-page;page-break-inside:avoid}.cw-page.final{padding-top:26mm}.cw-page.final .cw-final-block>h2{margin-bottom:7mm}.cw-page.final .cw-sign-city{margin-top:14mm}.cw-page:nth-of-type(2n) .cw-mark{border-color:#ffc247;color:#9a6a00}.cw-page::after{content:"";position:absolute;left:50%;bottom:12mm;width:27mm;height:8.5mm;transform:translateX(-50%);background-image:url("${window.__defaultSoolarwinContractSignature}");background-repeat:no-repeat;background-position:center;background-size:contain;opacity:1;pointer-events:none;z-index:3}.cw-page.final::after{display:none}.cw-bottom-safe{display:block;height:0;min-height:0}
+      @page{size:A4;margin:0}*{box-sizing:border-box}body{margin:0;background:#dfe8ef;color:#0d2438;font-family:Inter,Arial,sans-serif}.cw-actions{position:sticky;top:0;z-index:99;display:flex;gap:10px;justify-content:flex-end;padding:12px;background:#071626}.cw-actions button{border:0;border-radius:12px;padding:11px 16px;font-weight:900;cursor:pointer}.cw-primary{background:#ffc247;color:#102033}.cw-secondary{background:#193a59;color:#fff}.cw-page{position:relative;width:210mm;height:297mm;margin:18px auto;background:#fff;padding:26mm 13mm 15mm;box-shadow:0 20px 60px rgba(13,36,56,.2);overflow:hidden}.cw-page:before{content:"";position:absolute;right:-72mm;top:-74mm;width:160mm;height:160mm;border-radius:999px;background:linear-gradient(135deg,rgba(28,154,84,.09),rgba(255,194,71,.12));}.cw-page.cover{padding:35mm 20mm 18mm;display:flex;flex-direction:column;justify-content:center;text-align:center}.cw-head{position:absolute;left:13mm;right:13mm;top:11mm;height:15mm;display:grid;grid-template-columns:42mm 1fr 28mm;gap:8mm;align-items:center}.cw-brand img{max-width:48mm;max-height:15mm;object-fit:contain}.cw-brand strong{font-size:18px;color:#0b6b45}.cw-contact{text-align:center;color:#0b6b45;font-size:9px;line-height:1.25;text-decoration:underline}.cw-contact span{display:block}.cw-mark{justify-self:end;border:2px solid #0b6b45;color:#0b6b45;font-weight:900;border-radius:8px;padding:5px 9px;font-size:16px}.cw-foot{position:absolute;left:13mm;right:13mm;bottom:7mm;display:flex;justify-content:space-between;align-items:center;color:#607086;font-size:9px}.cw-foot strong{font-size:15px;color:#0d2438}.cw-cover-logo img{max-width:118mm;max-height:40mm;object-fit:contain}.cw-cover-logo div{font-size:44px;font-weight:900;color:#0b6b45}.cw-cover-title span{display:inline-block;margin-top:18mm;padding:7px 13px;border-radius:999px;border:1px solid rgba(255,194,71,.8);background:#fff6db;color:#956400;text-transform:uppercase;font-size:10px;font-weight:900;letter-spacing:.08em}.cw-cover-title h1{font-size:27px;line-height:1.18;margin:10mm auto 8mm;max-width:150mm;text-transform:uppercase}.cw-between{display:grid;gap:4mm;justify-items:center;margin-top:4mm}.cw-between p,.cw-between small{margin:0;text-transform:uppercase;color:#5f6f82;font-size:11px}.cw-between strong{font-size:20px;text-transform:uppercase}.cw-between em{font-style:normal;font-weight:900;color:#0b6b45}.cw-cover-info{display:grid;grid-template-columns:repeat(3,1fr);gap:5mm;margin-top:18mm;text-align:left}.cw-cover-info div{border:1px solid #dce5ee;border-radius:14px;padding:12px 14px;min-height:66px;background:#fbfdff;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;gap:5px;overflow:visible}.cw-cover-info span,.cw-data span{display:block;text-transform:uppercase;color:#607086;font-size:8px;font-weight:900;letter-spacing:.08em;line-height:1.15}.cw-cover-info strong,.cw-data strong{display:block;margin-top:0;font-size:16px;line-height:1.15;color:#0d2438;word-break:break-word}.cw-page h2{position:relative;margin:0 0 9mm;text-align:center;text-transform:uppercase;font-size:15px}.cw-page h3{position:relative;margin:0 0 6mm;text-align:center;text-transform:uppercase;font-size:13px}.cw-strip{background:#0b6b45;color:#fff;padding:7px;margin-top:7mm!important;margin-bottom:0!important}.cw-text{position:relative;font-size:11px;line-height:1.55;color:#25384c;text-align:justify}.cw-parties{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:7mm;margin:8mm 0}.cw-data{border-bottom:1px solid #dfe7ef;padding:6px 0}.cw-table{position:relative;width:100%;border-collapse:collapse;margin:4mm 0 8mm;font-size:10px}.cw-table th{background:#0b6b45;color:#fff;padding:7px;text-transform:uppercase;border:1px solid #0b6b45}.cw-table td{border:1px solid #b9c5d1;padding:7px;vertical-align:top}.cw-table tr:nth-child(even) td{background:#f6faf7}.cw-clause{position:relative;margin:0!important;padding:0!important;font-size:10.4px;line-height:1.48;text-align:justify}.cw-clause strong{font-weight:900}.cw-clause p{display:inline;margin:0;color:#273a4f}.cw-sign-city{position:relative;display:flex;justify-content:space-between;margin:18mm 25mm 13mm;font-size:12px}.cw-signatures{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:17mm 24mm;margin:0 18mm}.cw-signatures div{text-align:center;font-size:11px;min-height:22mm}.cw-signatures i{display:block;border-top:1.5px solid #0d2438;margin-bottom:4mm}.cw-signatures strong{display:block}.cw-signatures span{display:block;margin-top:2mm;font-weight:800}.cw-company-signature{display:flex;flex-direction:column;justify-content:flex-end}.cw-signature-img{display:block;max-width:100%;height:22mm;object-fit:contain;object-position:center bottom;margin:0 auto 2mm;background:transparent;opacity:1}.cw-final-block{position:relative;break-inside:avoid-page;page-break-inside:avoid}.cw-page.final{padding-top:26mm}.cw-page.final .cw-final-block>h2{margin-bottom:7mm}.cw-page.final .cw-sign-city{margin-top:14mm}.cw-page:nth-of-type(2n) .cw-mark{border-color:#ffc247;color:#9a6a00}.cw-page::after{content:"";position:absolute;left:50%;bottom:6.5mm;width:30mm;height:10mm;transform:translateX(-50%);background-image:url("${window.__defaultSoolarwinContractSignature}");background-repeat:no-repeat;background-position:center;background-size:contain;opacity:1;pointer-events:none;z-index:3}.cw-page.final::after{display:none}
 
       /* Paginação visual otimizada — usa melhor a área A4 sem cortar conteúdo */
       .cw-section-gap{height:5mm}
-      .cw-page.packed{padding-top:24mm;padding-bottom:28mm}
-      .cw-page.packed h2{margin-top:0;margin-bottom:4mm}
-      .cw-page.packed h3{margin-bottom:3mm}
-      .cw-page.packed .cw-table{margin-top:2.5mm;margin-bottom:4mm}
-      .cw-page.packed .cw-parties{margin-top:4mm;margin-bottom:4mm}
-      .cw-page.packed .cw-text{margin:0 0 2.4mm}
-      .cw-page.packed .cw-clause{line-height:1.36}
-      .cw-page.packed .cw-strip{margin-top:3mm!important}
-      .cw-page.equipment-page{padding-top:23mm;padding-bottom:30mm}
-      .cw-page.equipment-page h2{margin-bottom:3mm;font-size:14px}
-      .cw-page.equipment-page h3{margin:2.2mm 0 2mm;font-size:12px}
-      .cw-page.equipment-page .cw-table{margin:2mm 0 3mm;font-size:9.2px}
-      .cw-page.equipment-page .cw-table th,
-      .cw-page.equipment-page .cw-table td{padding:5px 7px;line-height:1.22}
-      .cw-equipment-description{margin-top:2mm}
-      .cw-equipment-description .cw-tech-title{margin:1.5mm 0 1.8mm!important;font-size:11.5px!important}
-      .cw-equipment-description .cw-clause{font-size:9.15px!important;line-height:1.28!important;margin:0!important}
-      .cw-equipment-description .cw-clause + .cw-clause{margin-top:1.1mm!important}
-      .cw-page.merged-equipment-page{padding-top:23mm;padding-bottom:28mm}
-      .cw-page.merged-equipment-page h3{margin:2mm 0 1.8mm;font-size:11.8px}
-      .cw-page.merged-equipment-page .cw-parties{margin-top:3.5mm;margin-bottom:3.2mm}
-      .cw-page.merged-equipment-page .cw-data{padding:2.5mm 0}
-      .cw-page.merged-equipment-page .cw-text{margin:0 0 2.2mm;font-size:9.15px;line-height:1.28}
-      .cw-page.merged-equipment-page .cw-clause{margin:0 0 2mm;font-size:9.05px;line-height:1.26}
-      .cw-page.merged-equipment-page .cw-table{margin:1.8mm 0 2.4mm;font-size:9px}
-      .cw-page.merged-equipment-page .cw-table th,.cw-page.merged-equipment-page .cw-table td{padding:4px 6px;line-height:1.2}
-      .cw-page.merged-equipment-page .cw-strip{margin-top:2.2mm!important;margin-bottom:1.8mm!important;font-size:11.8px}
-      .cw-page.technical-clauses-page{padding-top:24mm;padding-bottom:28mm}
-      .cw-page.technical-clauses-page .cw-equipment-description{margin-top:0}
-      .cw-page.technical-clauses-page .cw-tech-title{margin-top:0!important}
-      .cw-page.equipment-page .cw-table{margin-bottom:7mm}
-      .cw-page.equipment-page h3{margin-top:2mm}
-      .cw-page.technical-clauses-page .cw-clause{display:block;margin:0 0 7mm!important;line-height:1.52}
-      .cw-page.contract-page-three{padding-top:24mm;padding-bottom:29mm}
-      .cw-page.contract-page-three .cw-equipment-description{margin:0 0 5mm}
-      .cw-page.contract-page-three .cw-tech-title{margin:0 0 2.4mm!important;font-size:12.2px!important}
-      .cw-page.contract-page-three h2{margin:5mm 0 3mm!important;font-size:14px!important}
-      .cw-page.contract-page-three h2:first-of-type{margin-top:5mm!important}
-      .cw-page.contract-page-three .cw-clause{
-        display:block!important;
-        margin:0 0 2.2mm!important;
-        padding:0!important;
-        font-size:9.4px!important;
-        line-height:1.38!important
-      }
-      .cw-page.contract-page-three .cw-clause strong{margin-bottom:.6mm!important}
-      .cw-page.contract-page-three .cw-clause p{text-indent:7mm!important}
-      .cw-page.contract-page-three .cw-equipment-description .cw-clause{
-        margin-bottom:2.2mm!important
-      }
-      .cw-page .cw-content>.cw-flow-continuation:first-child{margin-top:0!important}
-      .cw-page .cw-content>h2.cw-flow-continuation:first-child,
-      .cw-page .cw-content>h3.cw-flow-continuation:first-child{margin-top:0!important}
-      .cw-page .cw-content>.cw-clause.cw-flow-continuation:first-child strong{margin-top:0!important}
-      .cw-content{position:relative;z-index:1;width:100%}
-      .cw-page.cw-autoflow .cw-content{width:100%}
-      .cw-page.cw-autoflow.technical-clauses-page .cw-clause{margin:0!important;line-height:1.36!important}
-      .cw-page.cw-autoflow h2{margin-top:3mm}
-      .cw-page.cw-autoflow .cw-content>h2:first-child,.cw-page.cw-autoflow .cw-content>h3:first-child{margin-top:0!important}
-      .cw-page.cw-autoflow .cw-equipment-description{margin-top:0!important}
-      .cw-page.cw-autoflow .cw-equipment-description>.cw-clause{margin:0!important}
-      .cw-page.cw-autoflow .cw-equipment-description>.cw-clause+.cw-clause{margin-top:1mm!important}
+      .cw-page.packed{padding-top:25mm;padding-bottom:13mm}
+      .cw-page.packed h2{margin-top:0;margin-bottom:5mm}
+      .cw-page.packed h3{margin-bottom:4mm}
+      .cw-page.packed .cw-table{margin-top:3mm;margin-bottom:5mm}
+      .cw-page.packed .cw-parties{margin-top:5mm;margin-bottom:5mm}
+      .cw-page.packed .cw-text{margin:0 0 3mm}
+      .cw-page.packed .cw-clause{line-height:1.43}
+      .cw-page.packed .cw-strip{margin-top:4mm!important}
 
       /* Identidade visual Soolarwin — contrato */
       :root{--sw-navy:#07111f;--sw-navy-2:#102b46;--sw-panel:#13243a;--sw-yellow:#ffb703;--sw-yellow-2:#ffd166;--sw-blue:#5aa9ff;--sw-text:#10273d;--sw-muted:#65768a;--sw-line:#d9e4ef;--sw-soft:#f5f8fc}
@@ -6536,6 +6764,8 @@ text-indent:8mm;
       .cw-page:nth-of-type(2n) .cw-mark{border-color:var(--sw-blue);color:#174f80;background:#eef6ff}
 
       /* Ajustes finais do contrato */
+      .cw-clause{margin:0!important;padding:0!important}
+      .cw-clause + .cw-clause{margin-top:0!important}
       .cw-system-power span,.cw-system-power strong{color:#fff!important}
       @media print{
         html,body{margin:0!important;padding:0!important;background:#fff!important}.cw-actions{display:none!important}.cw-page{width:210mm!important;height:296.4mm!important;min-height:296.4mm!important;max-height:296.4mm!important;margin:0!important;box-shadow:none!important;overflow:hidden!important;break-before:auto!important;page-break-before:auto!important;break-after:page!important;page-break-after:always!important}.cw-page:last-child{break-after:auto!important;page-break-after:auto!important}.cw-page.final{break-before:auto!important;page-break-before:auto!important}.cw-page.final .cw-final-block{break-inside:avoid-page!important;page-break-inside:avoid!important}
@@ -6567,23 +6797,15 @@ text-indent:8mm;
         body.cw-compact-print .cw-page:not(.cover) .cw-head,
         body.cw-compact-print .cw-page:not(.cover) .cw-foot{display:none!important}
         body.cw-compact-print .cw-page:not(.cover):before{display:none!important}
-        body.cw-compact-print .cw-page::after{opacity:1!important;left:50%!important;bottom:12mm!important;width:27mm!important;height:8.5mm!important;transform:translateX(-50%)!important}
+        body.cw-compact-print .cw-page::after{opacity:1!important;left:50%!important;bottom:6.5mm!important;width:30mm!important;height:10mm!important;transform:translateX(-50%)!important}
         body.cw-compact-print .cw-page.final::after{display:none!important}
         body.cw-compact-print .cw-section-gap{height:3mm!important}
-        body.cw-compact-print .cw-page.packed{padding:0 0 24mm!important}
-        body.cw-compact-print .cw-page.contract-page-three{padding:0 0 22mm!important}
-        body.cw-compact-print .cw-page.contract-page-three .cw-equipment-description{margin:0 0 4mm!important}
-        body.cw-compact-print .cw-page.contract-page-three .cw-tech-title{margin:0 0 2mm!important;font-size:11.8px!important}
-        body.cw-compact-print .cw-page.contract-page-three h2{margin:4mm 0 2.5mm!important;font-size:13.4px!important}
-        body.cw-compact-print .cw-page.contract-page-three .cw-clause{margin:0 0 2mm!important;font-size:9.2px!important;line-height:1.27!important}
+        body.cw-compact-print .cw-page.packed{padding:0!important}
         body.cw-compact-print .cw-page h2{
           margin:0 0 4mm!important;font-size:14px!important;line-height:1.25!important;
           break-after:avoid-page!important;page-break-after:avoid!important
         }
         body.cw-compact-print .cw-page h2:after{margin-top:2mm!important}
-        body.cw-compact-print .cw-clause strong{display:block!important;margin:0 0 .6mm!important;line-height:1.28!important}
-        body.cw-compact-print .cw-clause p{display:block!important;margin:0!important;text-indent:7mm!important;text-align:justify!important;text-justify:inter-word!important}
-        body.cw-compact-print .cw-text{text-align:justify!important;text-justify:inter-word!important;line-height:1.44!important;margin-bottom:2.5mm!important}
         body.cw-compact-print .cw-page h3{
           margin:0 0 3mm!important;font-size:12.4px!important;line-height:1.3!important;
           break-after:avoid-page!important;page-break-after:avoid!important
@@ -6596,7 +6818,7 @@ text-indent:8mm;
           margin:0!important;padding:0!important;font-size:10.2px!important;line-height:1.43!important;
           break-inside:auto!important;page-break-inside:auto!important;orphans:3;widows:3
         }
-        body.cw-compact-print .cw-clause + .cw-clause{margin-top:1mm!important}
+        body.cw-compact-print .cw-clause + .cw-clause{margin-top:0!important}
         body.cw-compact-print .cw-parties{
           gap:5mm!important;margin:4mm 0!important;break-inside:avoid-page!important;page-break-inside:avoid!important
         }
@@ -6624,102 +6846,6 @@ text-indent:8mm;
         body.cw-compact-print .cw-system-power strong{color:#fff!important}
       }
       </style></head><body><div class="cw-actions"><button class="cw-secondary" onclick="window.close()">Fechar</button><button class="cw-secondary" onclick="try{parent.document.getElementById('contractPreviewCompactPrint')?.click()}catch(e){}">Baixar em PDF</button><button class="cw-primary" onclick="document.body.classList.remove('cw-compact-print');window.print()">Imprimir / salvar PDF</button></div>${pages.join('')}</body></html>`;
-  }
-
-  function compactContractPages(doc){
-    if(!doc||doc.documentElement?.dataset?.contractCompacted==='1')return;
-    doc.documentElement.dataset.contractCompacted='1';
-
-    // As páginas 1, 2 e 3 permanecem totalmente fixas. A compactação começa
-    // somente nas páginas seguintes, onde havia grandes áreas em branco.
-    const allPages=()=>[...doc.querySelectorAll('.cw-page')];
-    const isHeading=el=>el?.matches?.('h2,h3');
-    const isFinal=page=>page?.classList?.contains('final');
-
-    function firstMovableGroup(content){
-      const children=[...content.children];
-      if(!children.length)return [];
-      const first=children[0];
-      if(first.matches('.cw-final-block,.cw-sign-city,.cw-signatures'))return [];
-
-      // Títulos nunca são movidos sozinhos. Levamos o título e o primeiro bloco
-      // relacionado; no bloco de garantia, tabela e texto introdutório seguem juntos.
-      if(isHeading(first)){
-        const group=[first];
-        let i=1;
-        while(i<children.length && group.length<4){
-          const el=children[i];
-          if(isHeading(el))break;
-          group.push(el);
-          if(el.matches('.cw-clause'))break;
-          if(el.matches('.cw-table'))break;
-          i++;
-        }
-        return group;
-      }
-      return [first];
-    }
-
-    function fits(page){
-      const content=page.querySelector('.cw-content');
-      const footer=page.querySelector('.cw-foot');
-      if(!content||!footer)return false;
-      const last=content.lastElementChild;
-      if(!last)return true;
-      const pageRect=page.getBoundingClientRect();
-      const footerRect=footer.getBoundingClientRect();
-      // Reserva adicional para a assinatura fixa das páginas internas.
-      const signatureSafeTop=pageRect.bottom-86;
-      const limit=Math.min(footerRect.top-14,signatureSafeTop);
-      return last.getBoundingClientRect().bottom<=limit;
-    }
-
-    // Nunca mexe nas três primeiras páginas nem traz conteúdo da última página
-    // de assinaturas. Cada tentativa é medida e revertida se não couber inteira.
-    for(let pass=0;pass<24;pass++){
-      let changed=false;
-      const pages=allPages();
-      for(let i=3;i<pages.length-1;i++){
-        const current=pages[i];
-        const next=pages[i+1];
-        if(!current||!next||isFinal(current)||isFinal(next))continue;
-        const currentContent=current.querySelector('.cw-content');
-        const nextContent=next.querySelector('.cw-content');
-        if(!currentContent||!nextContent)continue;
-        const group=firstMovableGroup(nextContent);
-        if(!group.length)continue;
-
-        const marker=doc.createComment('contract-flow-marker');
-        nextContent.insertBefore(marker,group[0]);
-        group.forEach(el=>{
-          el.classList.add('cw-flow-continuation');
-          currentContent.appendChild(el);
-        });
-
-        if(fits(current)){
-          marker.remove();
-          changed=true;
-        }else{
-          group.forEach(el=>{
-            el.classList.remove('cw-flow-continuation');
-            nextContent.insertBefore(el,marker);
-          });
-          marker.remove();
-        }
-      }
-      if(!changed)break;
-    }
-
-    // Remove somente páginas internas que ficaram realmente vazias e renumera.
-    allPages().forEach(page=>{
-      if(page.classList.contains('cover')||isFinal(page))return;
-      const content=page.querySelector('.cw-content');
-      if(content && !String(content.innerText||'').trim() && !content.querySelector('table,img'))page.remove();
-    });
-    allPages().forEach((page,index)=>{
-      const num=page.querySelector('.cw-foot strong');
-      if(num)num.textContent=String(index+1);
-    });
   }
 
   function ensureContractPreviewModal(){
@@ -6757,10 +6883,7 @@ text-indent:8mm;
     const frame=modal.querySelector('#contractPreviewFrame');
     const title=modal.querySelector('#contractPreviewTitle');
     if(title)title.textContent=`Contrato · ${contract.clientName||'Cliente'}`;
-    if(frame){
-      frame.onload=()=>{try{compactContractPages(frame.contentDocument);}catch(error){console.warn(error);}};
-      frame.srcdoc=html;
-    }
+    if(frame)frame.srcdoc=html;
     const compactPrintBtn=modal.querySelector('#contractPreviewCompactPrint');
     if(compactPrintBtn)compactPrintBtn.onclick=async()=>{
       if(compactPrintBtn.disabled)return;
@@ -6768,8 +6891,6 @@ text-indent:8mm;
         if(!window.jspdf?.jsPDF||!window.html2canvas)throw new Error('Bibliotecas de geração de PDF indisponíveis.');
         const doc=frame?.contentDocument||frame?.contentWindow?.document;
         if(!doc)throw new Error('A pré-visualização do contrato ainda não está pronta.');
-        compactContractPages(doc);
-        await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
         const pages=[...doc.querySelectorAll('.cw-page')].filter(page=>{
           const text=String(page.innerText||'').replace(/\s+/g,'').trim();
           return Boolean(text||page.querySelector('img,table,.cw-cover-logo,.cw-signatures'));
@@ -6793,11 +6914,8 @@ text-indent:8mm;
         const captureStyle=doc.createElement('style');
         captureStyle.setAttribute('data-contract-pdf-capture-style','1');
         captureStyle.textContent=`
-          [data-contract-pdf-capture] .cw-page::after{content:""!important;position:absolute!important;left:50%!important;bottom:45px!important;width:102px!important;height:32px!important;transform:translateX(-50%)!important;background-image:url("${window.__defaultSoolarwinContractSignature}")!important;background-repeat:no-repeat!important;background-position:center!important;background-size:contain!important;opacity:1!important;pointer-events:none!important;z-index:4!important;}
+          [data-contract-pdf-capture] .cw-page::after{content:""!important;position:absolute!important;left:50%!important;bottom:24px!important;width:114px!important;height:38px!important;transform:translateX(-50%)!important;background-image:url("${window.__defaultSoolarwinContractSignature}")!important;background-repeat:no-repeat!important;background-position:center!important;background-size:contain!important;opacity:1!important;pointer-events:none!important;z-index:4!important;}
           [data-contract-pdf-capture] .cw-page.final::after{display:none!important;content:none!important;}
-          [data-contract-pdf-capture] .cw-page:not(.cover){padding-bottom:106px!important;}
-          [data-contract-pdf-capture] .cw-page.equipment-page .cw-table{margin-bottom:26px!important;}
-          [data-contract-pdf-capture] .cw-page.technical-clauses-page .cw-clause{display:block!important;margin-bottom:26px!important;line-height:1.5!important;}
           [data-contract-pdf-capture] .cw-cover-info > div{
             background:#ffffff!important;
             background-image:none!important;
@@ -6927,11 +7045,22 @@ text-indent:8mm;
   }
 
   function showNotifications(){
-    companyRows('notifications').forEach(n=>n.read=true);persist();updateTopbar();
-    const rows=companyRows('notifications');
-    const html=`${rows.length?rows.map(n=>`<div class="activity-item"><div class="activity-avatar">${n.type==='error'?'!':'♢'}</div><div class="activity-copy"><strong>${escapeHtml(n.title)}</strong><span>${escapeHtml(n.text)} · ${dateTimeBR(n.createdAt)}</span></div></div>`).join(''):'<div class="empty-state">Nenhuma notificação.</div>'}${rows.length?'<button class="btn btn-ghost" data-clear-notifications type="button" style="width:100%;margin-top:12px">Limpar notificações</button>':''}`;
+    const rows=visibleNotifications();
+    rows.forEach(markNotificationReadForCurrentUser);persist();updateTopbar();
+    const html=`${rows.length?rows.map(n=>`<div class="activity-item"><div class="activity-avatar">${n.type==='error'?'!':n.sourceArea==='engineering'?'⚙':n.sourceArea==='commercial'?'↔':'♢'}</div><div class="activity-copy"><strong>${escapeHtml(n.title)}</strong><span>${escapeHtml(n.text)} · ${dateTimeBR(n.createdAt)}</span>${n.targetView?`<button class="btn btn-ghost btn-sm" data-open-crm-notification="${n.id}" type="button" style="margin-top:7px">Abrir ${n.targetMode==='projects'?'na Engenharia':'no Comercial'}</button>`:''}</div></div>`).join(''):'<div class="empty-state">Nenhuma notificação para você.</div>'}${rows.length?'<button class="btn btn-ghost" data-mark-notifications-read type="button" style="width:100%;margin-top:12px">Marcar todas como lidas</button>':''}`;
     openDrawer('Notificações','Central de alertas',html);
-    document.querySelector('[data-clear-notifications]')?.addEventListener('click',()=>{state.notifications=state.notifications.filter(n=>n.companyId!==state.currentCompanyId);persist();updateTopbar();showNotifications();});
+    document.querySelectorAll('[data-open-crm-notification]').forEach(button=>button.addEventListener('click',()=>{
+      const n=state.notifications.find(item=>item.id===button.dataset.openCrmNotification);if(!n)return;
+      closeDrawer();
+      if(n.targetMode==='projects'){
+        kanbanMode='projects';state.kanbanMode='projects';navigate('kanban');
+        if(n.projectId)setTimeout(()=>document.querySelector(`[data-project-id="${CSS.escape(n.projectId)}"]`)?.scrollIntoView({behavior:'smooth',block:'center',inline:'center'}),80);
+      }else{
+        kanbanMode='commercial';state.kanbanMode='commercial';navigate('kanban');
+        if(n.leadId)setTimeout(()=>document.querySelector(`[data-id="${CSS.escape(n.leadId)}"]`)?.scrollIntoView({behavior:'smooth',block:'center',inline:'center'}),80);
+      }
+    }));
+    document.querySelector('[data-mark-notifications-read]')?.addEventListener('click',()=>{rows.forEach(markNotificationReadForCurrentUser);persist();updateTopbar();showNotifications();});
   }
 
   function showAutomationLog(){
@@ -7014,11 +7143,15 @@ text-indent:8mm;
   // ---------- PROPOSTAS E DIMENSIONAMENTO ----------
   function calculateProposal(p){
     p=p||defaultProposal();
-    const cons=(p.consumption||Array(12).fill(0)).map(Number);
-    const consumptionInfo=consumptionStats(cons);
+    const consumptionInfo=proposalConsumptionBreakdown(p);
     const avgConsumption=consumptionInfo.averageConsumption;
     const annualConsumption=consumptionInfo.annualConsumption;
     const informedMonths=consumptionInfo.informedMonths;
+    const generatorAvgConsumption=consumptionInfo.generatorAverageConsumption;
+    const beneficiaryAvgConsumption=consumptionInfo.beneficiaryAverageConsumption;
+    const generatorAnnualConsumption=consumptionInfo.generatorAnnualConsumption;
+    const beneficiaryAnnualConsumption=consumptionInfo.beneficiaryAnnualConsumption;
+    const beneficiaries=consumptionInfo.beneficiaries;
 
     const moduleCatalogItem=findModuleCatalogItem(p.technical?.moduleId);
     const manualModulePower=Number(p.technical?.moduleManualPower||0);
@@ -7105,7 +7238,7 @@ text-indent:8mm;
     const installment=Math.max(0,Number(selectedFinancingOption?.installment||0));
     const netMonthlyEconomy=monthlySaving-installment;
     const billAfter=Math.max(residual,billBefore-monthlySaving);
-    return {avgConsumption,annualConsumption,informedMonths,targetMonthlyGeneration,requiredPower,moduleQty,automaticModuleQty,manualRequestedModuleQty,addedModulesToReachTarget,actualPower,generationPerModuleMonth,annualGeneration,monthlyGeneration,occupiedArea,totalWeight,inverterQty,automaticInverterQty,inverterPowerTotal,inverterSummary,inverters,moduleItem,moduleCatalogItem,inverter,catalogInverter,billBefore,billAfter,monthlySaving,annualSaving,total25,netSavings25,payback,roi,npv,irr,down,principal,monthsCount,monthlyRate,installment,netMonthlyEconomy,financingOptions,selectedFinancingOption,cashflows};
+    return {avgConsumption,annualConsumption,informedMonths,generatorAvgConsumption,beneficiaryAvgConsumption,generatorAnnualConsumption,beneficiaryAnnualConsumption,beneficiaries,beneficiaryCount:beneficiaries.length,targetMonthlyGeneration,requiredPower,moduleQty,automaticModuleQty,manualRequestedModuleQty,addedModulesToReachTarget,actualPower,generationPerModuleMonth,annualGeneration,monthlyGeneration,occupiedArea,totalWeight,inverterQty,automaticInverterQty,inverterPowerTotal,inverterSummary,inverters,moduleItem,moduleCatalogItem,inverter,catalogInverter,billBefore,billAfter,monthlySaving,annualSaving,total25,netSavings25,payback,roi,npv,irr,down,principal,monthsCount,monthlyRate,installment,netMonthlyEconomy,financingOptions,selectedFinancingOption,cashflows};
   }
 
   function computeIRR(cashflows){
@@ -7147,6 +7280,7 @@ text-indent:8mm;
     hydrateProposalFinancing(activeProposal);
     activeProposal.evCharger={...defaultEvChargerData(),...(activeProposal.evCharger||{}),enabled:Boolean(activeProposal.evCharger?.enabled)};
     ensureProposalAdditionalItems(activeProposal);
+    ensureProposalBeneficiaries(activeProposal);
     activeProposal.companyId=state.currentCompanyId;
     if(!found){
       activeProposal.number=`PROP-${String(companyRows('proposals').length+1).padStart(4,'0')}`;
@@ -7267,6 +7401,24 @@ text-indent:8mm;
     </div>`;
   }
 
+
+  function renderBeneficiariesEditor(p,calc){
+    const rows=ensureProposalBeneficiaries(p);
+    const html=rows.map((item,index)=>`<div class="beneficiary-editor-row">
+      <label class="field"><span>Beneficiária / cliente</span><input data-beneficiary-index="${index}" data-beneficiary-field="name" value="${attr(item.name||'')}" placeholder="Nome ou razão social"></label>
+      <label class="field"><span>Unidade consumidora (UC)</span><input data-beneficiary-index="${index}" data-beneficiary-field="consumerUnit" value="${attr(item.consumerUnit||'')}" placeholder="Número da UC"></label>
+      <label class="field"><span>Cidade</span><input data-beneficiary-index="${index}" data-beneficiary-field="city" value="${attr(item.city||'')}" placeholder="Opcional"></label>
+      <label class="field"><span>Consumo médio (kWh/mês)</span><input type="number" min="0" step="1" data-beneficiary-index="${index}" data-beneficiary-field="averageConsumption" value="${attr(item.averageConsumption||'')}"></label>
+      <div class="beneficiary-remove-cell"><button class="btn btn-danger btn-icon" data-remove-beneficiary="${index}" type="button" title="Remover beneficiária">✕</button></div>
+    </div>`).join('');
+    return `<div class="form-section" style="border:2px solid rgba(90,169,255,.34);box-shadow:0 14px 32px rgba(90,169,255,.07)">
+      <div class="form-section-head"><div><h3>UC Geradora + Beneficiárias</h3><p>A UC principal é considerada a geradora. Adicione as unidades beneficiárias quando houver geração compartilhada. O dimensionamento utiliza a soma de todos os consumos.</p></div><button class="btn btn-secondary btn-sm" data-add-beneficiary type="button">＋ Adicionar beneficiária</button></div>
+      <div class="notice" style="margin-bottom:12px"><strong>UC Geradora: ${escapeHtml(p.client?.consumerUnit||'não informada')}</strong><br>Consumo médio da geradora: <b data-generator-consumption>${number(calc.generatorAvgConsumption,0)} kWh/mês</b>.</div>
+      <div class="beneficiary-editor-list">${html||`<div class="additional-items-empty"><strong>Nenhuma beneficiária cadastrada</strong>Quando o sistema compensar outras UCs, use “Adicionar beneficiária”.</div>`}</div>
+      <div class="beneficiary-editor-summary"><div><span>Geradora</span><strong data-generator-consumption-summary>${number(calc.generatorAvgConsumption,0)} kWh/mês</strong></div><div><span>Beneficiárias (${rows.length})</span><strong data-beneficiary-consumption-summary>${number(calc.beneficiaryAvgConsumption,0)} kWh/mês</strong></div><div class="total"><span>Consumo geral mensal</span><strong data-total-consumption-summary>${number(calc.avgConsumption,0)} kWh/mês</strong></div></div>
+    </div>`;
+  }
+
   function renderFinancingStep(p,calc){
     const sectionHeading=(title,subtitle)=>`<div class="form-section-head"><div><h3>${escapeHtml(title)}</h3><p>${escapeHtml(subtitle)}</p></div></div>`;
     const banks=companyFinancingBanks();
@@ -7293,6 +7445,10 @@ text-indent:8mm;
     const p=activeProposal; const calc=calculateProposal(p);
     const nav=`<div style="display:flex;justify-content:space-between;gap:10px;margin-top:18px"><button class="btn btn-ghost" data-proposal-prev ${step===0?'disabled':''} type="button">← Anterior</button><button class="btn btn-primary" data-proposal-next type="button">${step===proposalStepDefs.length-1?'Visualizar proposta':'Próxima etapa →'}</button></div>`;
     const heading=(title,subtitle)=>`<div class="form-section-head"><div><h3>${escapeHtml(title)}</h3><p>${escapeHtml(subtitle)}</p></div></div>`;
+    const projectImages=(()=>{const imgs=Array.isArray(p.technical?.projectImages)?p.technical.projectImages.filter(Boolean):[];if(!imgs.length&&p.technical?.projectImage)imgs.push(p.technical.projectImage);return imgs;})();
+    const projectImagePreview=projectImages.length?`<div class="project-images-admin-grid">${projectImages.map((src,index)=>`<div class="project-image-admin-card"><img class="upload-preview" src="${src}" alt="Projeto 3D do Telhado ${index+1}"><button class="btn btn-danger btn-sm" type="button" data-remove-project-image="${index}">Remover</button></div>`).join('')}</div>`:`<div class="upload-drop"><div><strong>Pré-visualização do Projeto 3D</strong><span>Nenhuma imagem selecionada. Você pode adicionar uma ou várias imagens do telhado com os módulos posicionados.</span></div></div>`;
+    const irradiationImages=(()=>{const imgs=Array.isArray(p.technical?.irradiationImages)?p.technical.irradiationImages.filter(Boolean):[];if(!imgs.length&&p.technical?.irradiationImage)imgs.push(p.technical.irradiationImage);return imgs;})();
+    const irradiationImagePreview=irradiationImages.length?`<div class="project-images-admin-grid">${irradiationImages.map((src,index)=>`<div class="project-image-admin-card"><img class="upload-preview" src="${src}" alt="Estudo de Irradiação 3D ${index+1}"><button class="btn btn-danger btn-sm" type="button" data-remove-irradiation-image="${index}">Remover</button></div>`).join('')}</div>`:`<div class="upload-drop"><div><strong>Pré-visualização do Estudo de Irradiação 3D</strong><span>Nenhuma imagem selecionada. As imagens desse estudo terão página própria na proposta.</span></div></div>`;
     if(step===0)return `
       <div class="form-section">${heading('Identificação da proposta','Dados utilizados na capa e no cadastro comercial.')}
         <div class="form-grid">
@@ -7304,8 +7460,8 @@ text-indent:8mm;
       <div class="form-section">${heading('Foto da residência ou empresa','A imagem será usada como fundo da capa profissional.')}
         <div class="grid grid-2"><label class="upload-drop"><div><strong>Selecionar foto da capa</strong><span>JPG ou PNG. A imagem será otimizada automaticamente.</span><input id="coverPhotoInput" type="file" accept="image/*" style="margin-top:10px"></div></label><div>${p.coverPhoto?`<img class="upload-preview" src="${p.coverPhoto}" alt="Foto da capa">`:`<div class="upload-drop"><div><strong>Pré-visualização</strong><span>Nenhuma foto selecionada. Será usado um fundo ilustrado.</span></div></div>`}</div></div>
       </div>
-      <div class="form-section" style="border:2px solid rgba(255,183,3,.45);box-shadow:0 16px 36px rgba(255,183,3,.10)">${heading('Ajuste conceitual do arranjo','Suba aqui a imagem do projeto do cliente já com as placas no telhado/solo. Essa é a imagem que substitui o layout padrão na página técnica da proposta.')}
-        <div class="grid grid-2"><label class="upload-drop" style="background:linear-gradient(135deg,rgba(255,183,3,.14),rgba(90,169,255,.08));border-color:rgba(255,183,3,.45)"><div><strong>📷 Subir foto/render do ajuste conceitual</strong><span>JPG ou PNG. Use a montagem do telhado/solo com os módulos posicionados.</span><input id="technicalProjectImageInputTop" type="file" accept="image/*" style="margin-top:10px"></div></label><div>${p.technical?.projectImage?`<img class="upload-preview" src="${p.technical.projectImage}" alt="Ajuste conceitual do arranjo">`:`<div class="upload-drop"><div><strong>Pré-visualização do ajuste</strong><span>Nenhuma imagem selecionada. Se não subir imagem, a proposta mostra o layout conceitual padrão.</span></div></div>`}</div></div>
+      <div class="form-section" style="border:2px solid rgba(255,183,3,.45);box-shadow:0 16px 36px rgba(255,183,3,.10)">${heading('Projeto 3D do Telhado com Módulos','Adicione uma ou várias imagens do projeto com os módulos posicionados. Elas serão exibidas em página exclusiva na proposta.')}
+        <div class="grid grid-2"><label class="upload-drop" style="background:linear-gradient(135deg,rgba(255,183,3,.14),rgba(90,169,255,.08));border-color:rgba(255,183,3,.45)"><div><strong>📷 Adicionar imagens do Projeto 3D</strong><span>JPG ou PNG. Você pode selecionar várias fotos/renderizações de uma vez.</span><input id="technicalProjectImageInputTop" type="file" accept="image/*" multiple style="margin-top:10px"></div></label><div>${projectImagePreview}</div></div>
       </div>${nav}`;
     if(step===1)return `
       <div class="form-section">${heading('Importar conta de energia','O sistema lê automaticamente PDF, foto ou fatura escaneada e preenche o consumo.')}
@@ -7316,17 +7472,21 @@ text-indent:8mm;
       </div>
       <div class="form-section">${heading('Histórico de consumo','Informe os últimos 12 meses em kWh. A média é atualizada automaticamente durante a digitação ou após a leitura da fatura.')}
         <div class="month-grid">${months.map((m,i)=>`<label class="month-field"><span>${m}</span><input type="number" min="0" step="1" data-consumption-index="${i}" value="${Number(p.consumption?.[i]||0)}"></label>`).join('')}</div>
-        <div class="calc-highlight" style="margin-top:14px"><div class="calc-box"><span>Consumo médio</span><strong id="proposalAvgConsumption">${number(calc.avgConsumption)} kWh</strong></div><div class="calc-box"><span>Consumo anual projetado</span><strong id="proposalAnnualConsumption">${number(calc.annualConsumption)} kWh</strong></div><div class="calc-box"><span>Fatura média</span><strong id="proposalAverageBill">${currency(calc.billBefore)}</strong></div><div class="calc-box"><span>Meses considerados</span><strong id="proposalInformedMonths">${calc.informedMonths} de 12</strong></div></div>
-        <div id="proposalAverageHint" class="notice" style="margin-top:10px">${calc.informedMonths?`Média calculada com ${calc.informedMonths} mês(es) preenchido(s).`:'Preencha pelo menos um mês ou importe uma fatura para calcular a média.'}</div>
-      </div>${nav}`;
+        <div class="calc-highlight" style="margin-top:14px"><div class="calc-box"><span>Consumo geral mensal</span><strong id="proposalAvgConsumption">${number(calc.avgConsumption)} kWh</strong></div><div class="calc-box"><span>Consumo anual projetado</span><strong id="proposalAnnualConsumption">${number(calc.annualConsumption)} kWh</strong></div><div class="calc-box"><span>Fatura geral estimada</span><strong id="proposalAverageBill">${currency(calc.billBefore)}</strong></div><div class="calc-box"><span>Meses da geradora</span><strong id="proposalInformedMonths">${calc.informedMonths} de 12</strong></div></div>
+        <div id="proposalAverageHint" class="notice" style="margin-top:10px">${calc.informedMonths?`Geradora calculada com ${calc.informedMonths} mês(es) preenchido(s)${calc.beneficiaryCount?` + ${calc.beneficiaryCount} beneficiária(s).`:'.'}`:'Preencha pelo menos um mês da geradora ou importe uma fatura para calcular a média.'}</div>
+      </div>
+      ${renderBeneficiariesEditor(p,calc)}${nav}`;
     if(step===2)return `
       <div class="calc-highlight"><div class="calc-box"><span>Potência necessária</span><strong>${number(calc.requiredPower,2)} kWp</strong></div><div class="calc-box"><span>Potência proposta</span><strong>${number(calc.actualPower,2)} kWp</strong></div><div class="calc-box"><span>Geração mensal</span><strong>${number(calc.monthlyGeneration)} kWh</strong></div><div class="calc-box"><span>Produção anual</span><strong>${number(calc.annualGeneration)} kWh</strong></div></div>
       <div class="form-section">${heading('Premissas de dimensionamento','Ajuste os parâmetros técnicos conforme a região e o projeto.')}
         <div class="form-grid"><label class="field"><span>Geração por módulo (kWh/mês)</span><input value="58" readonly><small>Regra fixa: cada placa gera 58 kWh por mês. A quantidade é arredondada para cima até atingir a meta.</small></label>${proposalField('technical.targetCoverage','Cobertura do consumo (%)','number')}${proposalField('technical.systemLosses','Perdas globais (%)','number')}${proposalField('technical.areaExtra','Margem adicional de área (%)','number')}${proposalField('technical.structureType','Tipo de estrutura','select',['Telhado cerâmico','Telhado metálico','Fibrocimento','Laje','Solo','Carport'])}${proposalField('technical.orientation','Orientação predominante','select',['Norte','Nordeste','Noroeste','Leste','Oeste','Sul'])}${proposalField('technical.inverterOverload','Overload permitido do inversor','number')}</div>
       </div>
       ${renderManualModuleEditor(p,calc)}
-      <div class="form-section" style="border:2px solid rgba(255,183,3,.45);box-shadow:0 16px 36px rgba(255,183,3,.10)">${heading('Ajuste conceitual do arranjo','Este é o campo da imagem que aparece na página técnica da proposta, no lugar do layout padrão.')}
-        <div class="grid grid-2"><label class="upload-drop" style="background:linear-gradient(135deg,rgba(255,183,3,.14),rgba(90,169,255,.08));border-color:rgba(255,183,3,.45)"><div><strong>📷 Subir foto/render do projeto com placas</strong><span>JPG ou PNG. Envie a imagem do cliente já com as placas posicionadas no telhado, solo ou carport.</span><input id="technicalProjectImageInput" type="file" accept="image/*" style="margin-top:10px"></div></label><div>${p.technical?.projectImage?`<img class="upload-preview" src="${p.technical.projectImage}" alt="Ajuste conceitual do arranjo">`:`<div class="upload-drop"><div><strong>Pré-visualização do ajuste</strong><span>Nenhuma imagem selecionada. Se não subir imagem, a proposta mostra o layout conceitual padrão.</span></div></div>`}</div></div>
+      <div class="form-section" style="border:2px solid rgba(255,183,3,.45);box-shadow:0 16px 36px rgba(255,183,3,.10)">${heading('Projeto 3D do Telhado com Módulos','Adicione uma ou várias imagens do projeto. A proposta cria uma página exclusiva para apresentar o telhado com os módulos.')}
+        <div class="grid grid-2"><label class="upload-drop" style="background:linear-gradient(135deg,rgba(255,183,3,.14),rgba(90,169,255,.08));border-color:rgba(255,183,3,.45)"><div><strong>📷 Adicionar imagens do Projeto 3D</strong><span>JPG ou PNG. Selecione várias imagens para mostrar diferentes ângulos ou águas do telhado.</span><input id="technicalProjectImageInput" type="file" accept="image/*" multiple style="margin-top:10px"></div></label><div>${projectImagePreview}</div></div>
+      </div>
+      <div class="form-section" style="border:2px solid rgba(37,165,189,.38);box-shadow:0 16px 36px rgba(37,165,189,.08)">${heading('Estudo de Irradiação 3D','Adicione as imagens do estudo de irradiação. Elas serão exibidas em uma página separada da proposta.')}
+        <div class="grid grid-2"><label class="upload-drop" style="background:linear-gradient(135deg,rgba(37,165,189,.12),rgba(90,169,255,.08));border-color:rgba(37,165,189,.38)"><div><strong>☀ Adicionar imagens do Estudo de Irradiação 3D</strong><span>JPG ou PNG. Você pode selecionar várias imagens do estudo.</span><input id="technicalIrradiationImageInput" type="file" accept="image/*" multiple style="margin-top:10px"></div></label><div>${irradiationImagePreview}</div></div>
       </div>
       <div class="form-section">${heading('Resultado técnico','Valores calculados automaticamente com o equipamento selecionado.')}
         <div class="detail-grid"><div class="detail-item"><span>Quantidade final de módulos</span><strong>${calc.moduleQty}</strong></div><div class="detail-item"><span>Geração por placa</span><strong>${number(calc.generationPerModuleMonth,0)} kWh/mês</strong></div><div class="detail-item"><span>Meta de geração mensal</span><strong>${number(calc.targetMonthlyGeneration,0)} kWh/mês</strong></div><div class="detail-item"><span>Mínimo de placas para a meta</span><strong>${calc.automaticModuleQty}</strong></div>${calc.addedModulesToReachTarget>0?`<div class="detail-item"><span>Placas acrescentadas automaticamente</span><strong>+${calc.addedModulesToReachTarget}</strong></div>`:''}<div class="detail-item"><span>Potência dos módulos</span><strong>${number(calc.moduleItem.power,0)} W cada · ${number(calc.actualPower,2)} kWp</strong></div><div class="detail-item"><span>Quantidade de inversores</span><strong>${calc.inverterQty}</strong></div><div class="detail-item"><span>Potência AC total</span><strong>${number(calc.inverterPowerTotal,2)} kW</strong></div><div class="detail-item"><span>Área ocupada</span><strong>${number(calc.occupiedArea,1)} m²</strong></div><div class="detail-item"><span>Peso total</span><strong>${number(calc.totalWeight)} kg</strong></div><div class="detail-item"><span>Módulo</span><strong>${escapeHtml(calc.moduleItem.brand)} ${number(calc.moduleItem.power,0)} W</strong></div><div class="detail-item"><span>Inversores</span><strong>${escapeHtml(calc.inverterSummary)}</strong></div></div>
@@ -7400,9 +7560,12 @@ text-indent:8mm;
     if(annual)annual.textContent=`${number(calc.annualConsumption)} kWh`;
     if(bill)bill.textContent=currency(calc.billBefore);
     if(monthsEl)monthsEl.textContent=`${calc.informedMonths} de 12`;
+    document.querySelectorAll('[data-generator-consumption],[data-generator-consumption-summary]').forEach(el=>el.textContent=`${number(calc.generatorAvgConsumption,0)} kWh/mês`);
+    document.querySelectorAll('[data-beneficiary-consumption-summary]').forEach(el=>el.textContent=`${number(calc.beneficiaryAvgConsumption,0)} kWh/mês`);
+    document.querySelectorAll('[data-total-consumption-summary]').forEach(el=>el.textContent=`${number(calc.avgConsumption,0)} kWh/mês`);
     if(hint)hint.textContent=calc.informedMonths
-      ?`Média calculada automaticamente com ${calc.informedMonths} mês(es) preenchido(s).`
-      :'Preencha pelo menos um mês ou importe uma fatura para calcular a média.';
+      ?`Geradora calculada com ${calc.informedMonths} mês(es) preenchido(s)${calc.beneficiaryCount?` + ${calc.beneficiaryCount} beneficiária(s).`:'.'}`
+      :'Preencha pelo menos um mês da geradora ou importe uma fatura para calcular a média.';
   }
   function updateProposalFinancingCalculations(){
     if(!activeProposal)return;
@@ -7493,6 +7656,13 @@ text-indent:8mm;
       renderProposalSummary();
       scheduleProposalDraftSave();
     }));
+    document.querySelectorAll('[data-beneficiary-index][data-beneficiary-field]').forEach(input=>{
+      const index=Number(input.dataset.beneficiaryIndex);const field=input.dataset.beneficiaryField;
+      const handler=()=>{const rows=ensureProposalBeneficiaries(activeProposal);if(!rows[index])return;rows[index][field]=field==='averageConsumption'?Math.max(0,Number(input.value||0)):input.value;activeProposal.updatedAt=new Date().toISOString();updateProposalConsumptionCalculations();updateProposalFinancingCalculations();renderProposalSummary();scheduleProposalDraftSave();};
+      input.addEventListener('input',handler);input.addEventListener('change',handler);
+    });
+    document.querySelector('[data-add-beneficiary]')?.addEventListener('click',()=>{const rows=ensureProposalBeneficiaries(activeProposal);rows.push(createProposalBeneficiary());scheduleProposalDraftSave();renderProposalBuilder();setTimeout(()=>document.querySelectorAll('[data-beneficiary-field="name"]')[rows.length-1]?.focus(),0);});
+    document.querySelectorAll('[data-remove-beneficiary]').forEach(button=>button.addEventListener('click',()=>{const rows=ensureProposalBeneficiaries(activeProposal);rows.splice(Number(button.dataset.removeBeneficiary),1);activeProposal.updatedAt=new Date().toISOString();scheduleProposalDraftSave();renderProposalBuilder();toast('Beneficiária removida','O consumo geral foi recalculado automaticamente.','info');}));
     document.querySelectorAll('[data-select-module]').forEach(el=>el.addEventListener('click',()=>{activeProposal.technical.moduleId=el.dataset.selectModule;clearManualModuleOverrides(activeProposal);scheduleProposalDraftSave();renderProposalBuilder();}));
     document.querySelectorAll('[data-reset-module-manual]').forEach(btn=>btn.addEventListener('click',()=>{clearManualModuleOverrides(activeProposal);scheduleProposalDraftSave();renderProposalBuilder();toast('Módulos no cálculo automático','Quantidade e potência voltaram a seguir o módulo selecionado e o dimensionamento.','info');}));
     document.querySelectorAll('[data-inverter-index][data-inverter-field]').forEach(input=>{
@@ -7514,7 +7684,10 @@ text-indent:8mm;
     document.querySelector('[data-proposal-prev]')?.addEventListener('click',()=>{proposalStep=Math.max(0,proposalStep-1);renderProposalBuilder();});
     document.querySelector('[data-proposal-next]')?.addEventListener('click',()=>{if(!validateProposalStep(proposalStep))return;if(proposalStep>=proposalStepDefs.length-1)previewProposal(activeProposal);else{proposalStep++;renderProposalBuilder();}});
     document.getElementById('coverPhotoInput')?.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;activeProposal.coverPhoto=await resizeImage(file,1200,820,.72);scheduleProposalDraftSave();renderProposalBuilder();});
-    ['technicalProjectImageInput','technicalProjectImageInputTop'].forEach(id=>document.getElementById(id)?.addEventListener('change',async e=>{const file=e.target.files?.[0];if(!file)return;activeProposal.technical=activeProposal.technical||{};activeProposal.technical.projectImage=await resizeImage(file,1400,900,.72);scheduleProposalDraftSave();renderProposalBuilder();toast('Imagem técnica adicionada','O ajuste conceitual aparecerá na página técnica da proposta.','success');}));
+    ['technicalProjectImageInput','technicalProjectImageInputTop'].forEach(id=>document.getElementById(id)?.addEventListener('change',async e=>{const files=[...(e.target.files||[])];if(!files.length)return;activeProposal.technical=activeProposal.technical||{};const current=Array.isArray(activeProposal.technical.projectImages)?activeProposal.technical.projectImages.filter(Boolean):[];if(!current.length&&activeProposal.technical.projectImage)current.push(activeProposal.technical.projectImage);for(const file of files){current.push(await resizeImage(file,1600,1050,.76));}activeProposal.technical.projectImages=current;activeProposal.technical.projectImage=current[0]||'';scheduleProposalDraftSave();renderProposalBuilder();toast('Projeto 3D atualizado',`${files.length} imagem(ns) adicionada(s). A proposta exibirá todas em página exclusiva.`,'success');}));
+    document.querySelectorAll('[data-remove-project-image]').forEach(btn=>btn.addEventListener('click',()=>{activeProposal.technical=activeProposal.technical||{};const imgs=Array.isArray(activeProposal.technical.projectImages)?activeProposal.technical.projectImages.filter(Boolean):activeProposal.technical.projectImage?[activeProposal.technical.projectImage]:[];imgs.splice(Number(btn.dataset.removeProjectImage),1);activeProposal.technical.projectImages=imgs;activeProposal.technical.projectImage=imgs[0]||'';scheduleProposalDraftSave();renderProposalBuilder();toast('Imagem removida','O Projeto 3D foi atualizado.','info');}));
+    document.getElementById('technicalIrradiationImageInput')?.addEventListener('change',async e=>{const files=[...(e.target.files||[])];if(!files.length)return;activeProposal.technical=activeProposal.technical||{};const current=Array.isArray(activeProposal.technical.irradiationImages)?activeProposal.technical.irradiationImages.filter(Boolean):[];if(!current.length&&activeProposal.technical.irradiationImage)current.push(activeProposal.technical.irradiationImage);for(const file of files){current.push(await resizeImage(file,1600,1050,.80));}activeProposal.technical.irradiationImages=current;activeProposal.technical.irradiationImage=current[0]||'';scheduleProposalDraftSave();renderProposalBuilder();toast('Estudo de Irradiação 3D atualizado',`${files.length} imagem(ns) adicionada(s). Elas serão exibidas em página separada.`,'success');});
+    document.querySelectorAll('[data-remove-irradiation-image]').forEach(btn=>btn.addEventListener('click',()=>{activeProposal.technical=activeProposal.technical||{};const imgs=Array.isArray(activeProposal.technical.irradiationImages)?activeProposal.technical.irradiationImages.filter(Boolean):activeProposal.technical.irradiationImage?[activeProposal.technical.irradiationImage]:[];imgs.splice(Number(btn.dataset.removeIrradiationImage),1);activeProposal.technical.irradiationImages=imgs;activeProposal.technical.irradiationImage=imgs[0]||'';scheduleProposalDraftSave();renderProposalBuilder();toast('Imagem removida','O Estudo de Irradiação 3D foi atualizado.','info');}));
     document.getElementById('energyBillInput')?.addEventListener('change',handleEnergyBillUpload);
     document.getElementById('billLocalAnalyzeBtn')?.addEventListener('click',analyzeBillLocally);
     document.getElementById('openCompanySettingsBtn')?.addEventListener('click',()=>openSettings('company'));
@@ -7523,7 +7696,7 @@ text-indent:8mm;
   function renderProposalSummary(){
     const root=document.getElementById('proposalSummary');if(!root||!activeProposal)return;
     const c=calculateProposal(activeProposal);
-    root.innerHTML=`<div class="summary-sticky"><h3 class="summary-title">Resumo da proposta</h3><div class="summary-kpi"><span>Investimento</span><strong>${currency(activeProposal.commercial?.price)}</strong></div><div class="summary-kpi"><span>Potência instalada</span><strong>${number(c.actualPower,2)} kWp</strong></div><div class="summary-mini-grid"><div class="summary-mini"><span>Módulos</span><strong>${c.moduleQty} × ${number(c.moduleItem.power,0)} W</strong></div><div class="summary-mini"><span>Potência AC</span><strong>${number(c.inverterPowerTotal,2)} kW</strong></div><div class="summary-mini full" style="grid-column:1/-1"><span>Inversores</span><strong>${escapeHtml(c.inverterSummary)}</strong></div><div class="summary-mini"><span>Geração/mês</span><strong>${number(c.monthlyGeneration)} kWh</strong></div><div class="summary-mini"><span>Economia/mês</span><strong>${currency(c.monthlySaving)}</strong></div><div class="summary-mini"><span>Payback</span><strong>${number(c.payback,1)} anos</strong></div><div class="summary-mini"><span>ROI 25 anos</span><strong>${number(c.roi,0)}%</strong></div><div class="summary-mini"><span>Recarga veicular</span><strong>${activeProposal.evCharger?.enabled?'Incluída':'Não incluída'}</strong></div><div class="summary-mini"><span>Itens adicionais</span><strong>${ensureProposalAdditionalItems(activeProposal).length}</strong></div></div><div class="notice warning" style="margin-top:12px">Revise a configuração manual dos equipamentos antes do envio.</div></div>`;
+    root.innerHTML=`<div class="summary-sticky"><h3 class="summary-title">Resumo da proposta</h3><div class="summary-kpi"><span>Investimento</span><strong>${currency(activeProposal.commercial?.price)}</strong></div><div class="summary-kpi"><span>Potência instalada</span><strong>${number(c.actualPower,2)} kWp</strong></div><div class="summary-mini-grid"><div class="summary-mini"><span>Módulos</span><strong>${c.moduleQty} × ${number(c.moduleItem.power,0)} W</strong></div><div class="summary-mini"><span>Potência AC</span><strong>${number(c.inverterPowerTotal,2)} kW</strong></div><div class="summary-mini full" style="grid-column:1/-1"><span>Inversores</span><strong>${escapeHtml(c.inverterSummary)}</strong></div><div class="summary-mini"><span>Consumo geral</span><strong>${number(c.avgConsumption)} kWh/mês</strong></div><div class="summary-mini"><span>Beneficiárias</span><strong>${c.beneficiaryCount}</strong></div><div class="summary-mini"><span>Geração/mês</span><strong>${number(c.monthlyGeneration)} kWh</strong></div><div class="summary-mini"><span>Economia/mês</span><strong>${currency(c.monthlySaving)}</strong></div><div class="summary-mini"><span>Payback</span><strong>${number(c.payback,1)} anos</strong></div><div class="summary-mini"><span>ROI 25 anos</span><strong>${number(c.roi,0)}%</strong></div><div class="summary-mini"><span>Recarga veicular</span><strong>${activeProposal.evCharger?.enabled?'Incluída':'Não incluída'}</strong></div><div class="summary-mini"><span>Itens adicionais</span><strong>${ensureProposalAdditionalItems(activeProposal).length}</strong></div></div><div class="notice warning" style="margin-top:12px">Revise a configuração manual dos equipamentos antes do envio.</div></div>`;
   }
 
   async function resizeImage(file,maxW=1600,maxH=1200,quality=.84){
@@ -8797,8 +8970,18 @@ ${historyText}`.trim(),historyText);
   async function saveActiveProposal(){
     const button=document.getElementById('proposalSaveBtn');
     const oldLabel=button?.textContent||'Salvar proposta';
+    const previousProposal=deepClone(state.proposals.find(item=>item.id===activeProposal?.id)||{});
+    const linkedClosedLead=closedLeadForProposal(activeProposal||{});
+    const engineeringChanged=Boolean(previousProposal?.id&&linkedClosedLead&&engineeringProposalFingerprint(previousProposal)!==engineeringProposalFingerprint(activeProposal));
     if(button){button.disabled=true;button.textContent='Salvando...';}
-    try{return await saveProposalRecord(activeProposal);}finally{if(button){button.disabled=false;button.textContent=oldLabel;}}
+    try{
+      const saved=await saveProposalRecord(activeProposal);
+      if(saved&&engineeringChanged&&currentUserOwnsClosedLead(linkedClosedLead)){
+        notifyEngineeringFromCommercial(linkedClosedLead,`proposta ${activeProposal.number||''} alterada após o fechamento da venda`);
+        persist();updateTopbar();
+      }
+      return saved;
+    }finally{if(button){button.disabled=false;button.textContent=oldLabel;}}
   }
 
   function buildCommercialProposalWhatsapp(proposal,link){
@@ -9073,20 +9256,25 @@ ${company.tradeName||company.name}`:''}`;
 
   function renderProposalDocument(p){
     const c=calculateProposal(p);const company=state.company||{};const companyName=company.tradeName||company.name||'Solar Prime';
-    const cover=p.coverPhoto||defaultCoverImage();const logo=companyLogoSource(company);const projectImage=p.technical?.projectImage||'';const acceptance=p.acceptance;
+    const cover=p.coverPhoto||defaultCoverImage();const logo=companyLogoSource(company);const projectImages=(()=>{const imgs=Array.isArray(p.technical?.projectImages)?p.technical.projectImages.filter(Boolean):[];if(!imgs.length&&p.technical?.projectImage)imgs.push(p.technical.projectImage);return imgs;})();const irradiationImages=(()=>{const imgs=Array.isArray(p.technical?.irradiationImages)?p.technical.irradiationImages.filter(Boolean):[];if(!imgs.length&&p.technical?.irradiationImage)imgs.push(p.technical.irradiationImage);return imgs;})();const acceptance=p.acceptance;
     const acPower=c.inverterPowerTotal;const annualMwh=c.annualGeneration/1000;
     const charger={...defaultEvChargerData(),...(p.evCharger||{})};const hasEvCharger=Boolean(charger.enabled);
     const workPhotos=(Array.isArray(company.workPhotos)?company.workPhotos:[]).filter(Boolean).slice(0,4);const hasWorkGallery=workPhotos.length>0;
     const additionalItems=normalizeProposalAdditionalItems(p.additionalItems).filter(item=>item.description);const additionalItemChunks=chunkProposalAdditionalItems(additionalItems,12);const additionalItemPageCount=additionalItemChunks.length;
     const proposalSchedule=normalizeProposalSchedule(p.schedule).filter(row=>row.some(value=>String(value||'').trim()));
     const proposalGuarantees={panels:'12 anos produto / 30 anos desempenho',inverters:'10 anos',structure:'10 anos',...(p.guarantees||{}),installation:'1 ano'};
-    const hasFinancing=String(p.commercial?.paymentMethod||'').toLowerCase().includes('financi');const summaryPage=2;const worksPage=hasWorkGallery?3:null;const diagnosisPage=hasWorkGallery?4:3;const technicalPage=diagnosisPage+1;const evPage=hasEvCharger?technicalPage+1:null;const additionalItemsFirstPage=technicalPage+(hasEvCharger?1:0)+1;const financialPage=additionalItemsFirstPage+additionalItemPageCount;const financingPage=hasFinancing?financialPage+1:null;const scheduleGuaranteePage=(financingPage||financialPage)+1;const finalPage=scheduleGuaranteePage+1;const totalPages=finalPage;const safe=v=>escapeHtml(v||'—');
+    const projectImageChunks=projectImages.length?Array.from({length:Math.ceil(projectImages.length/4)},(_,i)=>projectImages.slice(i*4,i*4+4)):[[]];
+    const projectPageCount=projectImageChunks.length;
+    const irradiationImageChunks=irradiationImages.length?Array.from({length:Math.ceil(irradiationImages.length/4)},(_,i)=>irradiationImages.slice(i*4,i*4+4)):[];
+    const irradiationPageCount=irradiationImageChunks.length;
+    const beneficiaries=normalizeProposalBeneficiaries(p.beneficiaries).filter(item=>item.name||item.consumerUnit||item.city||item.averageConsumption>0);const beneficiaryChunks=beneficiaries.length?Array.from({length:Math.ceil(beneficiaries.length/8)},(_,i)=>beneficiaries.slice(i*8,i*8+8)):[];const beneficiaryPageCount=beneficiaryChunks.length;
+    const hasFinancing=String(p.commercial?.paymentMethod||'').toLowerCase().includes('financi');const summaryPage=2;const worksPage=hasWorkGallery?3:null;const diagnosisPage=hasWorkGallery?4:3;const beneficiaryFirstPage=diagnosisPage+1;const technicalPage=diagnosisPage+1+beneficiaryPageCount;const projectFirstPage=technicalPage+1;const irradiationFirstPage=projectFirstPage+projectPageCount;const evPage=hasEvCharger?irradiationFirstPage+irradiationPageCount:null;const additionalItemsFirstPage=irradiationFirstPage+irradiationPageCount+(hasEvCharger?1:0);const financialPage=additionalItemsFirstPage+additionalItemPageCount;const financingPage=hasFinancing?financialPage+1:null;const scheduleGuaranteePage=(financingPage||financialPage)+1;const finalPage=scheduleGuaranteePage+1;const totalPages=finalPage;const safe=v=>escapeHtml(v||'—');
     const footer=page=>`<div class="vp-footer"><span>${safe(companyName)} · ${safe(company.website||company.email||'')}</span><span>Proposta comercial confidencial · ${page}/${totalPages}</span></div>`;
     const header=(page,title,subtitle)=>`<div class="vp-bg-blob top"></div><div class="vp-bg-blob bottom"></div><div class="vp-inner"><div class="vp-header"><div><span class="vp-kicker">Proposta comercial</span><h2>${escapeHtml(title)}</h2><p>${escapeHtml(subtitle)}</p></div><div class="vp-page-badge">PÁGINA ${page}</div></div>`;
     const metric=(label,value,caption,accent='#ffb703')=>`<div class="vp-metric" style="--accent:${accent}"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong><p>${escapeHtml(caption)}</p></div>`;
     const dataRow=(label,value)=>`<div class="vp-data-row"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`;
     const shortCurrency=v=>currency(v,0).replace(',00','');
-    const consumptionValues=(Array.isArray(p.consumption)?p.consumption:[]).map(value=>Math.max(0,Number(value||0)));
+    const consumptionValues=combinedProposalConsumptionProfile(p).map(value=>Math.max(0,Number(value||0)));
     const generationValues=proposalMonthlyGenerationProfile(p,c).map(value=>Math.max(0,Number(value||0)));
     const maxConsumption=Math.max(...consumptionValues,1);
     const peakMonthIndex=consumptionValues.findIndex(value=>value===maxConsumption);
@@ -9109,6 +9297,14 @@ ${company.tradeName||company.name}`:''}`;
         <div class="vp-works-grid count-${workPhotos.length}">${workPhotos.map((photo,index)=>`<figure class="vp-work-card"><img src="${attr(workPhotoDisplaySource(photo))}" alt="Obra executada ${index+1}" loading="eager" data-work-photo-key="${attr(encodeURIComponent(photo))}" data-work-photo-fallbacks="${attr(workPhotoFallbackPayload(photo))}" data-work-photo-candidate="0" onerror="window.workPhotoImageFallback(this)"><figcaption class="vp-work-caption"><div><span>Projeto executado</span><strong>Obra ${String(index+1).padStart(2,'0')}</strong></div><div class="vp-work-index">${String(index+1).padStart(2,'0')}</div></figcaption></figure>`).join('')}</div>
         <div class="vp-works-proof"><div><span>Clientes atendidos</span><strong>${company.clientsCount?number(company.clientsCount,0):'Experiência comprovada'}</strong></div><div><span>Potência instalada</span><strong>${company.installedPowerMW?`${number(company.installedPowerMW,1)} MW`:'Experiência comprovada'}</strong></div><div><span>Atuação</span><strong>${safe(company.city||'Projetos personalizados')}</strong></div></div>
         ${footer(worksPage)}</div></section>`:'';
+    const beneficiaryPagesHtml=beneficiaryChunks.map((chunk,index)=>{const page=beneficiaryFirstPage+index;const start=index*8;const rows=chunk.map((item,rowIndex)=>`<tr><td>${start+rowIndex+1}</td><td><strong>${safe(item.name||'Beneficiária')}</strong>${item.city?`<br><small>${safe(item.city)}</small>`:''}</td><td>${safe(item.consumerUnit||'—')}</td><td>${number(item.averageConsumption,0)} kWh/mês</td></tr>`).join('');return `<section class="proposal-page vp-page vp-beneficiary-page">${header(page,index===0?'Unidades beneficiárias':'Unidades beneficiárias · continuação','Composição do consumo considerado no dimensionamento da geração compartilhada.')}
+      <div class="vp-beneficiary-summary"><div><span>UC Geradora</span><strong>${number(c.generatorAvgConsumption,0)} kWh/mês</strong></div><div><span>Beneficiárias</span><strong>${number(c.beneficiaryAvgConsumption,0)} kWh/mês</strong></div><div class="total"><span>Consumo Geral</span><strong>${number(c.avgConsumption,0)} kWh/mês</strong></div></div>
+      <div class="vp-beneficiary-table-wrap"><table class="vp-beneficiary-table"><thead><tr><th>#</th><th>Beneficiária</th><th>UC</th><th>Consumo médio</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <div class="vp-beneficiary-note">O consumo geral utilizado no dimensionamento corresponde ao consumo médio da UC geradora somado ao consumo médio mensal das unidades beneficiárias cadastradas nesta proposta.</div>
+      ${footer(page)}</div></section>`;}).join('');
+    
+    const project3dPagesHtml=projectImageChunks.map((chunk,index)=>{const page=projectFirstPage+index;const count=chunk.length;const gallery=count?`<div class="vp-project-3d-grid count-${count}">${chunk.map((src,imgIndex)=>`<figure class="vp-project-3d-card"><img src="${src}" alt="Projeto 3D do Telhado com Módulos ${index*4+imgIndex+1}"><figcaption>Vista ${String(index*4+imgIndex+1).padStart(2,'0')}</figcaption></figure>`).join('')}</div>`:`<div class="vp-project-3d-empty"><strong>Projeto 3D do Telhado com Módulos</strong><span>Adicione imagens na etapa de dimensionamento para apresentar o posicionamento dos módulos no telhado.</span></div>`;return `<section class="proposal-page vp-page vp-project-3d-page">${header(page,'Projeto 3D do Telhado','Visualização do telhado com os módulos posicionados conforme o estudo comercial do projeto.')}${gallery}<div class="vp-project-3d-note">Representação conceitual para apresentação comercial. O posicionamento definitivo poderá ser ajustado após vistoria, levantamento executivo, sombreamento, estrutura e condições reais de instalação.</div>${footer(page)}</div></section>`;}).join('');
+    const irradiationPagesHtml=irradiationImageChunks.map((chunk,index)=>{const page=irradiationFirstPage+index;const count=chunk.length;const gallery=`<div class="vp-irradiation-grid count-${count}">${chunk.map((src,imgIndex)=>`<figure class="vp-irradiation-card"><img src="${src}" alt="Estudo de Irradiação 3D ${index*4+imgIndex+1}"><figcaption>Estudo ${String(index*4+imgIndex+1).padStart(2,'0')}</figcaption></figure>`).join('')}</div>`;return `<section class="proposal-page vp-page vp-irradiation-page">${header(page,'Estudo de Irradiação 3D','Análise visual da incidência solar e das condições consideradas no estudo energético do projeto.')}${gallery}<div class="vp-irradiation-note">As imagens representam o estudo de irradiação utilizado como apoio ao dimensionamento. Valores e incidência podem variar conforme a base climática, geometria, orientação e sombreamento considerados.</div>${footer(page)}</div></section>`;}).join('');
     const selectedFinancingBank=findFinancingBank(p);
     const financingOptions=c.financingOptions||proposalFinancingOptions(p,c.principal,c.monthlySaving);
     const financingPageHtml=hasFinancing?`
@@ -9144,7 +9340,7 @@ ${company.tradeName||company.name}`:''}`;
           <div class="vp-cover-top"><div class="vp-logo-box"><img src="${logo}" alt="Logo"></div><div class="vp-cover-qr"><div id="proposalQr"></div></div></div>
           <div class="vp-cover-main"><span class="vp-kicker">Proposta comercial</span><h1>Projeto Solar<br>Fotovoltaico</h1><p>Solução fotovoltaica com alta performance, economia e previsibilidade energética.</p></div>
           <div class="vp-cover-cards"><div class="vp-cover-card"><span>Cliente</span><strong>${safe(p.client.name||'Cliente demonstrativo')}</strong><small>${safe(p.client.city||company.city||'')}</small></div><div class="vp-cover-card"><span>Potência do sistema</span><strong>${number(c.actualPower,2)} kWp</strong><small>${number(acPower,0)} kW AC</small></div></div>
-          <div class="vp-cover-foot"><div><strong>${safe(p.number)}</strong><span>Válida até ${dateBR(p.validUntil)}</span></div><div><strong>${safe(company.phone||p.seller?.email||'Contato comercial')}</strong><span>${safe(company.email||p.seller?.email||'')}</span></div><div><strong>${safe(company.website||companyName)}</strong><span>${safe(company.city||p.client.city||'')}</span></div></div>
+          <div class="vp-cover-foot"><div><strong>${safe(p.number)}</strong><span>Válida até ${dateBR(p.validUntil)}</span></div><div><strong>${safe(company.phone||p.seller?.email||'Contato comercial')}</strong><span>${safe(company.email||p.seller?.email||'')}</span></div><div><strong>${safe(company.website||companyName)}</strong><span>${safe(company.city||p.client.city||'')}</span><span style="display:block;margin-top:5px;font-size:11px;color:#e7eef6">CFT 04 - EDUARDO DA COSTA (CPF 122.515.239-95)</span></div></div>
         </div>
       </section>
       <section class="proposal-page vp-page">${header(summaryPage,'Resumo executivo','Um painel de decisão com os números que realmente importam para aprovar o projeto.')}
@@ -9154,14 +9350,18 @@ ${company.tradeName||company.name}`:''}`;
         ${footer(summaryPage)}</div></section>
       ${worksGalleryPage}
       <section class="proposal-page vp-page vp-diagnosis-page">${header(diagnosisPage,'Diagnóstico energético','Análise do consumo atual, custo mensal e potencial de compensação antes da implantação.')}
-        <div class="vp-metric-grid">${metric('Consumo médio',`${number(c.avgConsumption,0)} kWh/mês`,'Média apurada no histórico informado.','#ffb703')}${metric('Custo mensal atual',`${shortCurrency(c.billBefore)}`,'Estimativa da fatura sem o sistema solar.','#25a5bd')}${metric('Consumo anual',`${number(c.annualConsumption,0)} kWh/ano`,'Demanda anual usada para dimensionar a usina.','#168a56')}</div>
-        <div class="vp-card vp-diagnosis-chart"><div class="vp-chart-title-row" style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start"><div><h3>Consumo x projeção de geração</h3><p style="color:#65768a">Comparativo mensal entre o histórico de consumo e a energia estimada para a usina proposta.</p></div><div style="text-align:right;color:#65768a;font-size:10px;white-space:nowrap"><strong style="display:block;color:#10273d;font-size:13px;line-height:1.05">Cobertura estimada</strong>${number(coverageRatio,0)}%</div></div><div class="vp-chart vp-diagnosis-chart-canvas"><canvas id="pdfConsumptionChart"></canvas></div><div class="vp-diagnosis-compare-grid"><div class="vp-compare-pill"><span>Consumo anual</span><strong>${number(c.annualConsumption,0)} kWh</strong><small>Base real informada pelo histórico dos últimos 12 meses.</small></div><div class="vp-compare-pill"><span>Geração anual projetada</span><strong>${number(annualGenerationChart,0)} kWh</strong><small>Estimativa calculada a partir da potência proposta e da geração específica adotada.</small></div><div class="vp-compare-pill highlight"><span>${worstBalanceValue>=0?'Mês com maior sobra':'Mês com maior déficit'}</span><strong>${months[(worstBalanceValue>=0?bestBalanceIndex:worstBalanceIndex)]||'—'}</strong><small>${worstBalanceValue>=0?`Saldo positivo estimado de ${number(bestBalanceValue,0)} kWh.`:`Necessidade complementar estimada de ${number(Math.abs(worstBalanceValue),0)} kWh.`}</small></div></div></div>
-        <div class="vp-grid-2 vp-diagnosis-bottom"><div class="vp-dark-list vp-diagnosis-data"><h3>Dados da unidade</h3>${dataRow('Cliente',p.client.name)}${dataRow('Cidade',p.client.city)}${dataRow('Unidade consumidora',p.client.consumerUnit)}${dataRow('Distribuidora',p.client.distributor)}${dataRow('Classe / grupo',`${safe(p.client.className)} · ${safe(p.client.tariffGroup)}`)}${dataRow('Tarifa considerada',`${currency(p.currentTariff,2)}/kWh`)}</div><div class="vp-reasons vp-diagnosis-reading"><h3>Leitura do diagnóstico</h3><div class="vp-reason-grid">${diagnosticNotes}</div></div></div>
+        <div class="vp-metric-grid">${metric('Consumo geral mensal',`${number(c.avgConsumption,0)} kWh/mês`,c.beneficiaryCount?'Geradora + unidades beneficiárias cadastradas.':'Média apurada na UC geradora.','#ffb703')}${metric('Custo mensal atual',`${shortCurrency(c.billBefore)}`,'Estimativa da fatura sem o sistema solar.','#25a5bd')}${metric('Consumo anual',`${number(c.annualConsumption,0)} kWh/ano`,'Demanda anual usada para dimensionar a usina.','#168a56')}</div>
+        <div class="vp-diagnosis-generation-highlight"><div><span>Geração geral mensal estimada</span><strong>${number(c.monthlyGeneration,0)} kWh/mês</strong><p>Produção média mensal prevista para o sistema fotovoltaico proposto, considerada como referência principal do dimensionamento.</p></div><div class="vp-diagnosis-generation-side"><span>Geração média x consumo médio</span><strong>${number((c.monthlyGeneration/Math.max(1,c.avgConsumption))*100,0)}%</strong><small>${c.monthlyGeneration>=c.avgConsumption?'A geração mensal estimada é igual ou superior ao consumo médio informado.':'Percentual médio do consumo mensal coberto pela geração projetada.'}</small></div></div>
+        <div class="vp-card vp-diagnosis-chart"><div class="vp-chart-title-row" style="display:flex;justify-content:space-between;gap:16px;align-items:flex-start"><div><h3>Consumo x projeção de geração</h3><p style="color:#65768a">Comparativo mensal entre o histórico de consumo e a energia estimada para a usina proposta.</p></div><div style="text-align:right;color:#65768a;font-size:10px;white-space:nowrap"><strong style="display:block;color:#10273d;font-size:13px;line-height:1.05">Cobertura estimada</strong>${number(coverageRatio,0)}%</div></div><div class="vp-chart vp-diagnosis-chart-canvas"><canvas id="pdfConsumptionChart"></canvas></div><div class="vp-diagnosis-compare-grid"><div class="vp-compare-pill"><span>Consumo anual</span><strong>${number(c.annualConsumption,0)} kWh</strong><small>Base real informada pelo histórico dos últimos 12 meses.</small></div><div class="vp-compare-pill highlight"><span>Geração mensal</span><strong>${number(c.monthlyGeneration,0)} kWh</strong><small>Média mensal geral prevista para a usina proposta.</small></div><div class="vp-compare-pill"><span>Geração anual projetada</span><strong>${number(annualGenerationChart,0)} kWh</strong><small>Estimativa calculada a partir da potência proposta e da geração específica adotada.</small></div><div class="vp-compare-pill highlight"><span>${worstBalanceValue>=0?'Mês com maior sobra':'Mês com maior déficit'}</span><strong>${months[(worstBalanceValue>=0?bestBalanceIndex:worstBalanceIndex)]||'—'}</strong><small>${worstBalanceValue>=0?`Saldo positivo estimado de ${number(bestBalanceValue,0)} kWh.`:`Necessidade complementar estimada de ${number(Math.abs(worstBalanceValue),0)} kWh.`}</small></div></div></div>
+        <div class="vp-grid-2 vp-diagnosis-bottom"><div class="vp-dark-list vp-diagnosis-data"><h3>Dados da unidade</h3>${dataRow('Cliente',p.client.name)}${dataRow('Cidade',p.client.city)}${dataRow('UC Geradora',p.client.consumerUnit)}${c.beneficiaryCount?dataRow('Beneficiárias',`${c.beneficiaryCount} UC(s) · ${number(c.beneficiaryAvgConsumption,0)} kWh/mês`):''}${dataRow('Distribuidora',p.client.distributor)}${dataRow('Classe / grupo',`${safe(p.client.className)} · ${safe(p.client.tariffGroup)}`)}${dataRow('Tarifa considerada',`${currency(p.currentTariff,2)}/kWh`)}</div><div class="vp-reasons vp-diagnosis-reading"><h3>Leitura do diagnóstico</h3><div class="vp-reason-grid">${diagnosticNotes}</div></div></div>
         ${footer(diagnosisPage)}</div></section>
-      <section class="proposal-page vp-page">${header(technicalPage,'Solução técnica','A composição da usina, equipamentos principais e premissas de implantação.')}
+      ${beneficiaryPagesHtml}
+      <section class="proposal-page vp-page vp-technical-equipment-page">${header(technicalPage,'Solução técnica','A composição da usina, equipamentos principais e premissas de implantação.')}
         <div class="vp-metric-grid">${metric('Potência DC',`${number(c.actualPower,2)} kWp`,'Potência total instalada em módulos.','#ffb703')}${metric('Potência AC',`${number(acPower,0)} kW`,'Capacidade nominal dos inversores.','#25a5bd')}${metric('Área estimada',`${number(c.occupiedArea,0)} m²`,'Área estimada para instalação dos módulos.','#168a56')}</div>
-        <div class="vp-grid-2"><div class="vp-card"><h3>Ajuste conceitual do arranjo</h3><div class="vp-project-wrap">${projectImage?`<img src="${projectImage}" alt="Projeto do cliente com placas">`:`<div class="vp-project-placeholder"><div><strong>Ajuste conceitual do arranjo</strong><span>Envie na etapa Dimensionamento uma foto/render com as placas no telhado, solo ou carport.</span></div></div>`}</div></div><div class="vp-card"><h3>Equipamentos principais</h3><table class="vp-table"><tbody><tr><th>Item</th><th>Especificação</th></tr><tr><td>Módulos</td><td>${c.moduleQty} × ${number(c.moduleItem.power,0)} Wp · ${safe(c.moduleItem.brand)}</td></tr><tr><td>Inversores</td><td>${safe(c.inverterSummary)}</td></tr><tr><td>Potência AC total</td><td>${number(c.inverterPowerTotal,2)} kW</td></tr><tr><td>Estrutura</td><td>${safe(p.technical?.structureType)}</td></tr><tr><td>Orientação</td><td>${safe(p.technical?.orientation)}</td></tr><tr><td>Perdas</td><td>${number(p.technical?.systemLosses||0,0)}%</td></tr><tr><td>Monitoramento</td><td>Incluso</td></tr>${additionalItems.length?`<tr><td>Itens adicionais</td><td>${additionalItems.length} item(ns) detalhado(s) em página específica</td></tr>`:''}</tbody></table></div></div>
+        <div class="vp-card vp-equipment-main"><div class="vp-equipment-head"><div><h3>Equipamentos principais</h3><p>Configuração técnica considerada para o sistema fotovoltaico proposto.</p></div><div class="vp-equipment-power"><span>Potência instalada</span><strong>${number(c.actualPower,2)} kWp</strong></div></div><table class="vp-table vp-equipment-table"><tbody><tr><th>Item</th><th>Especificação</th></tr><tr><td>Módulos fotovoltaicos</td><td><strong>${c.moduleQty} × ${number(c.moduleItem.power,0)} Wp</strong> · ${safe(c.moduleItem.brand)} ${safe(c.moduleItem.model||'')}</td></tr><tr><td>Inversores</td><td><strong>${safe(c.inverterSummary)}</strong></td></tr><tr><td>Potência AC total</td><td>${number(c.inverterPowerTotal,2)} kW</td></tr><tr><td>Estrutura de fixação</td><td>${safe(p.technical?.structureType)}</td></tr><tr><td>Orientação predominante</td><td>${safe(p.technical?.orientation)}</td></tr><tr><td>Perdas consideradas</td><td>${number(p.technical?.systemLosses||0,0)}%</td></tr><tr><td>Monitoramento</td><td>Incluso</td></tr>${additionalItems.length?`<tr><td>Itens adicionais</td><td>${additionalItems.length} item(ns) detalhado(s) em página específica</td></tr>`:''}</tbody></table></div>
         ${footer(technicalPage)}</div></section>
+      ${project3dPagesHtml}
+      ${irradiationPagesHtml}
       ${evChargerPage}
       ${additionalItemsPagesHtml}
       <section class="proposal-page vp-page">${header(financialPage,'Retorno financeiro','Visualização do investimento, economia e comparação acumulada ao longo do tempo.')}
@@ -9180,7 +9380,7 @@ ${company.tradeName||company.name}`:''}`;
           <div class="vp-final-logo"><img src="${logo}" alt="Logo da empresa"></div>
           <div class="vp-final-site">${safe(company.website||company.email||companyName)}</div>
           <div class="vp-final-line"></div>
-          <div class="vp-final-small">Energia solar com engenharia, economia e previsibilidade</div>
+          <div class="vp-final-small">Energia solar com engenharia, economia e previsibilidade</div><div class="vp-tech-id">CFT 04 - EDUARDO DA COSTA (CPF 122.515.239-95)</div>
         </div>
       </section>`;
   }
@@ -9219,7 +9419,7 @@ ${company.tradeName||company.name}`:''}`;
     const find=id=>root?.querySelector?.(`#${id}`)||(root===document?document.getElementById(id):null);
     const p=activeProposal,c=calculateProposal(p);const common={responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{labels:{color:'#5e6b7b',usePointStyle:true,boxWidth:7,font:{size:8}}}},scales:{x:{grid:{display:false},ticks:{color:'#7d8998',font:{size:8}}},y:{grid:{color:'#e9edf2'},ticks:{color:'#7d8998',font:{size:8}}}}};
     const generationProfile=proposalMonthlyGenerationProfile(p,c);
-    const cons=find('pdfConsumptionChart');if(cons)proposalCharts.push(new Chart(cons,{data:{labels:months,datasets:[{type:'bar',label:'Consumo (kWh)',data:(Array.isArray(p.consumption)?p.consumption:[]).map(value=>Math.max(0,Number(value||0))),backgroundColor:'rgba(23,79,128,.94)',borderRadius:6,maxBarThickness:24},{type:'line',label:'Geração projetada (kWh)',data:generationProfile,borderColor:'#ffb703',backgroundColor:'rgba(255,183,3,.18)',fill:false,tension:.35,pointRadius:3,pointHoverRadius:4,pointBackgroundColor:'#ffb703',pointBorderColor:'#fff',pointBorderWidth:1.5,borderWidth:2.5}]},options:{...common,interaction:{mode:'index',intersect:false},plugins:{legend:{display:true,labels:{color:'#5e6b7b',usePointStyle:true,boxWidth:8,font:{size:8}}},tooltip:{callbacks:{label:context=>`${context.dataset.label}: ${number(context.parsed.y||0,0)} kWh`}}},scales:{x:{grid:{display:false},ticks:{color:'#7d8998',font:{size:8}}},y:{grid:{color:'#e9edf2'},ticks:{color:'#7d8998',font:{size:8},callback:value=>`${number(value,0)} kWh`}}}}}));
+    const cons=find('pdfConsumptionChart');if(cons)proposalCharts.push(new Chart(cons,{data:{labels:months,datasets:[{type:'bar',label:'Consumo (kWh)',data:combinedProposalConsumptionProfile(p).map(value=>Math.max(0,Number(value||0))),backgroundColor:'rgba(23,79,128,.94)',borderRadius:6,maxBarThickness:24},{type:'line',label:'Geração projetada (kWh)',data:generationProfile,borderColor:'#ffb703',backgroundColor:'rgba(255,183,3,.18)',fill:false,tension:.35,pointRadius:3,pointHoverRadius:4,pointBackgroundColor:'#ffb703',pointBorderColor:'#fff',pointBorderWidth:1.5,borderWidth:2.5}]},options:{...common,interaction:{mode:'index',intersect:false},plugins:{legend:{display:true,labels:{color:'#5e6b7b',usePointStyle:true,boxWidth:8,font:{size:8}}},tooltip:{callbacks:{label:context=>`${context.dataset.label}: ${number(context.parsed.y||0,0)} kWh`}}},scales:{x:{grid:{display:false},ticks:{color:'#7d8998',font:{size:8}}},y:{grid:{color:'#e9edf2'},ticks:{color:'#7d8998',font:{size:8},callback:value=>`${number(value,0)} kWh`}}}}}));
     const tariff=find('pdfTariffChart');if(tariff)proposalCharts.push(new Chart(tariff,{type:'line',data:{labels:months,datasets:[{label:'Tarifa R$/kWh',data:p.tariffHistory?.length===12?p.tariffHistory:Array.from({length:12},(_,i)=>Number(p.currentTariff||.9)*Math.pow(1-0.07/12,11-i)),borderColor:'#e39a00',backgroundColor:'rgba(227,154,0,.12)',fill:true,tension:.35,pointRadius:2}]},options:common}));
     const years=Array.from({length:26},(_,i)=>i);let without=[0],withSolar=[Number(p.commercial.price||0)],accWithout=0,accWith=Number(p.commercial.price||0);for(let y=1;y<=25;y++){const annualBill=c.billBefore*12*Math.pow(1+Number(p.commercial.annualTariffIncrease||0)/100,y-1);accWithout+=annualBill;accWith+=Number(p.commercial.annualMaintenance||0)+Number(p.commercial.residualBill||0)*12;without.push(accWithout);withSolar.push(accWith);}
     const savings=find('pdfSavingsChart');if(savings)proposalCharts.push(new Chart(savings,{type:'line',data:{labels:years,datasets:[{label:'Sem solar',data:without,borderColor:'#e35353',backgroundColor:'rgba(227,83,83,.08)',fill:true,tension:.25,pointRadius:0},{label:'Com solar',data:withSolar,borderColor:'#168a56',backgroundColor:'rgba(22,138,86,.08)',fill:true,tension:.25,pointRadius:0}]},options:{...common,scales:{x:{grid:{display:false},ticks:{color:'#7d8998',font:{size:8},callback:v=>`${v}a`}},y:{grid:{color:'#e9edf2'},ticks:{color:'#7d8998',font:{size:8},callback:v=>`R$ ${Math.round(v/1000)} mil`}}}}}));
@@ -10197,7 +10397,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     return {passed:tests.every(test=>test.passed),total:tests.length,success:tests.filter(test=>test.passed).length,tests};
   }
 
-  window.SolarCRMDebug={SYSTEM_VERSION,calculateOffgridDesign,defaultOffgridDesign,calculateProposal,extractBillFields,normalizeState,normalizeProposalAdditionalItems,renderProposalDocument,projectStages,projectDocumentCategories,defaultAutomationRule,executeAutomationRules,queueAutomationRule,ensureProjectStructure,ensureAllProjectStructures,updateProjectStage,runSystemSelfTests,runWorkflowSelfTests,loadFirebaseConfig,clearFirebaseConfig,firebaseApiKeyLooksValid,finishAuthenticatedSession,initializeSharedCompanySettings,loadAuthorizedFirebaseData,startAuthorizedDataWatchers,saveSharedCompanySettings,applySharedCompanySettings,chooseBestCompanySettings,companyConfigurationScore,loadUserPermissionData,openPermissionMatrix,defaultPermissionMatrix,normalizePermissionMatrix,permissionArraysFromMatrix,hasPermission,lockSystemForAuthentication,unlockSystemAfterAuthentication,buildClientPortalRecord,publishClientPortalStatus,clientPortalUrl,renderFinancingStep,companyFinancingBanks,findFinancingBank,applyFinancingBankToProposal,proposalFinancingOptions,getDefaultProposal:()=>deepClone(defaultProposal()),getState:()=>deepClone(state)};
+  window.SolarCRMDebug={SYSTEM_VERSION,calculateOffgridDesign,defaultOffgridDesign,calculateProposal,extractBillFields,normalizeState,normalizeProposalAdditionalItems,normalizeProposalBeneficiaries,renderProposalDocument,projectStages,projectDocumentCategories,defaultAutomationRule,executeAutomationRules,queueAutomationRule,ensureProjectStructure,ensureAllProjectStructures,updateProjectStage,runSystemSelfTests,runWorkflowSelfTests,loadFirebaseConfig,clearFirebaseConfig,firebaseApiKeyLooksValid,finishAuthenticatedSession,initializeSharedCompanySettings,loadAuthorizedFirebaseData,startAuthorizedDataWatchers,saveSharedCompanySettings,applySharedCompanySettings,chooseBestCompanySettings,companyConfigurationScore,loadUserPermissionData,openPermissionMatrix,defaultPermissionMatrix,normalizePermissionMatrix,permissionArraysFromMatrix,hasPermission,lockSystemForAuthentication,unlockSystemAfterAuthentication,buildClientPortalRecord,publishClientPortalStatus,clientPortalUrl,renderFinancingStep,companyFinancingBanks,findFinancingBank,applyFinancingBankToProposal,proposalFinancingOptions,getDefaultProposal:()=>deepClone(defaultProposal()),getState:()=>deepClone(state)};
   
   function representativePdfRequestId(){
     try{return String(new URLSearchParams(location.search).get('abrirPdf')||'').trim();}catch(_){return '';}
@@ -10246,6 +10446,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     activeProposal=deepClone(proposal);
     activeProposal.schedule=normalizeProposalSchedule(activeProposal.schedule);
     activeProposal.additionalItems=normalizeProposalAdditionalItems(activeProposal.additionalItems);
+    activeProposal.beneficiaries=normalizeProposalBeneficiaries(activeProposal.beneficiaries);
     hydrateProposalFinancing(activeProposal);
     setRepresentativePdfStatus('Montando o mesmo PDF usado no CRM...');
     await ensureEmbeddedCompanyLogo();
@@ -10275,8 +10476,12 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     proposal.status=record.status||'Enviada';
     proposal.validUntil=view.validUntil||proposal.validUntil;
     proposal.client={...proposal.client,name:record.clientName||view.clientName||'',document:record.clientDocument||view.document||'',phone:record.clientPhone||'',email:record.clientEmail||'',city:record.city||view.city||''};
-    const avg=Number(view.avgConsumption||0);
-    proposal.consumption=Array(12).fill(avg);
+    const beneficiaryRows=normalizeProposalBeneficiaries(record.beneficiaries||view.beneficiaries||[]);
+    proposal.beneficiaries=beneficiaryRows;
+    const totalAvg=Number(view.avgConsumption||0);
+    const beneficiaryAvg=beneficiaryRows.reduce((sum,item)=>sum+Number(item.averageConsumption||0),0);
+    const generatorAvg=Math.max(0,Number(view.generatorAvgConsumption||0)||(totalAvg-beneficiaryAvg));
+    proposal.consumption=Array(12).fill(generatorAvg);
     proposal.currentTariff=Number(view.currentTariff||0);
     proposal.tariffHistory=Array(12).fill(Number(view.currentTariff||0));
     const actualPower=Number(view.actualPower||record.actualPower||0);
