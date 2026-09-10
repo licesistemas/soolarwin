@@ -6481,6 +6481,10 @@ text-indent:8mm;
       .cw-page.contract-page-three .cw-equipment-description .cw-clause{
         margin-bottom:2.2mm!important
       }
+      .cw-page .cw-content>.cw-flow-continuation:first-child{margin-top:0!important}
+      .cw-page .cw-content>h2.cw-flow-continuation:first-child,
+      .cw-page .cw-content>h3.cw-flow-continuation:first-child{margin-top:0!important}
+      .cw-page .cw-content>.cw-clause.cw-flow-continuation:first-child strong{margin-top:0!important}
       .cw-content{position:relative;z-index:1;width:100%}
       .cw-page.cw-autoflow .cw-content{width:100%}
       .cw-page.cw-autoflow.technical-clauses-page .cw-clause{margin:0!important;line-height:1.36!important}
@@ -6532,8 +6536,6 @@ text-indent:8mm;
       .cw-page:nth-of-type(2n) .cw-mark{border-color:var(--sw-blue);color:#174f80;background:#eef6ff}
 
       /* Ajustes finais do contrato */
-      .cw-clause{margin:0!important;padding:0!important}
-      .cw-clause + .cw-clause{margin-top:0!important}
       .cw-system-power span,.cw-system-power strong{color:#fff!important}
       @media print{
         html,body{margin:0!important;padding:0!important;background:#fff!important}.cw-actions{display:none!important}.cw-page{width:210mm!important;height:296.4mm!important;min-height:296.4mm!important;max-height:296.4mm!important;margin:0!important;box-shadow:none!important;overflow:hidden!important;break-before:auto!important;page-break-before:auto!important;break-after:page!important;page-break-after:always!important}.cw-page:last-child{break-after:auto!important;page-break-after:auto!important}.cw-page.final{break-before:auto!important;page-break-before:auto!important}.cw-page.final .cw-final-block{break-inside:avoid-page!important;page-break-inside:avoid!important}
@@ -6625,10 +6627,99 @@ text-indent:8mm;
   }
 
   function compactContractPages(doc){
-    // Paginação fixa e previsível.
-    // Não movimenta elementos via JavaScript para evitar quebra visual,
-    // sobreposição e alteração inesperada da página 3.
-    return;
+    if(!doc||doc.documentElement?.dataset?.contractCompacted==='1')return;
+    doc.documentElement.dataset.contractCompacted='1';
+
+    // As páginas 1, 2 e 3 permanecem totalmente fixas. A compactação começa
+    // somente nas páginas seguintes, onde havia grandes áreas em branco.
+    const allPages=()=>[...doc.querySelectorAll('.cw-page')];
+    const isHeading=el=>el?.matches?.('h2,h3');
+    const isFinal=page=>page?.classList?.contains('final');
+
+    function firstMovableGroup(content){
+      const children=[...content.children];
+      if(!children.length)return [];
+      const first=children[0];
+      if(first.matches('.cw-final-block,.cw-sign-city,.cw-signatures'))return [];
+
+      // Títulos nunca são movidos sozinhos. Levamos o título e o primeiro bloco
+      // relacionado; no bloco de garantia, tabela e texto introdutório seguem juntos.
+      if(isHeading(first)){
+        const group=[first];
+        let i=1;
+        while(i<children.length && group.length<4){
+          const el=children[i];
+          if(isHeading(el))break;
+          group.push(el);
+          if(el.matches('.cw-clause'))break;
+          if(el.matches('.cw-table'))break;
+          i++;
+        }
+        return group;
+      }
+      return [first];
+    }
+
+    function fits(page){
+      const content=page.querySelector('.cw-content');
+      const footer=page.querySelector('.cw-foot');
+      if(!content||!footer)return false;
+      const last=content.lastElementChild;
+      if(!last)return true;
+      const pageRect=page.getBoundingClientRect();
+      const footerRect=footer.getBoundingClientRect();
+      // Reserva adicional para a assinatura fixa das páginas internas.
+      const signatureSafeTop=pageRect.bottom-86;
+      const limit=Math.min(footerRect.top-14,signatureSafeTop);
+      return last.getBoundingClientRect().bottom<=limit;
+    }
+
+    // Nunca mexe nas três primeiras páginas nem traz conteúdo da última página
+    // de assinaturas. Cada tentativa é medida e revertida se não couber inteira.
+    for(let pass=0;pass<24;pass++){
+      let changed=false;
+      const pages=allPages();
+      for(let i=3;i<pages.length-1;i++){
+        const current=pages[i];
+        const next=pages[i+1];
+        if(!current||!next||isFinal(current)||isFinal(next))continue;
+        const currentContent=current.querySelector('.cw-content');
+        const nextContent=next.querySelector('.cw-content');
+        if(!currentContent||!nextContent)continue;
+        const group=firstMovableGroup(nextContent);
+        if(!group.length)continue;
+
+        const marker=doc.createComment('contract-flow-marker');
+        nextContent.insertBefore(marker,group[0]);
+        group.forEach(el=>{
+          el.classList.add('cw-flow-continuation');
+          currentContent.appendChild(el);
+        });
+
+        if(fits(current)){
+          marker.remove();
+          changed=true;
+        }else{
+          group.forEach(el=>{
+            el.classList.remove('cw-flow-continuation');
+            nextContent.insertBefore(el,marker);
+          });
+          marker.remove();
+        }
+      }
+      if(!changed)break;
+    }
+
+    // Remove somente páginas internas que ficaram realmente vazias e renumera.
+    allPages().forEach(page=>{
+      if(page.classList.contains('cover')||isFinal(page))return;
+      const content=page.querySelector('.cw-content');
+      if(content && !String(content.innerText||'').trim() && !content.querySelector('table,img'))page.remove();
+    });
+    allPages().forEach((page,index)=>{
+      const num=page.querySelector('.cw-foot strong');
+      if(num)num.textContent=String(index+1);
+    });
   }
 
   function ensureContractPreviewModal(){
