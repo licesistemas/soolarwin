@@ -6367,7 +6367,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     ];
     const header=page=>`<header class="cw-head"><div class="cw-brand"><img src="${attr(contractLogoBlack)}" alt="SoolarWin"></div><div class="cw-contact"><strong>${escapeHtml(companyAddress)}</strong><span>${escapeHtml(companyContact)}</span><span>${escapeHtml(companyDoc)}</span></div><div class="cw-mark">SW</div></header>`;
     const footer=page=>`<footer class="cw-foot"><span>${escapeHtml(companyName)} - Contrato comercial</span><strong>${page}</strong></footer>`;
-    const page=(num,title,body,extra='')=>`<section class="cw-page ${extra}">${num>1?header(num):''}${title?`<h2>${escapeHtml(title)}</h2>`:''}${body}${footer(num)}</section>`;
+    const page=(num,title,body,extra='')=>`<section class="cw-page ${extra}">${num>1?header(num):''}<div class="cw-content">${title?`<h2>${escapeHtml(title)}</h2>`:''}${body}</div>${footer(num)}</section>`;
     const dataLine=(label,value)=>`<div class="cw-data"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value||'Não informado')}</strong></div>`;
     const table=(rows,heads=['Item','Qtd.','Descrição'])=>`<table class="cw-table"><thead><tr>${heads.map(h=>`<th>${escapeHtml(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(cell=>`<td>${escapeHtml(String(cell??''))}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
     const clause=(title,text)=>`<article class="cw-clause"><strong>${escapeHtml(title)}</strong><p>${escapeHtml(text)}</p></article>`;
@@ -6381,8 +6381,8 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     const p6=`<h2>Da garantia de produtos</h2><p class="cw-text">As garantias seguem as condições dos fabricantes e da proposta comercial aprovada. A CONTRATADA poderá intermediar suporte, análise e encaminhamento de garantia quando aplicável.</p>${table(warrantyRows,['Família','Condição de garantia'])}${clause('Cláusula Décima Terceira',`Em caso de não funcionamento ou funcionamento inadequado de produto em garantia, os serviços serão realizados a critério técnico da CONTRATADA, nas instalações do CONTRATANTE ou por procedimento indicado pelo fabricante.`)}${clause('Cláusula Décima Quarta',`A garantia não cobre mau uso, alterações por terceiros, surtos, descargas atmosféricas, falta de manutenção, danos por animais, danos estruturais, eventos climáticos extremos ou condições externas não controladas pela CONTRATADA.`)}${clause('Cláusula Décima Quinta',`A manutenção preventiva é recomendada periodicamente, podendo ter custos adicionais quando não estiver expressamente incluída na proposta comercial.`)}`;
     const p7=`<h2>Da rescisão</h2>${clause('Cláusula Décima Sexta',`Poderá o presente contrato ser rescindido de pleno direito caso uma das partes descumpra suas obrigações, sem prejuízo de cobrança de valores devidos, despesas realizadas, equipamentos adquiridos, serviços executados e eventuais penalidades aplicáveis.`)}${clause('Cláusula Décima Sétima',`O valor pago a título de entrada, sinal, arras, despesas de projeto, deslocamento, aquisição de equipamentos ou início de execução poderá ser retido total ou parcialmente conforme estágio do processo e custos já incorridos.`)}${clause('Cláusula Décima Oitava',`Em qualquer hipótese de rescisão, as partes realizarão acerto de contas considerando serviços executados, compromissos assumidos, equipamentos separados/adquiridos e pagamentos recebidos.`)}<h2>Condições técnicas adicionais</h2>${clause('Cláusula Décima Nona',`Serviços ou materiais não previstos, adequações de padrão, reforços estruturais, alterações de projeto, serviços civis, deslocamentos extras, troca de telhas, cabeamento adicional e exigências supervenientes poderão ser orçados separadamente.`)}${clause('Cláusula Vigésima',`O processo junto à concessionária somente será iniciado após o recebimento dos documentos necessários, autorização do CONTRATANTE e validação dos dados da unidade consumidora.`)}`;
     const p8=`<div class="cw-final-block"><h2>Das disposições finais</h2>${clause('Cláusula Vigésima Primeira',`As partes declaram que leram, compreenderam e aceitaram as condições comerciais, técnicas e operacionais deste contrato, vinculadas à proposta aprovada e aos anexos comerciais, quando houver.`)}${clause('Cláusula Vigésima Segunda',`A CONTRATADA não se responsabiliza por perdas de receita, lucros cessantes, interrupções de concessionária, atraso de vistoria, atraso de troca de medidor, condições climáticas, caso fortuito ou força maior.`)}${clause('Cláusula Vigésima Terceira - Foro',`Fica eleito o foro da comarca de ${cityBase}, salvo disposição legal obrigatória em contrário, para dirimir controvérsias relativas ao presente instrumento.`)}<div class="cw-sign-city"><span>${escapeHtml(cityBase)}</span><span>${escapeHtml(contractDate)}</span></div><div class="cw-signatures"><div><i></i><strong>CONTRATANTE</strong><span>${escapeHtml(clientName)}</span></div><div class="cw-company-signature"><img class="cw-signature-img" src="${window.__defaultSoolarwinContractSignature}" alt="Assinatura padrão Soolarwin"><i></i><strong>CONTRATADA</strong><span>${escapeHtml(companyName)}</span></div><div><i></i><strong>TESTEMUNHA</strong></div><div><i></i><strong>TESTEMUNHA</strong></div></div></div>`;
-    // Paginação estável: cada bloco principal fica em sua própria página para evitar avanço sobre rodapé, assinatura e margens.
-    // A pré-visualização e o PDF direto usam exatamente a mesma composição.
+    // Paginação adaptativa: o navegador recua automaticamente os blocos para preencher os espaços livres, respeitando a área segura do rodapé e assinatura.
+    // A pré-visualização e o PDF direto usam a mesma composição já compactada.
     const sectionGap='<div class="cw-section-gap"></div>';
     const pages=[
       page(1,'',cover,'cover'),
@@ -6432,6 +6432,14 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
       .cw-page.equipment-page .cw-table{margin-bottom:7mm}
       .cw-page.equipment-page h3{margin-top:2mm}
       .cw-page.technical-clauses-page .cw-clause{display:block;margin:0 0 7mm!important;line-height:1.52}
+      .cw-content{position:relative;z-index:1;width:100%}
+      .cw-page.cw-autoflow .cw-content{width:100%}
+      .cw-page.cw-autoflow.technical-clauses-page .cw-clause{margin:0!important;line-height:1.36!important}
+      .cw-page.cw-autoflow h2{margin-top:3mm}
+      .cw-page.cw-autoflow .cw-content>h2:first-child,.cw-page.cw-autoflow .cw-content>h3:first-child{margin-top:0!important}
+      .cw-page.cw-autoflow .cw-equipment-description{margin-top:0!important}
+      .cw-page.cw-autoflow .cw-equipment-description>.cw-clause{margin:0!important}
+      .cw-page.cw-autoflow .cw-equipment-description>.cw-clause+.cw-clause{margin-top:1mm!important}
 
       /* Identidade visual Soolarwin — contrato */
       :root{--sw-navy:#07111f;--sw-navy-2:#102b46;--sw-panel:#13243a;--sw-yellow:#ffb703;--sw-yellow-2:#ffd166;--sw-blue:#5aa9ff;--sw-text:#10273d;--sw-muted:#65768a;--sw-line:#d9e4ef;--sw-soft:#f5f8fc}
@@ -6559,6 +6567,66 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
       </style></head><body><div class="cw-actions"><button class="cw-secondary" onclick="window.close()">Fechar</button><button class="cw-secondary" onclick="try{parent.document.getElementById('contractPreviewCompactPrint')?.click()}catch(e){}">Baixar em PDF</button><button class="cw-primary" onclick="document.body.classList.remove('cw-compact-print');window.print()">Imprimir / salvar PDF</button></div>${pages.join('')}</body></html>`;
   }
 
+  function compactContractPages(doc){
+    try{
+      if(!doc?.querySelectorAll)return;
+      const pages=[...doc.querySelectorAll('.cw-page.packed:not(.final)')];
+      if(!pages.length)return;
+      pages.forEach(page=>{
+        page.classList.add('cw-autoflow');
+        const content=page.querySelector('.cw-content');
+        if(!content)return;
+        [...content.querySelectorAll(':scope > .cw-equipment-description')].forEach(wrapper=>{
+          while(wrapper.firstChild)content.insertBefore(wrapper.firstChild,wrapper);
+          wrapper.remove();
+        });
+      });
+      const getContent=page=>page?.querySelector('.cw-content');
+      const fits=page=>{
+        const content=getContent(page);if(!content)return true;
+        const view=doc.defaultView||window;
+        const style=view.getComputedStyle(page);
+        const available=page.clientHeight-(parseFloat(style.paddingTop)||0)-(parseFloat(style.paddingBottom)||0);
+        return content.scrollHeight<=available-3;
+      };
+      const moveFirstGroup=(from,to)=>{
+        const source=getContent(from),target=getContent(to);
+        if(!source||!target||!source.firstElementChild)return false;
+        const first=source.firstElementChild;
+        const nodes=[first];
+        if((first.tagName==='H2'||first.tagName==='H3')&&first.nextElementSibling)nodes.push(first.nextElementSibling);
+        nodes.forEach(node=>target.appendChild(node));
+        if(fits(to))return true;
+        for(let i=nodes.length-1;i>=0;i--)source.insertBefore(nodes[i],source.firstChild);
+        return false;
+      };
+      // Pull content from every following page into the preceding page until its safe area is full.
+      for(let pass=0;pass<pages.length*2;pass++){
+        let changed=false;
+        for(let i=0;i<pages.length-1;i++){
+          const current=pages[i],next=pages[i+1];
+          const nextContent=getContent(next);
+          while(nextContent?.firstElementChild){
+            if(!moveFirstGroup(next,current))break;
+            changed=true;
+          }
+        }
+        if(!changed)break;
+      }
+      // Remove pages that became empty after the backward flow.
+      pages.forEach(page=>{
+        const content=getContent(page);
+        if(content&&!String(content.innerText||'').trim()&&!content.querySelector('img,table'))page.remove();
+      });
+      // Renumber footers after page removal.
+      [...doc.querySelectorAll('.cw-page')].forEach((page,index)=>{
+        const n=page.querySelector('.cw-foot strong');
+        if(n)n.textContent=String(index+1);
+      });
+      doc.documentElement.dataset.cwCompacted='1';
+    }catch(error){console.warn('Falha ao compactar páginas do contrato',error);}
+  }
+
   function ensureContractPreviewModal(){
     let modal=document.getElementById('contractPreviewModal');
     if(modal)return modal;
@@ -6594,7 +6662,10 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     const frame=modal.querySelector('#contractPreviewFrame');
     const title=modal.querySelector('#contractPreviewTitle');
     if(title)title.textContent=`Contrato · ${contract.clientName||'Cliente'}`;
-    if(frame)frame.srcdoc=html;
+    if(frame){
+      frame.onload=()=>{try{compactContractPages(frame.contentDocument);}catch(error){console.warn(error);}};
+      frame.srcdoc=html;
+    }
     const compactPrintBtn=modal.querySelector('#contractPreviewCompactPrint');
     if(compactPrintBtn)compactPrintBtn.onclick=async()=>{
       if(compactPrintBtn.disabled)return;
@@ -6602,6 +6673,8 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
         if(!window.jspdf?.jsPDF||!window.html2canvas)throw new Error('Bibliotecas de geração de PDF indisponíveis.');
         const doc=frame?.contentDocument||frame?.contentWindow?.document;
         if(!doc)throw new Error('A pré-visualização do contrato ainda não está pronta.');
+        compactContractPages(doc);
+        await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
         const pages=[...doc.querySelectorAll('.cw-page')].filter(page=>{
           const text=String(page.innerText||'').replace(/\s+/g,'').trim();
           return Boolean(text||page.querySelector('img,table,.cw-cover-logo,.cw-signatures'));
