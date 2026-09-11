@@ -1118,6 +1118,42 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
 .vp-final-line{width:150px!important;margin-top:20px!important;}
 .vp-final-small{font-size:12px!important;bottom:46px!important;}
 
+
+/* ===== EDITOR DE CONTRATO ===== */
+.contract-editor-page{display:flex;flex-direction:column;gap:16px}
+.contract-editor-toolbar{display:flex;gap:8px;flex-wrap:wrap}
+.contract-editor-layout{display:grid;grid-template-columns:minmax(260px,.72fr) minmax(0,1.28fr);gap:16px;align-items:start}
+.contract-editor-list-card,.contract-editor-form-card{overflow:hidden}
+.contract-editor-list{display:flex;flex-direction:column;gap:7px;max-height:calc(100vh - 280px);overflow:auto;padding:12px}
+.contract-editor-item{width:100%;display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:9px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--panel-2);color:var(--text);text-align:left}
+.contract-editor-item:hover{border-color:var(--line-strong)}
+.contract-editor-item.active{border-color:var(--primary);box-shadow:0 0 0 3px var(--primary-soft)}
+.contract-editor-item-index{width:28px;height:28px;border-radius:9px;display:grid;place-items:center;background:var(--panel-3);color:var(--primary);font-size:9px;font-weight:900}
+.contract-editor-item-copy{min-width:0}
+.contract-editor-item-copy strong{display:block;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.contract-editor-item-copy span{display:block;margin-top:3px;color:var(--muted);font-size:8px}
+.contract-editor-item-state{font-size:8px;font-weight:900;padding:5px 7px;border-radius:999px;background:var(--green-soft);color:var(--green)}
+.contract-editor-item-state.off{background:var(--red-soft);color:var(--red)}
+.contract-editor-form{padding:18px}
+.contract-editor-form textarea{min-height:310px;line-height:1.58}
+.contract-editor-topline{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px}
+.contract-editor-topline h3{margin:0;font-size:15px}
+.contract-editor-topline p{margin:5px 0 0;color:var(--muted);font-size:9px;line-height:1.45}
+.contract-variable-box{margin-top:14px;padding:13px;border:1px solid var(--line);border-radius:13px;background:var(--panel-2)}
+.contract-variable-box>span{display:block;color:var(--muted);font-size:9px;margin-bottom:8px}
+.contract-variable-chips{display:flex;gap:6px;flex-wrap:wrap}
+.contract-variable-chip{border:1px solid var(--line);border-radius:8px;background:var(--panel-3);color:var(--text-soft);padding:6px 8px;font-size:8px;font-weight:800}
+.contract-variable-chip:hover{border-color:var(--primary);color:var(--primary)}
+.contract-editor-footer{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.contract-editor-status{font-size:9px;color:var(--muted)}
+.contract-editor-status.saved{color:var(--green)}
+.contract-editor-status.dirty{color:var(--primary)}
+.contract-editor-help{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.contract-editor-help>div{padding:12px;border:1px solid var(--line);border-radius:13px;background:var(--panel)}
+.contract-editor-help strong{display:block;font-size:10px}
+.contract-editor-help span{display:block;margin-top:4px;color:var(--muted);font-size:8px;line-height:1.45}
+@media(max-width:980px){.contract-editor-layout{grid-template-columns:1fr}.contract-editor-list{max-height:320px}.contract-editor-help{grid-template-columns:1fr}}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -3231,6 +3267,7 @@ service cloud.firestore {
   }
 
   function hasPermission(module,action='view'){
+    if(module==='contractEditor')module='contracts';
     if(currentUserIsAdmin())return true;
     if(COMPANY_WIDE_SHARED_ACCESS && window.FirebaseCRM?.syncReady)return true;
     const role=state?.role||state?.currentUser?.role||'seller';
@@ -3252,6 +3289,7 @@ service cloud.firestore {
     { section: 'Comercial', id: 'clients', label: 'Clientes', icon: '♙' },
     { section: 'Comercial', id: 'proposals', label: 'Propostas', icon: '▤' },
     { section: 'Operação', id: 'contracts', label: 'Contratos', icon: '✎' },
+    { section: 'Operação', id: 'contractEditor', label: 'Editor de contrato', icon: '▧' },
     { section: 'Operação', id: 'works', label: 'Obras', icon: '⌁' },
     { section: 'Operação', id: 'homologations', label: 'Homologação', icon: '✓' },
     { section: 'Gestão', id: 'financial', label: 'Financeiro', icon: 'R$' },
@@ -3363,6 +3401,7 @@ service cloud.firestore {
     proposalMessage: 'Olá, {cliente}! Sua proposta de energia solar {proposta} está pronta. Investimento: {valor}. Potência: {potencia} kWp.',
     npsMessage: 'Olá, {cliente}! De 0 a 10, quanto você recomendaria nossa empresa? Sua opinião é muito importante.',
     collectionMessage: 'Olá, {cliente}. Identificamos o vencimento de {descricao}, no valor de {valor}. Podemos ajudar com a regularização?',
+    contractEditor: null,
     companyId: 'company-demo'
   };
 
@@ -3557,6 +3596,8 @@ service cloud.firestore {
   let settingsTab = 'company';
   let searchTerm = '';
   let proposalFilters = { name:'', from:'', to:'', representative:'all', status:'open' };
+  let activeContractEditorClauseId = '';
+  let contractEditorDirty = false;
   let kanbanMode = state.kanbanMode || 'commercial';
   let activeProjectId = null;
   let projectWorkspaceTab = 'overview';
@@ -5240,7 +5281,7 @@ service cloud.firestore {
     if (!root) return;
     const renderers={
       dashboard:renderDashboard, leads:()=>renderEntityTable('leads'), kanban:renderKanban, clients:()=>renderEntityTable('clients'), proposals:renderProposals,
-      contracts:()=>renderEntityTable('contracts'), works:()=>renderEntityTable('works'), homologations:()=>renderEntityTable('homologations'),
+      contracts:()=>renderEntityTable('contracts'), contractEditor:renderContractEditor, works:()=>renderEntityTable('works'), homologations:()=>renderEntityTable('homologations'),
       financial:renderFinancial, aftersales:renderAfterSales, tickets:()=>renderEntityTable('tickets'), commissions:()=>renderEntityTable('commissions'),
       inventory:()=>renderEntityTable('inventory'), teams:()=>renderEntityTable('teams'), offgrid:renderOffgridDimensioning, reports:renderReports, automations:renderAutomations, settings:()=>openSettings('company')
     };
@@ -6320,6 +6361,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
 
   function bindViewEvents(view){
     if(view==='offgrid')bindOffgridEvents();
+    if(view==='contractEditor')bindContractEditorEvents();
     document.querySelectorAll('[data-view-jump]').forEach(btn=>btn.addEventListener('click',()=>navigate(btn.dataset.viewJump)));
     document.querySelectorAll('[data-action]').forEach(btn=>btn.addEventListener('click',()=>handleAction(btn.dataset.action,btn.dataset)));
     document.querySelectorAll('[data-local-search]').forEach(input=>input.addEventListener('input',()=>{
@@ -6619,6 +6661,273 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     document.querySelector('[data-drawer-edit]')?.addEventListener('click',()=>{closeDrawer();openEntityModal(collection,id);});
   }
 
+
+  const CONTRACT_EDITOR_DEFAULT_ITEMS = Object.freeze([
+    {id:'object',title:'Cláusula Primeira - Do objeto do contrato',text:'O presente instrumento tem por objeto o fornecimento de Gerador Fotovoltaico por parte da CONTRATADA em favor do CONTRATANTE, consistindo na compra, venda, instalação, acompanhamento documental e prestação de serviços relacionados ao sistema solar fotovoltaico aprovado comercialmente.'},
+    {id:'area',title:'Cláusula Terceira - Área estimada',text:'A área estimada para instalação do sistema é de acordo com vistoria técnica, podendo sofrer ajustes conforme estrutura, layout final, acessos, normas técnicas e disponibilidade dos equipamentos.'},
+    {id:'generation',title:'Cláusula Quarta - Geração estimada',text:'A geração média estimada é meramente exemplificativa e não representa garantia de geração mínima. O desempenho dependerá de fatores climáticos, exposição solar, consumo local, funcionamento da rede, manutenção e condições de operação.'},
+    {id:'substitution',title:'Cláusula Quinta - Substituição técnica',text:'Na falta de disponibilidade de equipamento especificado, a CONTRATADA poderá fornecer produto similar ou de potência equivalente/superior, desde que preserve a finalidade técnica do sistema, sem prejuízo ao CONTRATANTE.'},
+    {id:'value',title:'Cláusula Sexta - Valor',text:'Pelos serviços e equipamentos contratados, o CONTRATANTE pagará à CONTRATADA a importância de {{valor}}, conforme condição comercial: {{forma_pagamento}}.'},
+    {id:'payment-methods',title:'Parágrafo Primeiro',text:'Os pagamentos deverão ser realizados por meio indicado pela CONTRATADA, podendo incluir depósito, transferência, PIX, boleto bancário, financiamento ou outra condição expressamente aprovada entre as partes.'},
+    {id:'late-payment',title:'Parágrafo Segundo',text:'Parcelas não pagas nos respectivos vencimentos poderão ficar sujeitas a multa, correção monetária, juros de mora e demais encargos previstos em proposta, boleto, contrato ou legislação aplicável.'},
+    {id:'deadline',title:'Cláusula Sétima - Prazo',text:'O prazo de execução será contado a partir da liberação comercial, faturamento/recebimento dos equipamentos, documentação completa, acesso ao local e condições adequadas para instalação.'},
+    {id:'deadline-extension',title:'Parágrafo Único',text:'Prazos poderão ser prorrogados por fatores externos, incluindo chuvas, força maior, indisponibilidade de rede, exigências da concessionária, falta de documentos, necessidade de adequações técnicas ou paralisações não atribuíveis à CONTRATADA.'},
+    {id:'installation-place',title:'Cláusula Nona',text:'O local de entrega e instalação será {{endereco}}, vinculado à unidade consumidora {{uc}}.'},
+    {id:'warranty-service',title:'Cláusula Décima Terceira',text:'Em caso de não funcionamento ou funcionamento inadequado de produto em garantia, os serviços serão realizados a critério técnico da CONTRATADA, nas instalações do CONTRATANTE ou por procedimento indicado pelo fabricante.'},
+    {id:'warranty-exclusions',title:'Cláusula Décima Quarta',text:'A garantia não cobre mau uso, alterações por terceiros, surtos, descargas atmosféricas, falta de manutenção, danos por animais, danos estruturais, eventos climáticos extremos ou condições externas não controladas pela CONTRATADA.'},
+    {id:'preventive-maintenance',title:'Cláusula Décima Quinta',text:'A manutenção preventiva é recomendada periodicamente, podendo ter custos adicionais quando não estiver expressamente incluída na proposta comercial.'},
+    {id:'termination',title:'Cláusula Décima Sexta',text:'Poderá o presente contrato ser rescindido de pleno direito caso uma das partes descumpra suas obrigações, sem prejuízo de cobrança de valores devidos, despesas realizadas, equipamentos adquiridos, serviços executados e eventuais penalidades aplicáveis.'},
+    {id:'retention',title:'Cláusula Décima Sétima',text:'O valor pago a título de entrada, sinal, arras, despesas de projeto, deslocamento, aquisição de equipamentos ou início de execução poderá ser retido total ou parcialmente conforme estágio do processo e custos já incorridos.'},
+    {id:'settlement',title:'Cláusula Décima Oitava',text:'Em qualquer hipótese de rescisão, as partes realizarão acerto de contas considerando serviços executados, compromissos assumidos, equipamentos separados/adquiridos e pagamentos recebidos.'},
+    {id:'extras',title:'Cláusula Décima Nona',text:'Serviços ou materiais não previstos, adequações de padrão, reforços estruturais, alterações de projeto, serviços civis, deslocamentos extras, troca de telhas, cabeamento adicional e exigências supervenientes poderão ser orçados separadamente.'},
+    {id:'utility-process',title:'Cláusula Vigésima',text:'O processo junto à concessionária somente será iniciado após o recebimento dos documentos necessários, autorização do CONTRATANTE e validação dos dados da unidade consumidora.'},
+    {id:'final-acceptance',title:'Cláusula Vigésima Primeira',text:'As partes declaram que leram, compreenderam e aceitaram as condições comerciais, técnicas e operacionais deste contrato, vinculadas à proposta aprovada e aos anexos comerciais, quando houver.'},
+    {id:'liability',title:'Cláusula Vigésima Segunda',text:'A CONTRATADA não se responsabiliza por perdas de receita, lucros cessantes, interrupções de concessionária, atraso de vistoria, atraso de troca de medidor, condições climáticas, caso fortuito ou força maior.'},
+    {id:'forum',title:'Cláusula Vigésima Terceira - Foro',text:'Fica eleito o foro da comarca de {{cidade}}, salvo disposição legal obrigatória em contrário, para dirimir controvérsias relativas ao presente instrumento.'}
+  ]);
+
+  const CONTRACT_EDITOR_VARIABLES = Object.freeze([
+    ['{{cliente}}','Cliente'],['{{cpf_cnpj}}','CPF/CNPJ'],['{{endereco}}','Endereço'],
+    ['{{cidade}}','Cidade'],['{{uc}}','UC'],['{{valor}}','Valor'],
+    ['{{forma_pagamento}}','Pagamento'],['{{potencia}}','Potência'],['{{data}}','Data'],
+    ['{{empresa}}','Empresa'],['{{cnpj_empresa}}','CNPJ empresa']
+  ]);
+
+  function defaultContractEditorConfig(){
+    return {
+      version:1,
+      updatedAt:'',
+      items:CONTRACT_EDITOR_DEFAULT_ITEMS.map(item=>({...item,enabled:true,custom:false}))
+    };
+  }
+
+  function normalizeContractEditorConfig(raw){
+    const defaults=defaultContractEditorConfig();
+    const source=raw&&typeof raw==='object'?raw:{};
+    const incoming=Array.isArray(source.items)?source.items:[];
+    const byId=new Map(incoming.filter(Boolean).map(item=>[String(item.id||''),item]));
+    const base=defaults.items.map(item=>{
+      const saved=byId.get(item.id)||{};
+      return {
+        ...item,
+        title:String(saved.title||item.title),
+        text:String(saved.text??item.text),
+        enabled:saved.enabled!==false,
+        custom:false
+      };
+    });
+    const custom=incoming.filter(item=>item&&item.custom).map(item=>({
+      id:String(item.id||newId('contract-clause')),
+      title:String(item.title||'Nova cláusula'),
+      text:String(item.text||''),
+      enabled:item.enabled!==false,
+      custom:true
+    }));
+    return {version:1,updatedAt:String(source.updatedAt||''),items:[...base,...custom]};
+  }
+
+  function currentContractEditorConfig(){
+    const normalized=normalizeContractEditorConfig(state.company?.contractEditor);
+    state.company.contractEditor=normalized;
+    return normalized;
+  }
+
+  function contractEditorClauseIdFromTitle(title=''){
+    const normalized=String(title).trim().toLowerCase();
+    const found=CONTRACT_EDITOR_DEFAULT_ITEMS.find(item=>item.title.toLowerCase()===normalized);
+    return found?.id||'';
+  }
+
+  function contractEditorApplyTokens(value='',vars={}){
+    let output=String(value??'');
+    Object.entries(vars).forEach(([token,replacement])=>{
+      output=output.split(token).join(String(replacement??''));
+    });
+    return output;
+  }
+
+  function renderContractEditor(){
+    const cfg=currentContractEditorConfig();
+    if(!activeContractEditorClauseId||!cfg.items.some(item=>item.id===activeContractEditorClauseId)){
+      activeContractEditorClauseId=cfg.items[0]?.id||'';
+    }
+    const active=cfg.items.find(item=>item.id===activeContractEditorClauseId)||cfg.items[0];
+    const canEdit=currentUserIsAdmin()||hasPermission('settings','edit');
+    const list=cfg.items.map((item,index)=>`
+      <button class="contract-editor-item ${item.id===active?.id?'active':''}" data-contract-editor-item="${attr(item.id)}" type="button">
+        <span class="contract-editor-item-index">${index+1}</span>
+        <span class="contract-editor-item-copy"><strong>${escapeHtml(item.title)}</strong><span>${item.custom?'Cláusula adicional':'Cláusula padrão'}</span></span>
+        <span class="contract-editor-item-state ${item.enabled===false?'off':''}">${item.enabled===false?'Oculta':'Ativa'}</span>
+      </button>`).join('');
+    const variableChips=CONTRACT_EDITOR_VARIABLES.map(([token,label])=>`<button class="contract-variable-chip" data-contract-variable="${attr(token)}" type="button" title="Inserir ${attr(label)}">${escapeHtml(token)}</button>`).join('');
+    return `<div class="contract-editor-page">
+      ${pageHead('Editor de contrato','Edite as cláusulas do contrato sem mexer no código ou na paginação.',`
+        <div class="contract-editor-toolbar">
+          <button class="btn btn-ghost" id="contractEditorRestoreBtn" type="button">Restaurar padrão</button>
+          <button class="btn btn-secondary" id="contractEditorPreviewBtn" type="button">Visualizar contrato</button>
+          <button class="btn btn-primary" id="contractEditorSaveBtn" type="button" ${canEdit?'':'disabled'}>Salvar modelo</button>
+        </div>`)}
+      <div class="contract-editor-help">
+        <div><strong>1. Escolha uma cláusula</strong><span>Clique no texto da esquerda para editar somente aquele trecho.</span></div>
+        <div><strong>2. Use variáveis</strong><span>Cliente, valor, UC e demais dados são preenchidos automaticamente no contrato.</span></div>
+        <div><strong>3. A paginação fica protegida</strong><span>O editor altera o conteúdo sem liberar posicionamento manual sobre rodapé e assinatura.</span></div>
+      </div>
+      <div class="contract-editor-layout">
+        <section class="card contract-editor-list-card">
+          <div class="card-head"><div><h3>Cláusulas</h3><p>${cfg.items.length} bloco(s) no modelo</p></div><button class="btn btn-secondary btn-sm" id="contractEditorAddBtn" type="button" ${canEdit?'':'disabled'}>＋ Nova cláusula</button></div>
+          <div class="contract-editor-list">${list}</div>
+        </section>
+        <section class="card contract-editor-form-card">
+          ${active?`<div class="contract-editor-form">
+            <div class="contract-editor-topline">
+              <div><h3>${active.custom?'Cláusula adicional':'Editar cláusula'}</h3><p>As alterações são aplicadas aos próximos contratos gerados.</p></div>
+              <label class="switch" title="Exibir esta cláusula"><input id="contractEditorEnabled" type="checkbox" ${active.enabled!==false?'checked':''} ${canEdit?'':'disabled'}><span></span></label>
+            </div>
+            <div class="form-grid">
+              <label class="field full"><span>Título da cláusula</span><input id="contractEditorTitle" value="${attr(active.title)}" ${canEdit?'':'disabled'}></label>
+              <label class="field full"><span>Texto</span><textarea id="contractEditorText" ${canEdit?'':'disabled'}>${escapeHtml(active.text)}</textarea></label>
+            </div>
+            <div class="contract-variable-box"><span>Clique para inserir uma informação automática no ponto onde está o cursor:</span><div class="contract-variable-chips">${variableChips}</div></div>
+            <div class="contract-editor-footer">
+              <span id="contractEditorStatus" class="contract-editor-status ${contractEditorDirty?'dirty':''}">${contractEditorDirty?'Alterações ainda não salvas':'Modelo sincronizado localmente'}</span>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                ${active.custom?`<button class="btn btn-danger btn-sm" id="contractEditorDeleteBtn" type="button" ${canEdit?'':'disabled'}>Excluir cláusula</button>`:''}
+                <button class="btn btn-ghost btn-sm" id="contractEditorResetClauseBtn" type="button" ${canEdit?'':'disabled'}>${active.custom?'Limpar texto':'Restaurar esta cláusula'}</button>
+              </div>
+            </div>
+          </div>`:'<div class="empty-state"><strong>Nenhuma cláusula</strong>Adicione uma cláusula para começar.</div>'}
+        </section>
+      </div>
+    </div>`;
+  }
+
+  function updateContractEditorFromFields(){
+    const cfg=currentContractEditorConfig();
+    const item=cfg.items.find(row=>row.id===activeContractEditorClauseId);
+    if(!item)return;
+    const title=document.getElementById('contractEditorTitle');
+    const body=document.getElementById('contractEditorText');
+    const enabled=document.getElementById('contractEditorEnabled');
+    if(title)item.title=title.value;
+    if(body)item.text=body.value;
+    if(enabled)item.enabled=enabled.checked;
+    cfg.updatedAt=new Date().toISOString();
+    state.company.contractEditor=cfg;
+    syncCurrentCompanyRecord();
+    persist();
+    contractEditorDirty=true;
+    const status=document.getElementById('contractEditorStatus');
+    if(status){status.textContent='Alterações ainda não salvas';status.className='contract-editor-status dirty';}
+  }
+
+  function insertContractEditorVariable(token){
+    const field=document.getElementById('contractEditorText');if(!field||field.disabled)return;
+    const start=field.selectionStart??field.value.length;
+    const end=field.selectionEnd??field.value.length;
+    field.value=field.value.slice(0,start)+token+field.value.slice(end);
+    field.focus();field.setSelectionRange(start+token.length,start+token.length);
+    updateContractEditorFromFields();
+  }
+
+  async function saveContractEditor(){
+    updateContractEditorFromFields();
+    syncCurrentCompanyRecord();persist();
+    let cloudSaved=false;
+    if(window.FirebaseCRM?.syncReady && (currentUserIsAdmin()||hasPermission('settings','edit'))){
+      cloudSaved=await saveSharedCompanySettings({silent:true});
+    }
+    contractEditorDirty=false;
+    const status=document.getElementById('contractEditorStatus');
+    if(status){status.textContent=cloudSaved?'Modelo salvo no Firebase':'Modelo salvo neste CRM';status.className='contract-editor-status saved';}
+    toast('Modelo de contrato salvo',cloudSaved?'As cláusulas foram atualizadas para toda a empresa.':'As cláusulas foram salvas no CRM.','success');
+  }
+
+  function addContractEditorClause(){
+    updateContractEditorFromFields();
+    const cfg=currentContractEditorConfig();
+    const item={id:newId('contract-clause'),title:'Nova cláusula',text:'Digite o texto desta cláusula.',enabled:true,custom:true};
+    cfg.items.push(item);cfg.updatedAt=new Date().toISOString();
+    state.company.contractEditor=cfg;activeContractEditorClauseId=item.id;contractEditorDirty=true;
+    syncCurrentCompanyRecord();persist();renderView('contractEditor');
+  }
+
+  function deleteContractEditorClause(){
+    const cfg=currentContractEditorConfig();
+    const item=cfg.items.find(row=>row.id===activeContractEditorClauseId);
+    if(!item?.custom)return;
+    if(!confirm(`Excluir a cláusula “${item.title}”?`))return;
+    cfg.items=cfg.items.filter(row=>row.id!==item.id);
+    activeContractEditorClauseId=cfg.items[0]?.id||'';
+    cfg.updatedAt=new Date().toISOString();state.company.contractEditor=cfg;contractEditorDirty=true;
+    syncCurrentCompanyRecord();persist();renderView('contractEditor');
+  }
+
+  function restoreContractEditorClause(){
+    const cfg=currentContractEditorConfig();
+    const item=cfg.items.find(row=>row.id===activeContractEditorClauseId);if(!item)return;
+    if(item.custom){item.text='';}
+    else{
+      const original=CONTRACT_EDITOR_DEFAULT_ITEMS.find(row=>row.id===item.id);
+      if(original){item.title=original.title;item.text=original.text;item.enabled=true;}
+    }
+    cfg.updatedAt=new Date().toISOString();state.company.contractEditor=cfg;contractEditorDirty=true;
+    syncCurrentCompanyRecord();persist();renderView('contractEditor');
+  }
+
+  function restoreContractEditorAll(){
+    if(!confirm('Restaurar todo o contrato para o texto padrão? As edições atuais serão substituídas.'))return;
+    state.company.contractEditor=defaultContractEditorConfig();
+    activeContractEditorClauseId=state.company.contractEditor.items[0]?.id||'';
+    contractEditorDirty=true;syncCurrentCompanyRecord();persist();renderView('contractEditor');
+    toast('Contrato restaurado','O texto padrão foi recuperado. Clique em Salvar modelo para sincronizar.','info');
+  }
+
+  function previewContractEditor(){
+    updateContractEditorFromFields();
+    const existing=companyRows('contracts')[0];
+    const sample=existing||{
+      id:'contract-editor-preview',
+      companyId:state.currentCompanyId,
+      clientName:'Cliente de exemplo',
+      value:50000,
+      paymentMethod:'Conforme proposta comercial',
+      signedAt:todayISO(),
+      createdAt:todayISO()
+    };
+    const modal=ensureContractPreviewModal();
+    const frame=modal.querySelector('#contractPreviewFrame');
+    const title=modal.querySelector('#contractPreviewTitle');
+    if(title)title.textContent='Prévia do modelo de contrato';
+    if(frame){
+      frame.onload=()=>{try{compactContractPages(frame.contentDocument);}catch(error){console.warn(error);}};
+      frame.srcdoc=renderContractHtml(sample);
+    }
+    const printBtn=modal.querySelector('#contractPreviewPrint');
+    if(printBtn)printBtn.onclick=()=>{try{frame.contentWindow.document.body.classList.remove('cw-compact-print');frame.contentWindow.print();}catch(error){toast('Não foi possível imprimir',error.message,'error');}};
+    const downloadBtn=modal.querySelector('#contractPreviewDownload');
+    if(downloadBtn)downloadBtn.onclick=()=>downloadBlob(new Blob([renderContractHtml(sample)],{type:'text/html;charset=utf-8'}),'modelo-contrato-soolarwin.html');
+    const pdfBtn=modal.querySelector('#contractPreviewCompactPrint');
+    if(pdfBtn){pdfBtn.disabled=true;pdfBtn.title='Abra um contrato de cliente para gerar o PDF final.';}
+    openModal('contractPreviewModal');
+  }
+
+  function bindContractEditorEvents(){
+    document.querySelectorAll('[data-contract-editor-item]').forEach(btn=>btn.addEventListener('click',()=>{
+      updateContractEditorFromFields();
+      activeContractEditorClauseId=btn.dataset.contractEditorItem;
+      renderView('contractEditor');
+    }));
+    ['contractEditorTitle','contractEditorText'].forEach(id=>document.getElementById(id)?.addEventListener('input',updateContractEditorFromFields));
+    document.getElementById('contractEditorEnabled')?.addEventListener('change',updateContractEditorFromFields);
+    document.querySelectorAll('[data-contract-variable]').forEach(btn=>btn.addEventListener('click',()=>insertContractEditorVariable(btn.dataset.contractVariable)));
+    document.getElementById('contractEditorSaveBtn')?.addEventListener('click',saveContractEditor);
+    document.getElementById('contractEditorAddBtn')?.addEventListener('click',addContractEditorClause);
+    document.getElementById('contractEditorDeleteBtn')?.addEventListener('click',deleteContractEditorClause);
+    document.getElementById('contractEditorResetClauseBtn')?.addEventListener('click',restoreContractEditorClause);
+    document.getElementById('contractEditorRestoreBtn')?.addEventListener('click',restoreContractEditorAll);
+    document.getElementById('contractEditorPreviewBtn')?.addEventListener('click',previewContractEditor);
+  }
+
   function contractRelatedData(contract){
     const client=companyRows('clients').find(c=>(contract.clientId&&c.id===contract.clientId)||(c.name||'').toLowerCase()===String(contract.clientName||'').toLowerCase())||{};
     const proposal=companyRows('proposals').find(p=>(contract.proposalId&&p.id===contract.proposalId)||(p.client?.name||'').toLowerCase()===String(contract.clientName||'').toLowerCase())||{};
@@ -6688,7 +6997,30 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     const page=(num,title,body,extra='')=>`<section class="cw-page ${extra}">${num>1?header(num):''}<div class="cw-content">${title?`<h2>${escapeHtml(title)}</h2>`:''}${body}</div>${footer(num)}</section>`;
     const dataLine=(label,value)=>`<div class="cw-data"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value||'Não informado')}</strong></div>`;
     const table=(rows,heads=['Item','Qtd.','Descrição'])=>`<table class="cw-table"><thead><tr>${heads.map(h=>`<th>${escapeHtml(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(cell=>`<td>${escapeHtml(String(cell??''))}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
-    const clause=(title,text)=>`<article class="cw-clause"><strong>${escapeHtml(title)}</strong><p>${escapeHtml(text)}</p></article>`;
+    const contractEditorCfg=normalizeContractEditorConfig(company.contractEditor);
+    const contractTokenValues={
+      '{{cliente}}':clientName,
+      '{{cpf_cnpj}}':clientDoc,
+      '{{endereco}}':address||city||'o endereço informado pelo CONTRATANTE',
+      '{{cidade}}':cityBase,
+      '{{uc}}':consumerUnit||'não informada',
+      '{{valor}}':currency(investment),
+      '{{forma_pagamento}}':paymentMethod,
+      '{{potencia}}':`${number(systemPower,2)} kWp`,
+      '{{data}}':contractDate,
+      '{{empresa}}':companyName,
+      '{{cnpj_empresa}}':companyDoc
+    };
+    const rawClause=(title,text)=>`<article class="cw-clause"><strong>${escapeHtml(title)}</strong><p>${escapeHtml(text)}</p></article>`;
+    const clause=(title,text)=>{
+      const id=contractEditorClauseIdFromTitle(title);
+      const item=id?contractEditorCfg.items.find(row=>row.id===id):null;
+      if(item?.enabled===false)return '';
+      const finalTitle=item?.title||title;
+      const finalText=contractEditorApplyTokens(item?.text??text,contractTokenValues);
+      return rawClause(finalTitle,finalText);
+    };
+    const extraContractClauses=contractEditorCfg.items.filter(item=>item.custom&&item.enabled!==false).map(item=>rawClause(contractEditorApplyTokens(item.title,contractTokenValues),contractEditorApplyTokens(item.text,contractTokenValues))).join('');
     const defaultSoolarwinContractSignature=window.__defaultSoolarwinContractSignature;
     const cover=`<div class="cw-cover-logo"><img src="${attr(contractLogoWhite)}" alt="SoolarWin"></div><div class="cw-cover-title"><span>Contrato comercial</span><h1>Fornecimento de Gerador Fotovoltaico</h1></div><div class="cw-between"><p>Celebrado entre</p><strong>${escapeHtml(companyName)}</strong><small>como CONTRATADA</small><em>e</em><strong>${escapeHtml(clientName)}</strong><small>como CONTRATANTE</small></div><div class="cw-cover-info"><div><span>UC geradora</span><strong>${escapeHtml(consumerUnit||'Não informada')}</strong></div><div class="cw-system-power"><span>Potência do sistema</span><strong>${number(systemPower,2)} kWp</strong></div><div><span>Data</span><strong>${escapeHtml(contractDate)}</strong></div></div>`;
     const p2=`<h3>Contrato de fornecimento de gerador fotovoltaico</h3><div class="cw-parties"><div>${dataLine('Contratada',companyName)}${dataLine('CNPJ',companyDoc)}${dataLine('Endereço',companyAddress)}</div><div>${dataLine('Contratante',clientName)}${dataLine('CPF/CNPJ',clientDoc)}${dataLine('Endereço',address||city)}</div></div>${clause('Cláusula Primeira - Do objeto do contrato',`O presente instrumento tem por objeto o fornecimento de Gerador Fotovoltaico por parte da CONTRATADA em favor do CONTRATANTE, consistindo na compra, venda, instalação, acompanhamento documental e prestação de serviços relacionados ao sistema solar fotovoltaico aprovado comercialmente.`)}<p class="cw-text">O sistema será dimensionado conforme dados de consumo, condições do local, projeto executivo e normas aplicáveis da concessionária. A geração média é estimativa técnica e pode variar conforme clima, sombreamento, sujeira, orientação, temperatura, indisponibilidades e demais fatores externos.</p><h3 class="cw-strip">Gerador fotovoltaico - ${number(systemPower,2)} kWp</h3>${table(equipmentRows)}`;
@@ -6697,7 +7029,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     const p4=`<h2>Do valor do contrato e condições de pagamento</h2>${clause('Cláusula Sexta - Valor',`Pelos serviços e equipamentos contratados, o CONTRATANTE pagará à CONTRATADA a importância de ${currency(investment)}, conforme condição comercial: ${paymentMethod}.`) }${clause('Parágrafo Primeiro',`Os pagamentos deverão ser realizados por meio indicado pela CONTRATADA, podendo incluir depósito, transferência, PIX, boleto bancário, financiamento ou outra condição expressamente aprovada entre as partes.`)}${clause('Parágrafo Segundo',`Parcelas não pagas nos respectivos vencimentos poderão ficar sujeitas a multa, correção monetária, juros de mora e demais encargos previstos em proposta, boleto, contrato ou legislação aplicável.`)}<h2>Do prazo de execução</h2>${clause('Cláusula Sétima - Prazo',`O prazo de execução será contado a partir da liberação comercial, faturamento/recebimento dos equipamentos, documentação completa, acesso ao local e condições adequadas para instalação.`)}${clause('Parágrafo Único',`Prazos poderão ser prorrogados por fatores externos, incluindo chuvas, força maior, indisponibilidade de rede, exigências da concessionária, falta de documentos, necessidade de adequações técnicas ou paralisações não atribuíveis à CONTRATADA.`)}`;
     const p5=`<h2>Do local da entrega e instalação</h2>${clause('Cláusula Nona',`O local de entrega e instalação será ${address||city||'o endereço informado pelo CONTRATANTE'}, vinculado à unidade consumidora ${consumerUnit||'não informada'}.`) }<h2>Responsabilidades e obrigações do contratante</h2>${['Disponibilizar local de trabalho, acesso, documentos e condições adequadas para montagem e operação dos equipamentos.','Responsabilizar-se pela integridade da edificação, telhado, estrutura ou local onde será instalado o sistema fotovoltaico.','Executar adequações estruturais, elétricas, civis ou de padrão de entrada quando forem necessárias para viabilizar a instalação/homologação.','Disponibilizar internet ou meio de comunicação quando necessário para monitoramento dos inversores.','Não alterar o projeto por conta própria sem avaliação técnica, sob pena de custos adicionais e perda de garantia.'].map((t,i)=>clause(`${String.fromCharCode(97+i)})`,t)).join('')}<h2>Responsabilidades e obrigações da contratada</h2>${['Executar a instalação de forma técnica, dentro das normas e especificações aplicáveis.','Fornecer materiais, acessórios, equipamentos e mão de obra necessários ao escopo contratado.','Responsabilizar-se pela segurança dos empregados próprios ou subcontratados durante a execução.','Fornecer orientação documental e acompanhamento das etapas de homologação previstas no escopo.'].map((t,i)=>clause(`${String.fromCharCode(97+i)})`,t)).join('')}`;
     const p6=`<h2>Da garantia de produtos</h2><p class="cw-text">As garantias seguem as condições dos fabricantes e da proposta comercial aprovada. A CONTRATADA poderá intermediar suporte, análise e encaminhamento de garantia quando aplicável.</p>${table(warrantyRows,['Família','Condição de garantia'])}${clause('Cláusula Décima Terceira',`Em caso de não funcionamento ou funcionamento inadequado de produto em garantia, os serviços serão realizados a critério técnico da CONTRATADA, nas instalações do CONTRATANTE ou por procedimento indicado pelo fabricante.`)}${clause('Cláusula Décima Quarta',`A garantia não cobre mau uso, alterações por terceiros, surtos, descargas atmosféricas, falta de manutenção, danos por animais, danos estruturais, eventos climáticos extremos ou condições externas não controladas pela CONTRATADA.`)}${clause('Cláusula Décima Quinta',`A manutenção preventiva é recomendada periodicamente, podendo ter custos adicionais quando não estiver expressamente incluída na proposta comercial.`)}`;
-    const p7=`<h2>Da rescisão</h2>${clause('Cláusula Décima Sexta',`Poderá o presente contrato ser rescindido de pleno direito caso uma das partes descumpra suas obrigações, sem prejuízo de cobrança de valores devidos, despesas realizadas, equipamentos adquiridos, serviços executados e eventuais penalidades aplicáveis.`)}${clause('Cláusula Décima Sétima',`O valor pago a título de entrada, sinal, arras, despesas de projeto, deslocamento, aquisição de equipamentos ou início de execução poderá ser retido total ou parcialmente conforme estágio do processo e custos já incorridos.`)}${clause('Cláusula Décima Oitava',`Em qualquer hipótese de rescisão, as partes realizarão acerto de contas considerando serviços executados, compromissos assumidos, equipamentos separados/adquiridos e pagamentos recebidos.`)}<h2>Condições técnicas adicionais</h2>${clause('Cláusula Décima Nona',`Serviços ou materiais não previstos, adequações de padrão, reforços estruturais, alterações de projeto, serviços civis, deslocamentos extras, troca de telhas, cabeamento adicional e exigências supervenientes poderão ser orçados separadamente.`)}${clause('Cláusula Vigésima',`O processo junto à concessionária somente será iniciado após o recebimento dos documentos necessários, autorização do CONTRATANTE e validação dos dados da unidade consumidora.`)}`;
+    const p7=`<h2>Da rescisão</h2>${clause('Cláusula Décima Sexta',`Poderá o presente contrato ser rescindido de pleno direito caso uma das partes descumpra suas obrigações, sem prejuízo de cobrança de valores devidos, despesas realizadas, equipamentos adquiridos, serviços executados e eventuais penalidades aplicáveis.`)}${clause('Cláusula Décima Sétima',`O valor pago a título de entrada, sinal, arras, despesas de projeto, deslocamento, aquisição de equipamentos ou início de execução poderá ser retido total ou parcialmente conforme estágio do processo e custos já incorridos.`)}${clause('Cláusula Décima Oitava',`Em qualquer hipótese de rescisão, as partes realizarão acerto de contas considerando serviços executados, compromissos assumidos, equipamentos separados/adquiridos e pagamentos recebidos.`)}<h2>Condições técnicas adicionais</h2>${clause('Cláusula Décima Nona',`Serviços ou materiais não previstos, adequações de padrão, reforços estruturais, alterações de projeto, serviços civis, deslocamentos extras, troca de telhas, cabeamento adicional e exigências supervenientes poderão ser orçados separadamente.`)}${clause('Cláusula Vigésima',`O processo junto à concessionária somente será iniciado após o recebimento dos documentos necessários, autorização do CONTRATANTE e validação dos dados da unidade consumidora.`)}${extraContractClauses?`<h2>Cláusulas adicionais</h2>${extraContractClauses}`:''}`;
     const p8=`<div class="cw-final-block"><h2>Das disposições finais</h2>${clause('Cláusula Vigésima Primeira',`As partes declaram que leram, compreenderam e aceitaram as condições comerciais, técnicas e operacionais deste contrato, vinculadas à proposta aprovada e aos anexos comerciais, quando houver.`)}${clause('Cláusula Vigésima Segunda',`A CONTRATADA não se responsabiliza por perdas de receita, lucros cessantes, interrupções de concessionária, atraso de vistoria, atraso de troca de medidor, condições climáticas, caso fortuito ou força maior.`)}${clause('Cláusula Vigésima Terceira - Foro',`Fica eleito o foro da comarca de ${cityBase}, salvo disposição legal obrigatória em contrário, para dirimir controvérsias relativas ao presente instrumento.`)}<div class="cw-sign-city"><span>${escapeHtml(cityBase)}</span><span>${escapeHtml(contractDate)}</span></div><div class="cw-signatures"><div><i></i><strong>CONTRATANTE</strong><span>${escapeHtml(clientName)}</span></div><div class="cw-company-signature"><img class="cw-signature-img" src="${window.__defaultSoolarwinContractSignature}" alt="Assinatura padrão Soolarwin"><i></i><strong>CONTRATADA</strong><span>${escapeHtml(companyName)}</span></div><div><i></i><strong>TESTEMUNHA</strong></div><div><i></i><strong>TESTEMUNHA</strong></div></div></div>`;
     // Paginação fixa otimizada: utiliza o espaço útil sem movimentar elementos entre páginas.
     // A página 3 recebe condições técnicas + valor/prazo em um bloco estável.
