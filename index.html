@@ -1154,6 +1154,45 @@ body.exporting-proposal .vp-inner { padding: 48px 52px !important; }
 .contract-editor-help span{display:block;margin-top:4px;color:var(--muted);font-size:8px;line-height:1.45}
 @media(max-width:980px){.contract-editor-layout{grid-template-columns:1fr}.contract-editor-list{max-height:320px}.contract-editor-help{grid-template-columns:1fr}}
 
+
+/* ===== REVISÃO TÉCNICA / DIMENSIONAMENTO DE MATERIAIS ===== */
+.tech-review-page{display:flex;flex-direction:column;gap:16px}
+.tech-review-selector{display:grid;grid-template-columns:minmax(260px,1fr) auto;gap:10px;align-items:end}
+.tech-review-hero{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.tech-review-kpi{padding:15px;border:1px solid var(--line);border-radius:15px;background:var(--panel)}
+.tech-review-kpi span{display:block;color:var(--muted);font-size:8px;text-transform:uppercase;letter-spacing:.08em;font-weight:850}
+.tech-review-kpi strong{display:block;margin-top:6px;font-size:18px;letter-spacing:-.03em}
+.tech-review-kpi small{display:block;margin-top:4px;color:var(--muted);font-size:8px;line-height:1.35}
+.tech-review-status{display:inline-flex;align-items:center;gap:6px;padding:6px 9px;border-radius:999px;font-size:9px;font-weight:900}
+.tech-review-status.draft{background:var(--primary-soft);color:var(--primary)}
+.tech-review-status.approved{background:var(--green-soft);color:var(--green)}
+.tech-review-status.pending{background:var(--blue-soft);color:var(--blue)}
+.tech-review-layout{display:grid;grid-template-columns:minmax(330px,.72fr) minmax(0,1.28fr);gap:16px;align-items:start}
+.tech-review-sticky{position:sticky;top:104px}
+.tech-review-input-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.tech-review-input-grid .full{grid-column:1/-1}
+.tech-review-materials{overflow:auto;border:1px solid var(--line);border-radius:15px;background:var(--panel)}
+.tech-review-table{width:100%;border-collapse:collapse;min-width:1280px}
+.tech-review-table th{position:sticky;top:0;z-index:2;padding:9px 10px;background:var(--panel-2);color:var(--muted);font-size:8px;text-transform:uppercase;letter-spacing:.07em;text-align:left;border-bottom:1px solid var(--line)}
+.tech-review-table td{padding:9px 10px;border-bottom:1px solid var(--line);font-size:9px;color:var(--text-soft);vertical-align:middle}
+.tech-review-table tr:last-child td{border-bottom:0}
+.tech-review-table .material-name strong{display:block;color:var(--text);font-size:10px}
+.tech-review-table .material-name span{display:block;margin-top:3px;color:var(--muted);font-size:8px}
+.tech-review-table input,.tech-review-table select{min-height:34px;border:1px solid var(--line);border-radius:9px;background:var(--panel-2);color:var(--text);padding:6px 8px;font-size:9px;outline:0}
+.tech-review-table input[type=number]{width:78px}
+.tech-review-table select{min-width:190px;max-width:240px}
+.tech-review-buy{font-weight:950;color:var(--red)}
+.tech-review-ok{font-weight:900;color:var(--green)}
+.tech-review-warnings{display:flex;flex-direction:column;gap:7px;margin-top:12px}
+.tech-review-warning{padding:9px 11px;border-radius:10px;border:1px solid rgba(255,183,3,.22);background:var(--primary-soft);color:var(--text-soft);font-size:9px;line-height:1.45}
+.tech-review-warning.critical{border-color:rgba(255,107,107,.24);background:var(--red-soft)}
+.tech-review-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.tech-review-note{padding:11px 12px;border-radius:12px;background:var(--blue-soft);border:1px solid rgba(90,169,255,.2);font-size:9px;line-height:1.5;color:var(--text-soft)}
+.tech-review-empty{padding:42px 20px;text-align:center;color:var(--muted)}
+.tech-review-empty strong{display:block;color:var(--text);font-size:14px;margin-bottom:6px}
+@media(max-width:1180px){.tech-review-layout{grid-template-columns:1fr}.tech-review-sticky{position:static}.tech-review-hero{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:680px){.tech-review-selector{grid-template-columns:1fr}.tech-review-input-grid{grid-template-columns:1fr}.tech-review-input-grid .full{grid-column:1}.tech-review-hero{grid-template-columns:1fr}}
+
 </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.9/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
@@ -3268,6 +3307,7 @@ service cloud.firestore {
 
   function hasPermission(module,action='view'){
     if(module==='contractEditor')module='contracts';
+    if(module==='technicalReview')module='works';
     if(currentUserIsAdmin())return true;
     if(COMPANY_WIDE_SHARED_ACCESS && window.FirebaseCRM?.syncReady)return true;
     const role=state?.role||state?.currentUser?.role||'seller';
@@ -3291,6 +3331,7 @@ service cloud.firestore {
     { section: 'Operação', id: 'contracts', label: 'Contratos', icon: '✎' },
     { section: 'Operação', id: 'contractEditor', label: 'Editor de contrato', icon: '▧' },
     { section: 'Operação', id: 'works', label: 'Obras', icon: '⌁' },
+    { section: 'Operação', id: 'technicalReview', label: 'Revisão Técnica', icon: '⚡' },
     { section: 'Operação', id: 'homologations', label: 'Homologação', icon: '✓' },
     { section: 'Gestão', id: 'financial', label: 'Financeiro', icon: 'R$' },
     { section: 'Gestão', id: 'aftersales', label: 'Pós-venda', icon: '♡' },
@@ -3601,6 +3642,7 @@ service cloud.firestore {
   let contractEditorDirty = false;
   let kanbanMode = state.kanbanMode || 'commercial';
   let activeProjectId = null;
+  let activeTechnicalReviewProjectId = '';
   let projectWorkspaceTab = 'overview';
   let projectTaskEditor = null;
   let projectDocumentFilter = 'Todos';
@@ -5323,7 +5365,7 @@ service cloud.firestore {
     if (!root) return;
     const renderers={
       dashboard:renderDashboard, leads:()=>renderEntityTable('leads'), kanban:renderKanban, clients:()=>renderEntityTable('clients'), proposals:renderProposals,
-      contracts:()=>renderEntityTable('contracts'), contractEditor:renderContractEditor, works:()=>renderEntityTable('works'), homologations:()=>renderEntityTable('homologations'),
+      contracts:()=>renderEntityTable('contracts'), contractEditor:renderContractEditor, works:()=>renderEntityTable('works'), technicalReview:renderTechnicalReview, homologations:()=>renderEntityTable('homologations'),
       financial:renderFinancial, aftersales:renderAfterSales, tickets:()=>renderEntityTable('tickets'), commissions:()=>renderEntityTable('commissions'),
       inventory:()=>renderEntityTable('inventory'), teams:()=>renderEntityTable('teams'), offgrid:renderOffgridDimensioning, reports:renderReports, automations:renderAutomations, settings:()=>openSettings('company')
     };
@@ -5596,6 +5638,187 @@ service cloud.firestore {
     return {client,contract,homologation,createdContract,createdHomologation};
   }
 
+
+  /* TECHNICAL_REVIEW_ENGINE_START */
+  function trNum(value,fallback=0){const n=Number(value);return Number.isFinite(n)?n:fallback;}
+  function trCeil(value){return Math.max(0,Math.ceil(trNum(value,0)));}
+  function trMaterialKey(category,name,unit){return `${String(category||'').toLowerCase()}|${String(name||'').toLowerCase()}|${String(unit||'un').toLowerCase()}`;}
+  function trNextStandard(value,standards){const v=Math.max(0,trNum(value));return standards.find(item=>item>=v)||standards[standards.length-1];}
+  function trBreakerRating(lineCurrent){return trNextStandard(lineCurrent*1.25,[10,16,20,25,32,40,50,63,70,80,100,125,160,200,225,250,315,400,500,630]);}
+  function trCableByAmpacity(requiredCurrent){
+    const rows=[[2.5,21],[4,28],[6,36],[10,50],[16,68],[25,89],[35,110],[50,134],[70,171],[95,207],[120,239],[150,272],[185,310],[240,364]];
+    return (rows.find(row=>row[1]>=requiredCurrent)||rows[rows.length-1])[0];
+  }
+  function trVoltageDropSection({currentA,distanceM,voltageV,phases,dropPercent=2}){
+    const rho=0.0175,L=Math.max(0,trNum(distanceM)),I=Math.max(0,trNum(currentA)),V=Math.max(1,trNum(voltageV,220)),drop=Math.max(.5,trNum(dropPercent,2))/100;
+    const raw=String(phases||'').toLowerCase().startsWith('tri')
+      ? (Math.sqrt(3)*rho*L*I)/(V*drop)
+      : (2*rho*L*I)/(V*drop);
+    return trNextStandard(raw,[2.5,4,6,10,16,25,35,50,70,95,120,150,185,240]);
+  }
+  function trPeSection(phaseSection){
+    const s=trNum(phaseSection,6);
+    if(s<=16)return s;
+    if(s<=35)return 16;
+    return trNextStandard(s/2,[16,25,35,50,70,95,120]);
+  }
+  function calculateTechnicalReviewMaterials(input={}){
+    const moduleQty=Math.max(0,Math.round(trNum(input.moduleQty)));
+    const inverterQty=Math.max(1,Math.round(trNum(input.inverterQty,1)));
+    const inverterPowerKw=Math.max(.1,trNum(input.inverterPowerKw,5));
+    const totalAcKw=inverterQty*inverterPowerKw;
+    const phases=String(input.phases||'Monofásico');
+    const phaseKey=phases.toLowerCase();
+    const voltageV=Math.max(1,trNum(input.voltageV,phaseKey.startsWith('tri')?380:220));
+    const distanceDc=Math.max(0,trNum(input.distanceDc));
+    const distanceAc=Math.max(0,trNum(input.distanceAc));
+    const stringCount=Math.max(1,Math.round(trNum(input.stringCount,1)));
+    const dcCableMm2=Math.max(1,trNum(input.dcCableMm2,6));
+    const structureType=String(input.structureType||'Metálico');
+    const includeNeutral=input.includeNeutral!==false;
+    const dpsVoltageV=Math.max(1,trNum(input.dpsVoltageV,275));
+    const powerFactor=Math.min(1,Math.max(.7,trNum(input.powerFactor,1)));
+    const lineCurrentA=phaseKey.startsWith('tri')
+      ? (totalAcKw*1000)/(Math.sqrt(3)*voltageV*powerFactor)
+      : (totalAcKw*1000)/(voltageV*powerFactor);
+    const breakerA=trBreakerRating(lineCurrentA);
+    const cableByAmpacity=trCableByAmpacity(breakerA);
+    const cableByDrop=trVoltageDropSection({currentA:lineCurrentA,distanceM:distanceAc,voltageV,phases,dropPercent:trNum(input.maxVoltageDropPct,2)});
+    const automaticAcCableMm2=Math.max(cableByAmpacity,cableByDrop);
+    const acCableMm2=trNum(input.acCableMm2)>0?trNum(input.acCableMm2):automaticAcCableMm2;
+    const peCableMm2=trPeSection(acCableMm2);
+    const phaseConductors=phaseKey.startsWith('tri')?3:(phaseKey.startsWith('bi')?2:1);
+    const poles=phaseKey.startsWith('tri')?3:2;
+    const dpsQty=phaseKey.startsWith('tri')?4:(phaseKey.startsWith('bi')?3:2);
+    const items=[];
+    const warnings=[];
+    const add=(category,name,calculatedQty,unit='un',basis='')=>{
+      const qty=Math.max(0,Math.round(trNum(calculatedQty)*100)/100);
+      if(qty<=0)return;
+      items.push({key:trMaterialKey(category,name,unit),category,name,unit,calculatedQty:qty,basis});
+    };
+
+    add('Cabo',`Cabo solar CC ${dcCableMm2} mm² preto`,stringCount*distanceDc,'m','strings × distância CC');
+    add('Cabo',`Cabo solar CC ${dcCableMm2} mm² vermelho`,stringCount*distanceDc,'m','strings × distância CC');
+    add('Conector','Par de conectores MC4',stringCount,'par','1 par por string');
+
+    add('Cabo',`Cabo CA ${acCableMm2} mm² fase`,distanceAc*phaseConductors,'m',`${phaseConductors} condutor(es) de fase`);
+    if(includeNeutral)add('Cabo',`Cabo CA ${acCableMm2} mm² neutro`,distanceAc,'m','neutro no mesmo percurso');
+    add('Cabo',`Cabo PE ${peCableMm2} mm² verde`,distanceAc,'m','condutor de proteção no percurso CA');
+    add('Proteção',`Disjuntor CA ${poles}P ${breakerA} A`,1,'un','corrente de projeto × 1,25');
+    add('Proteção',`DPS CA Classe II ${dpsVoltageV} V`,dpsQty,'un','quantidade conforme número de condutores ativos/terra');
+    add('Proteção',totalAcKw<=25?'Quadro de distribuição DIN':'Quadro de proteção geral',1,'un',totalAcKw<=25?'até 25 kW':'acima de 25 kW');
+
+    const groups=moduleQty/3;
+    if(structureType==='Metálico'){
+      const profile=trCeil(groups*8);
+      add('Estrutura','Perfil LPL 0,35 m',profile,'un','8 unidades a cada 3 módulos');
+      add('Estrutura','Clamp inicial/final',trCeil(groups*4),'un','4 a cada 3 módulos');
+      add('Estrutura','Clamp intermediário',trCeil(groups*6),'un','6 a cada 3 módulos');
+      add('Estrutura','Parafuso brocante',trCeil(groups*48),'un','48 a cada 3 módulos');
+      add('Estrutura','Fita dupla face',trCeil(groups*1),'un','1 a cada 3 módulos');
+      const olhal=trCeil(profile/4);
+      add('Aterramento','Olhal 10 mm²',olhal,'un','perfil ÷ 4');
+      add('Aterramento','Brocante para aterramento',olhal,'un','mesma quantidade de olhais');
+    }else if(structureType==='Cerâmico/Fibrocimento - Madeira'){
+      const rail=trCeil(groups*2);
+      add('Estrutura','Trilho 3,60 m',rail,'un','2 a cada 3 módulos');
+      add('Estrutura','Clamp inicial/final',trCeil(groups*4),'un','4 a cada 3 módulos');
+      add('Estrutura','Clamp intermediário',trCeil(groups*6),'un','6 a cada 3 módulos');
+      add('Estrutura','Prisioneiro',trCeil(groups*6),'un','6 a cada 3 módulos');
+      add('Estrutura','Junção H',trCeil(groups*2),'un','2 a cada 3 módulos');
+      add('Aterramento','Olhal 10 mm²',rail,'un','1 por trilho');
+      add('Aterramento','Brocante para aterramento',rail,'un','1 por trilho');
+    }else if(structureType==='Cerâmico/Fibrocimento - Viga de cimento'){
+      const rail=trCeil(groups*2), hooks=trCeil(groups*6);
+      add('Estrutura','Trilho 3,60 m',rail,'un','2 a cada 3 módulos');
+      add('Estrutura','Clamp inicial/final',trCeil(groups*4),'un','4 a cada 3 módulos');
+      add('Estrutura','Clamp intermediário',trCeil(groups*6),'un','6 a cada 3 módulos');
+      add('Estrutura','Gancho para viga de cimento',hooks,'un','6 a cada 3 módulos');
+      add('Estrutura','Porca torneada 5/16',trCeil(groups*18),'un','3 por gancho');
+      add('Estrutura','Arruela lisa 5/16',trCeil(groups*18),'un','3 por gancho');
+      add('Estrutura','Borracha de vedação',hooks,'un','1 por gancho');
+      add('Estrutura','Arruela para borracha de vedação',hooks,'un','1 por gancho');
+      add('Estrutura','Suporte reto',hooks,'un','1 por gancho');
+      add('Estrutura','Parafuso cabeça T',hooks,'un','1 por gancho');
+      add('Estrutura','Porca sextavada flangeada 5/16',hooks,'un','1 por parafuso T');
+      add('Aterramento','Olhal 10 mm²',rail,'un','1 por trilho');
+      add('Aterramento','Brocante para aterramento',rail,'un','1 por trilho');
+    }else if(structureType==='Laje'){
+      const rail=trCeil(groups*2);
+      add('Estrutura','Trilho 3,60 m',rail,'un','2 a cada 3 módulos');
+      add('Estrutura','Clamp inicial/final',trCeil(groups*4),'un','4 a cada 3 módulos');
+      add('Estrutura','Clamp intermediário',trCeil(groups*6),'un','6 a cada 3 módulos');
+      add('Estrutura','Triângulo',trCeil(groups*3),'un','3 a cada 3 módulos');
+      add('Estrutura','Parafuso sextavado 10 mm',trCeil(groups*9),'un','9 a cada 3 módulos');
+      add('Estrutura','Bucha 10 mm',trCeil(groups*9),'un','9 a cada 3 módulos');
+      add('Estrutura','Arruela lisa 5/16',trCeil(groups*9),'un','9 a cada 3 módulos');
+      add('Aterramento','Olhal 10 mm²',rail,'un','1 por trilho');
+      add('Aterramento','Brocante para aterramento',rail,'un','1 por trilho');
+    }else if(structureType==='Zipado'){
+      const clamp=trCeil(groups*8);
+      add('Estrutura','Grampo zipado',clamp,'un','8 a cada 3 módulos');
+      add('Estrutura','Clamp inicial/final',trCeil(groups*4),'un','4 a cada 3 módulos');
+      add('Estrutura','Clamp intermediário',trCeil(groups*6),'un','6 a cada 3 módulos');
+      const grounding=trCeil(clamp/4);
+      add('Aterramento','Olhal 10 mm²',grounding,'un','grampos ÷ 4');
+      add('Aterramento','Brocante para aterramento',grounding,'un','mesma quantidade de olhais');
+    }else{
+      warnings.push(`Estrutura ${structureType}: quantitativos estruturais exigem revisão manual antes da aprovação.`);
+    }
+
+    const rods=moduleQty<=40?1:(moduleQty<=120?2:3);
+    add('Aterramento','Cabo aterramento 10 mm² - interligação dos módulos',trCeil(moduleQty*.1),'m','10% da quantidade de módulos, arredondado');
+    add('Aterramento','Cabo aterramento 10 mm² - ramal principal',distanceDc*rods,'m','distância CC × hastes');
+    add('Aterramento','Haste de aterramento',rods,'un','1 até 40 módulos; 2 até 120; 3 acima');
+    add('Aterramento','Conector grampo para haste',rods,'un','1 por haste');
+    add('Aterramento','Terminal ilhós 10 mm²',4*rods,'un','4 por haste');
+    add('Aterramento','Caixa de inspeção',rods,'un','1 por haste');
+    if(totalAcKw<=25)add('Aterramento','Barramento de terra 12 furos',1,'un','até 25 kW');
+
+    const conduitBase=trCeil(inverterQty*3);
+    if(totalAcKw<30){
+      add('Infraestrutura','Eletroduto branco 1"',conduitBase,'un','3 por inversor');
+      add('Infraestrutura','Caixa 6 entradas 1"',conduitBase,'un','mesma base do eletroduto');
+      add('Infraestrutura','Tampa cega 1"',conduitBase,'un','mesma base do eletroduto');
+      add('Infraestrutura','Adaptador 1"',conduitBase*3,'un','3 por trecho-base');
+      add('Infraestrutura','Abraçadeira 1"',conduitBase*3,'un','3 por trecho-base');
+      add('Infraestrutura','Luva 1"',conduitBase,'un','1 por trecho-base');
+      add('Infraestrutura','Tampa de acabamento 1"',conduitBase*2,'un','2 por trecho-base');
+      add('Infraestrutura','Joelho 1"',conduitBase*2,'un','2 por trecho-base');
+      add('Fixação','Parafuso sextavado 10 mm - inversor',inverterQty*4,'un','4 por inversor');
+      add('Fixação','Bucha 10 mm - inversor',inverterQty*4,'un','4 por inversor');
+      add('Fixação','Arruela lisa - inversor',inverterQty*4,'un','4 por inversor');
+    }else{
+      add('Infraestrutura','Eletrocalha 100x50',conduitBase,'un','3 trechos por inversor');
+      add('Infraestrutura','Tampa para eletrocalha 100x50',conduitBase,'un','1 por trecho');
+      add('Infraestrutura','Emenda interna eletrocalha 100x50',conduitBase,'un','1 por trecho');
+      add('Infraestrutura','Curva horizontal eletrocalha 100x50',Math.max(0,conduitBase-1),'un','trechos - 1');
+      add('Infraestrutura','Curva vertical interna eletrocalha 100x50',Math.max(0,conduitBase-1),'un','trechos - 1');
+      add('Infraestrutura','Parafuso lentilha',conduitBase*6,'un','6 por trecho');
+      add('Infraestrutura','Porca lentilha',conduitBase*6,'un','6 por trecho');
+      add('Infraestrutura','Arruela lentilha',conduitBase*6,'un','6 por trecho');
+      add('Fixação','Barra roscada para fixação do inversor',inverterQty,'un','1 conjunto por inversor');
+    }
+
+    const ferrulesPerInverter=phaseKey.startsWith('tri')?48:(phaseKey.startsWith('bi')?32:16);
+    const doubleFerrulesPerInverter=phaseKey.startsWith('tri')?6:(phaseKey.startsWith('bi')?4:2);
+    add('Terminal',`Terminal ilhós ${acCableMm2} mm²`,ferrulesPerInverter*inverterQty,'un','regra base por número de fases');
+    add('Terminal',`Terminal ilhós duplo ${acCableMm2} mm²`,doubleFerrulesPerInverter*inverterQty,'un','regra base por número de fases');
+    add('Conector',totalAcKw>=30?'Conector de derivação 150 mm²':'Conector de derivação 70 mm²',phaseKey.startsWith('tri')?4*inverterQty:2*inverterQty,'un','regra base por fase');
+    add('Fixação','Abraçadeira nylon 20 cm',(phaseKey.startsWith('tri')?26:(phaseKey.startsWith('bi')?24:20))*inverterQty,'un','regra base por inversor');
+    add('Embalagem','Caixa de papelão',inverterQty,'un','1 por inversor');
+
+    if(acCableMm2<automaticAcCableMm2)warnings.push(`Bitola CA informada (${acCableMm2} mm²) é inferior à bitola automática revisada (${automaticAcCableMm2} mm²).`);
+    if(cableByDrop>cableByAmpacity)warnings.push(`A distância CA elevou a bitola por queda de tensão: ${cableByDrop} mm².`);
+    if(distanceDc<=0)warnings.push('Informe a distância CC para revisar o quantitativo dos cabos solares e aterramento.');
+    if(distanceAc<=0)warnings.push('Informe a distância CA para revisar cabos, proteção e queda de tensão.');
+    warnings.push('Pré-dimensionamento para planejamento de compras. A aprovação exige conferência do responsável técnico, fabricante, método de instalação, temperatura, agrupamento, tensão de strings, curto-circuito e normas aplicáveis.');
+
+    return {items,warnings,summary:{moduleQty,inverterQty,inverterPowerKw,totalAcKw,phases,voltageV,lineCurrentA,breakerA,acCableMm2,automaticAcCableMm2,peCableMm2,dpsQty,dpsVoltageV}};
+  }
+  /* TECHNICAL_REVIEW_ENGINE_END */
+
   function ensureAllProjectStructures(){companyRows('works').forEach(work=>ensureProjectStructure(work));persist();}
   function ensureProjectStructure(work){
     if(!work)return;work.projectStage=normalizeProjectStage(work.projectStage||work.status);work.stageHistory=Array.isArray(work.stageHistory)?work.stageHistory:[];
@@ -5638,6 +5861,367 @@ service cloud.firestore {
   }
 
 
+
+  function technicalNormalize(value=''){
+    return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/mm²/g,'mm2').replace(/[^a-z0-9]+/g,' ').trim();
+  }
+
+  function technicalProposalForWork(work){
+    return companyRows('proposals').find(p=>p.id===work?.proposalId)
+      || companyRows('proposals').find(p=>String(p.client?.name||'').trim().toLowerCase()===String(work?.clientName||'').trim().toLowerCase())
+      || null;
+  }
+
+  function technicalReviewDefaults(work){
+    const proposal=technicalProposalForWork(work);
+    const calc=proposal?calculateProposal(proposal):null;
+    const moduleQty=Math.max(1,Number(calc?.moduleQty||0)||Math.ceil(Number(work?.systemPower||0)*1000/600)||1);
+    const inverterQty=Math.max(1,Number(calc?.inverterQty||0)||1);
+    const inverterPowerKw=Math.max(.1,Number(calc?.inverterPowerTotal||0)/inverterQty||Math.max(1,Number(work?.systemPower||5)/1.3));
+    const phases=String(calc?.inverters?.[0]?.phases||proposal?.technical?.phases||'Monofásico');
+    const structureRaw=String(proposal?.technical?.structureType||'Metálico').toLowerCase();
+    let structureType='Metálico';
+    if(structureRaw.includes('zip'))structureType='Zipado';
+    else if(structureRaw.includes('laje'))structureType='Laje';
+    else if(structureRaw.includes('viga'))structureType='Cerâmico/Fibrocimento - Viga de cimento';
+    else if(structureRaw.includes('cer')||structureRaw.includes('fibro'))structureType='Cerâmico/Fibrocimento - Madeira';
+    else if(structureRaw.includes('solo'))structureType='Solo';
+    else if(structureRaw.includes('carport'))structureType='Carport';
+    return {
+      moduleQty,
+      inverterQty,
+      inverterPowerKw:Number(inverterPowerKw.toFixed(2)),
+      phases:['Monofásico','Bifásico','Trifásico'].includes(phases)?phases:'Monofásico',
+      voltageV:phases==='Trifásico'?380:220,
+      distanceDc:25,
+      distanceAc:15,
+      stringCount:Math.max(1,Math.ceil(moduleQty/Math.max(1,Math.round(moduleQty/3)))),
+      dcCableMm2:6,
+      acCableMm2:0,
+      maxVoltageDropPct:2,
+      powerFactor:1,
+      dpsVoltageV:275,
+      structureType,
+      includeNeutral:true
+    };
+  }
+
+  function normalizeTechnicalReview(work){
+    const stored=work?.technicalReview&&typeof work.technicalReview==='object'?work.technicalReview:{};
+    const inputs={...technicalReviewDefaults(work),...(stored.inputs||{})};
+    const calculated=calculateTechnicalReviewMaterials(inputs);
+    const oldItems=new Map((Array.isArray(stored.items)?stored.items:[]).map(item=>[item.key,item]));
+    const items=calculated.items.map(item=>{
+      const old=oldItems.get(item.key)||{};
+      return {
+        ...item,
+        adjustment:Number(old.adjustment||0),
+        stockId:String(old.stockId||''),
+        reservedQty:Math.max(0,Number(old.reservedQty||0)),
+        note:String(old.note||'')
+      };
+    });
+    return {
+      status:stored.status||'Rascunho',
+      inputs,
+      items,
+      warnings:calculated.warnings,
+      summary:calculated.summary,
+      approvedAt:stored.approvedAt||'',
+      approvedBy:stored.approvedBy||'',
+      updatedAt:stored.updatedAt||''
+    };
+  }
+
+  function technicalReviewForWork(work){
+    const normalized=normalizeTechnicalReview(work);
+    work.technicalReview=normalized;
+    return normalized;
+  }
+
+  function technicalInventoryScore(item,inventory){
+    const a=technicalNormalize(`${item.category} ${item.name}`);
+    const b=technicalNormalize(`${inventory.category||''} ${inventory.name||''} ${inventory.sku||''}`);
+    if(!b)return 0;
+    const tokens=a.split(' ').filter(token=>token.length>=2);
+    let score=0;
+    tokens.forEach(token=>{if(b.includes(token))score+=token.match(/^\d/) ? 3 : 1;});
+    if(technicalNormalize(item.category)===technicalNormalize(inventory.category))score+=4;
+    return score;
+  }
+
+  function technicalInventoryCandidates(item){
+    return companyRows('inventory')
+      .map(row=>({row,score:technicalInventoryScore(item,row)}))
+      .filter(x=>x.score>1)
+      .sort((a,b)=>b.score-a.score)
+      .slice(0,12)
+      .map(x=>x.row);
+  }
+
+  function technicalAutoStockId(item){
+    const candidates=technicalInventoryCandidates(item);
+    return candidates[0]?.id||'';
+  }
+
+  function technicalReservedElsewhere(workId,stockId){
+    if(!stockId)return 0;
+    return companyRows('works').filter(work=>work.id!==workId&&work.technicalReview?.status==='Aprovada')
+      .reduce((sum,work)=>sum+(work.technicalReview?.items||[]).filter(item=>item.stockId===stockId).reduce((s,item)=>s+Number(item.reservedQty||0),0),0);
+  }
+
+  function technicalStockInfo(work,item){
+    const stockId=item.stockId||technicalAutoStockId(item);
+    const stock=companyRows('inventory').find(row=>row.id===stockId)||null;
+    const quantity=Number(stock?.quantity||0);
+    const reservedElsewhere=technicalReservedElsewhere(work.id,stockId);
+    const free=Math.max(0,quantity-reservedElsewhere);
+    return {stockId,stock,quantity,reservedElsewhere,free};
+  }
+
+  function technicalFinalQty(item){return Math.max(0,Number(item.calculatedQty||0)+Number(item.adjustment||0));}
+
+  function technicalReviewMetrics(work,review){
+    let reserve=0,buy=0,matched=0;
+    review.items.forEach(item=>{
+      const stockInfo=technicalStockInfo(work,item);
+      const finalQty=technicalFinalQty(item);
+      const reserved=Math.min(finalQty,Math.max(0,Number(item.reservedQty||0)));
+      if(stockInfo.stock)matched++;
+      reserve+=reserved;
+      buy+=Math.max(0,finalQty-reserved);
+    });
+    return {reserve,buy,matched,total:review.items.length,buyLines:review.items.filter(item=>Math.max(0,technicalFinalQty(item)-Math.max(0,Number(item.reservedQty||0)))>0).length};
+  }
+
+  function renderTechnicalReview(){
+    const works=companyRows('works');
+    if(!activeTechnicalReviewProjectId||!works.some(w=>w.id===activeTechnicalReviewProjectId))activeTechnicalReviewProjectId=works[0]?.id||'';
+    const work=works.find(w=>w.id===activeTechnicalReviewProjectId);
+    const selector=`<div class="tech-review-selector"><label class="field"><span>Obra para revisar</span><select id="technicalReviewProjectSelect"><option value="">Selecione...</option>${works.map(row=>`<option value="${attr(row.id)}" ${row.id===activeTechnicalReviewProjectId?'selected':''}>${escapeHtml(row.clientName)} · ${number(row.systemPower,2)} kWp</option>`).join('')}</select></label>${work?`<button class="btn btn-ghost" data-tech-open-work="${attr(work.id)}" type="button">Abrir obra</button>`:''}</div>`;
+    return `<div class="tech-review-page">${pageHead('Revisão Técnica','Dimensionamento genérico de materiais, comparação com estoque, reserva e necessidade de compra.')}${selector}${work?renderTechnicalReviewPanel(work,{standalone:true}):'<div class="card tech-review-empty"><strong>Nenhuma obra disponível</strong>Cadastre uma obra para iniciar a revisão técnica.</div>'}</div>`;
+  }
+
+  function renderTechnicalReviewPanel(work,{standalone=false}={}){
+    const review=technicalReviewForWork(work);
+    const s=review.summary;
+    const metrics=technicalReviewMetrics(work,review);
+    const statusClass=review.status==='Aprovada'?'approved':'draft';
+    const canEdit=hasPermission('works','edit')||hasPermission('works','create');
+    const canApprove=hasPermission('works','approve')||currentUserIsAdmin();
+    const warnings=[...review.warnings];
+    review.items.forEach(item=>{
+      const stock=technicalStockInfo(work,item);
+      if(item.reservedQty>stock.free+0.0001)warnings.push(`${item.name}: reserva solicitada (${number(item.reservedQty,2)}) supera o estoque livre (${number(stock.free,2)}).`);
+    });
+    const input=review.inputs;
+    const materialRows=review.items.map((item,index)=>{
+      const finalQty=technicalFinalQty(item);
+      const stockInfo=technicalStockInfo(work,item);
+      if(!item.stockId&&stockInfo.stockId)item.stockId=stockInfo.stockId;
+      const reserve=Math.min(finalQty,Math.max(0,Number(item.reservedQty||0)));
+      const buy=Math.max(0,finalQty-reserve);
+      const candidates=technicalInventoryCandidates(item);
+      const stockOptions=[...companyRows('inventory')].sort((a,b)=>(technicalInventoryScore(item,b)-technicalInventoryScore(item,a))).slice(0,40);
+      return `<tr data-tech-item-row="${index}">
+        <td class="material-name"><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.category)} · ${escapeHtml(item.basis||'')}</span></td>
+        <td>${number(item.calculatedQty,2)} ${escapeHtml(item.unit)}</td>
+        <td><input data-tech-adjust="${index}" type="number" step="0.01" value="${attr(item.adjustment||0)}" ${canEdit?'':'disabled'}></td>
+        <td><strong>${number(finalQty,2)} ${escapeHtml(item.unit)}</strong></td>
+        <td><select data-tech-stock="${index}" ${canEdit?'':'disabled'}><option value="">Sem vínculo</option>${stockOptions.map(stock=>`<option value="${attr(stock.id)}" ${stock.id===item.stockId?'selected':''}>${escapeHtml(stock.name)}${stock.sku?` · ${escapeHtml(stock.sku)}`:''}</option>`).join('')}</select></td>
+        <td>${stockInfo.stock?`${number(stockInfo.quantity,2)}<small style="display:block;color:var(--muted)">reservado outras obras: ${number(stockInfo.reservedElsewhere,2)}</small>`:'—'}</td>
+        <td><strong>${number(stockInfo.free,2)}</strong></td>
+        <td><input data-tech-reserve="${index}" type="number" min="0" step="0.01" value="${attr(item.reservedQty||0)}" ${canEdit?'':'disabled'}></td>
+        <td class="${buy>0?'tech-review-buy':'tech-review-ok'}">${number(buy,2)} ${escapeHtml(item.unit)}</td>
+      </tr>`;
+    }).join('');
+
+    return `<div class="tech-review-hero">
+      <div class="tech-review-kpi"><span>Status</span><strong><span class="tech-review-status ${statusClass}">${escapeHtml(review.status)}</span></strong><small>${review.approvedAt?`Aprovada em ${dateTimeBR(review.approvedAt)} por ${escapeHtml(review.approvedBy||'—')}`:'Aguardando conferência técnica'}</small></div>
+      <div class="tech-review-kpi"><span>Potência CA</span><strong>${number(s.totalAcKw,2)} kW</strong><small>${number(s.lineCurrentA,1)} A calculados</small></div>
+      <div class="tech-review-kpi"><span>Proteção / cabo CA</span><strong>${number(s.breakerA,0)} A · ${number(s.acCableMm2,1)} mm²</strong><small>bitola automática mínima: ${number(s.automaticAcCableMm2,1)} mm²</small></div>
+      <div class="tech-review-kpi"><span>Necessidade de compra</span><strong>${metrics.buyLines} item(ns)</strong><small>${metrics.matched}/${metrics.total} materiais vinculados ao estoque</small></div>
+    </div>
+    <div class="tech-review-layout">
+      <section class="card tech-review-sticky"><div class="card-head"><div><h3>Dados para dimensionamento</h3><p>Sem marca: somente grandezas técnicas e características da obra.</p></div></div><div class="card-body">
+        <form id="technicalReviewForm" class="tech-review-input-grid">
+          <label class="field"><span>Quantidade de módulos</span><input name="moduleQty" type="number" min="1" value="${attr(input.moduleQty)}" ${canEdit?'':'disabled'}></label>
+          <label class="field"><span>Quantidade de inversores</span><input name="inverterQty" type="number" min="1" value="${attr(input.inverterQty)}" ${canEdit?'':'disabled'}></label>
+          <label class="field"><span>Potência por inversor (kW)</span><input name="inverterPowerKw" type="number" min=".1" step=".1" value="${attr(input.inverterPowerKw)}" ${canEdit?'':'disabled'}></label>
+          <label class="field"><span>Ligação</span><select name="phases" ${canEdit?'':'disabled'}>${['Monofásico','Bifásico','Trifásico'].map(v=>`<option ${v===input.phases?'selected':''}>${v}</option>`).join('')}</select></label>
+          <label class="field"><span>Tensão CA (V)</span><input name="voltageV" type="number" min="110" value="${attr(input.voltageV)}" ${canEdit?'':'disabled'}></label>
+          <label class="field"><span>Fator de potência</span><input name="powerFactor" type="number" min=".7" max="1" step=".01" value="${attr(input.powerFactor)}" ${canEdit?'':'disabled'}></label>
+          <label class="field"><span>Strings efetivas</span><input name="stringCount" type="number" min="1" value="${attr(input.stringCount)}" ${canEdit?'':'disabled'}></label>
+          <label class="field"><span>Bitola cabo CC (mm²)</span><input name="dcCableMm2" type="number" min="1" step=".5" value="${attr(input.dcCableMm2)}" ${canEdit?'':'disabled'}></label>
+          <label class="field"><span>Distância CC (m)</span><input name="distanceDc" type="number" min="0" step=".1" value="${attr(input.distanceDc)}" ${canEdit?'':'disabled'}></label>
+          <label class="field"><span>Distância CA (m)</span><input name="distanceAc" type="number" min="0" step=".1" value="${attr(input.distanceAc)}" ${canEdit?'':'disabled'}></label>
+          <label class="field"><span>Bitola CA manual (mm²)</span><input name="acCableMm2" type="number" min="0" step=".5" value="${attr(input.acCableMm2||0)}" ${canEdit?'':'disabled'}><small>0 = dimensionamento automático.</small></label>
+          <label class="field"><span>Queda máxima (%)</span><input name="maxVoltageDropPct" type="number" min=".5" max="5" step=".1" value="${attr(input.maxVoltageDropPct)}" ${canEdit?'':'disabled'}></label>
+          <label class="field"><span>DPS CA (V)</span><input name="dpsVoltageV" type="number" min="100" value="${attr(input.dpsVoltageV)}" ${canEdit?'':'disabled'}></label>
+          <label class="field"><span>Estrutura</span><select name="structureType" ${canEdit?'':'disabled'}>${['Metálico','Cerâmico/Fibrocimento - Madeira','Cerâmico/Fibrocimento - Viga de cimento','Laje','Zipado','Solo','Carport'].map(v=>`<option ${v===input.structureType?'selected':''}>${v}</option>`).join('')}</select></label>
+          <label class="checkbox-row full"><input name="includeNeutral" type="checkbox" ${input.includeNeutral!==false?'checked':''} ${canEdit?'':'disabled'}><span>Considerar condutor neutro no ramal CA</span></label>
+          <div class="full tech-review-note">O dimensionamento CA foi revisado: a corrente é calculada pela potência/tensão/fases; o disjuntor considera margem de 25%; e a bitola considera capacidade de corrente e queda de tensão. O responsável técnico deve validar as condições reais de instalação antes da compra.</div>
+          <div class="full tech-review-actions"><button class="btn btn-primary" type="submit" ${canEdit?'':'disabled'}>Recalcular materiais</button></div>
+        </form>
+      </div></section>
+      <section>
+        <div class="card"><div class="card-head"><div><h3>Materiais calculados × estoque</h3><p>Ajuste tecnicamente cada quantidade e escolha o que deseja reservar.</p></div><div class="tech-review-actions"><button class="btn btn-ghost btn-sm" data-tech-suggest-reserve type="button" ${canEdit?'':'disabled'}>Sugerir reservas</button><button class="btn btn-ghost btn-sm" data-tech-export-buy type="button">Exportar compra CSV</button></div></div><div class="card-body" style="padding-top:12px">
+          <div class="tech-review-materials"><table class="tech-review-table"><thead><tr><th>Material</th><th>Calculado</th><th>Ajuste</th><th>Final</th><th>Produto no estoque</th><th>Estoque físico</th><th>Estoque livre</th><th>Reservar</th><th>Comprar</th></tr></thead><tbody>${materialRows}</tbody></table></div>
+          <div class="tech-review-warnings">${warnings.map(w=>`<div class="tech-review-warning ${String(w).includes('supera')||String(w).includes('inferior')?'critical':''}">${escapeHtml(w)}</div>`).join('')}</div>
+          <div class="tech-review-actions" style="margin-top:14px"><button class="btn btn-ghost" data-tech-save-draft type="button" ${canEdit?'':'disabled'}>Salvar rascunho</button><button class="btn btn-success" data-tech-approve type="button" ${canApprove?'':'disabled'}>Aprovar revisão técnica</button></div>
+        </div>
+      </section>
+    </div>`;
+  }
+
+  function readTechnicalReviewForm(form){
+    const values=Object.fromEntries(new FormData(form).entries());
+    return {
+      moduleQty:Number(values.moduleQty||0),
+      inverterQty:Number(values.inverterQty||1),
+      inverterPowerKw:Number(values.inverterPowerKw||0),
+      phases:String(values.phases||'Monofásico'),
+      voltageV:Number(values.voltageV||220),
+      powerFactor:Number(values.powerFactor||1),
+      stringCount:Number(values.stringCount||1),
+      dcCableMm2:Number(values.dcCableMm2||6),
+      distanceDc:Number(values.distanceDc||0),
+      distanceAc:Number(values.distanceAc||0),
+      acCableMm2:Number(values.acCableMm2||0),
+      maxVoltageDropPct:Number(values.maxVoltageDropPct||2),
+      dpsVoltageV:Number(values.dpsVoltageV||275),
+      structureType:String(values.structureType||'Metálico'),
+      includeNeutral:Boolean(form.querySelector('[name="includeNeutral"]')?.checked)
+    };
+  }
+
+  function collectTechnicalItemEdits(work){
+    const review=technicalReviewForWork(work);
+    document.querySelectorAll('[data-tech-item-row]').forEach(row=>{
+      const index=Number(row.dataset.techItemRow);
+      const item=review.items[index];if(!item)return;
+      item.adjustment=Number(row.querySelector(`[data-tech-adjust="${index}"]`)?.value||0);
+      item.stockId=String(row.querySelector(`[data-tech-stock="${index}"]`)?.value||'');
+      item.reservedQty=Math.max(0,Number(row.querySelector(`[data-tech-reserve="${index}"]`)?.value||0));
+    });
+    return review;
+  }
+
+  function recalculateTechnicalReview(event,work){
+    event?.preventDefault();
+    if(!hasPermission('works','edit')&&!hasPermission('works','create')){denyPermission('works','edit');return;}
+    const current=collectTechnicalItemEdits(work);
+    const inputs=readTechnicalReviewForm(event.currentTarget);
+    const oldItems=new Map(current.items.map(item=>[item.key,item]));
+    const calculated=calculateTechnicalReviewMaterials(inputs);
+    const items=calculated.items.map(item=>{
+      const old=oldItems.get(item.key)||{};
+      const stockId=old.stockId||technicalAutoStockId(item);
+      return {...item,adjustment:Number(old.adjustment||0),stockId,reservedQty:Math.max(0,Number(old.reservedQty||0)),note:String(old.note||'')};
+    });
+    work.technicalReview={status:'Rascunho',inputs,items,warnings:calculated.warnings,summary:calculated.summary,approvedAt:'',approvedBy:'',updatedAt:new Date().toISOString()};
+    work.updatedAt=new Date().toISOString();
+    persist();syncRecordToFirebase('works',work);
+    if(projectWorkspaceTab==='technical'&&activeProjectId===work.id)renderProjectWorkspace();else renderView('technicalReview');
+    toast('Materiais recalculados','A revisão voltou para Rascunho até nova aprovação.','success');
+  }
+
+  function saveTechnicalReviewDraft(work,{rerender=true}={}){
+    if(!hasPermission('works','edit')&&!hasPermission('works','create')){denyPermission('works','edit');return false;}
+    const review=collectTechnicalItemEdits(work);
+    review.status='Rascunho';review.approvedAt='';review.approvedBy='';review.updatedAt=new Date().toISOString();
+    work.technicalReview=review;work.updatedAt=review.updatedAt;
+    persist();syncRecordToFirebase('works',work);
+    if(rerender){if(projectWorkspaceTab==='technical'&&activeProjectId===work.id)renderProjectWorkspace();else renderView('technicalReview');}
+    toast('Revisão salva','Ajustes e reservas foram mantidos como rascunho.','success');
+    return true;
+  }
+
+  function suggestTechnicalReservations(work){
+    const review=collectTechnicalItemEdits(work);
+    const usedByStock={};
+    review.items.forEach(item=>{
+      const info=technicalStockInfo(work,item);
+      if(!info.stockId){item.reservedQty=0;return;}
+      const already=usedByStock[info.stockId]||0;
+      const free=Math.max(0,info.free-already);
+      item.stockId=info.stockId;
+      item.reservedQty=Math.min(technicalFinalQty(item),free);
+      usedByStock[info.stockId]=already+item.reservedQty;
+    });
+    work.technicalReview=review;persist();
+    if(projectWorkspaceTab==='technical'&&activeProjectId===work.id)renderProjectWorkspace();else renderView('technicalReview');
+  }
+
+  function validateTechnicalReview(work,review){
+    const errors=[];
+    if(review.inputs.moduleQty<=0)errors.push('Quantidade de módulos inválida.');
+    if(review.inputs.inverterPowerKw<=0)errors.push('Potência do inversor inválida.');
+    const byStock={};
+    review.items.forEach(item=>{
+      const finalQty=technicalFinalQty(item);
+      if(item.reservedQty>finalQty+.0001)errors.push(`${item.name}: reserva maior que a quantidade final.`);
+      if(item.stockId){
+        const info=technicalStockInfo(work,item);
+        byStock[item.stockId]=(byStock[item.stockId]||0)+Number(item.reservedQty||0);
+        if(byStock[item.stockId]>info.free+.0001)errors.push(`${item.name}: reservas desta obra ultrapassam o estoque livre de ${number(info.free,2)}.`);
+      }
+    });
+    if(review.warnings.some(w=>String(w).includes('inferior à bitola automática')))errors.push('A bitola CA manual está abaixo do valor automático revisado.');
+    return [...new Set(errors)];
+  }
+
+  function approveTechnicalReview(work){
+    if(!hasPermission('works','approve')&&!currentUserIsAdmin()){denyPermission('works','approve');return;}
+    const review=collectTechnicalItemEdits(work);
+    const errors=validateTechnicalReview(work,review);
+    if(errors.length){toast('Revisão não aprovada',errors[0],'error');return;}
+    review.status='Aprovada';
+    review.approvedAt=new Date().toISOString();
+    review.approvedBy=state.currentUser.name||state.currentUser.email||'Responsável técnico';
+    review.updatedAt=review.approvedAt;
+    work.technicalReview=review;work.updatedAt=review.updatedAt;
+    persist();syncRecordToFirebase('works',work);
+    addActivity('⚡','Revisão técnica aprovada',`${work.clientName} · materiais revisados e reservas definidas`);
+    if(projectWorkspaceTab==='technical'&&activeProjectId===work.id)renderProjectWorkspace();else renderView('technicalReview');
+    toast('Revisão técnica aprovada','A necessidade de compra agora considera as reservas selecionadas.','success');
+  }
+
+  function exportTechnicalPurchaseCsv(work){
+    const review=collectTechnicalItemEdits(work);
+    const rows=review.items.map(item=>{
+      const finalQty=technicalFinalQty(item),reserved=Math.max(0,Number(item.reservedQty||0)),buy=Math.max(0,finalQty-reserved);
+      const stock=companyRows('inventory').find(row=>row.id===item.stockId);
+      return {Categoria:item.category,Material:item.name,Unidade:item.unit,Calculado:item.calculatedQty,Ajuste:item.adjustment,Final:finalQty,Reservado:reserved,Comprar:buy,SKU:stock?.sku||'',Fornecedor:stock?.supplier||''};
+    }).filter(row=>row.Comprar>0);
+    if(!rows.length){toast('Sem necessidade de compra','Todos os materiais foram cobertos pelas reservas selecionadas.','info');return;}
+    const headers=Object.keys(rows[0]);
+    const csv=[headers.join(';'),...rows.map(row=>headers.map(h=>`"${String(row[h]??'').replace(/"/g,'""')}"`).join(';'))].join('\n');
+    downloadBlob(new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'}),`compras-${String(work.clientName||'obra').replace(/[^\w-]+/g,'-').toLowerCase()}.csv`);
+  }
+
+  function bindTechnicalReviewPanel(work){
+    document.getElementById('technicalReviewForm')?.addEventListener('submit',event=>recalculateTechnicalReview(event,work));
+    document.querySelector('[data-tech-save-draft]')?.addEventListener('click',()=>saveTechnicalReviewDraft(work));
+    document.querySelector('[data-tech-suggest-reserve]')?.addEventListener('click',()=>suggestTechnicalReservations(work));
+    document.querySelector('[data-tech-approve]')?.addEventListener('click',()=>approveTechnicalReview(work));
+    document.querySelector('[data-tech-export-buy]')?.addEventListener('click',()=>exportTechnicalPurchaseCsv(work));
+    document.querySelectorAll('[data-tech-stock],[data-tech-adjust],[data-tech-reserve]').forEach(el=>el.addEventListener('change',()=>{
+      const review=collectTechnicalItemEdits(work);review.status='Rascunho';review.approvedAt='';review.approvedBy='';review.updatedAt=new Date().toISOString();work.technicalReview=review;persist();
+    }));
+  }
+
+  function bindTechnicalReviewEvents(){
+    document.getElementById('technicalReviewProjectSelect')?.addEventListener('change',event=>{activeTechnicalReviewProjectId=event.target.value;renderView('technicalReview');});
+    document.querySelector('[data-tech-open-work]')?.addEventListener('click',event=>openProjectWorkspace(event.currentTarget.dataset.techOpenWork,'technical'));
+    const work=getCompanyRecord('works',activeTechnicalReviewProjectId);
+    if(work)bindTechnicalReviewPanel(work);
+  }
+
+  function renderProjectTechnicalReview(work){
+    return `<div class="notice" style="margin-bottom:13px">Esta revisão calcula materiais sem considerar marca. O estoque é vinculado por produto/SKU e a reserva só passa a valer para outras obras após a aprovação técnica.</div>${renderTechnicalReviewPanel(work,{standalone:false})}`;
+  }
+
   function openProjectWorkspace(projectId,tab='overview'){
     const work=getCompanyRecord('works',projectId);if(!work){toast('Projeto não encontrado','','error');return;}
     activeProjectId=projectId;projectWorkspaceTab=tab;projectTaskEditor=null;ensureProjectStructure(work);persist();renderProjectWorkspace();openModal('projectWorkspaceModal');
@@ -5646,8 +6230,8 @@ service cloud.firestore {
   function renderProjectWorkspace(){
     const work=getCompanyRecord('works',activeProjectId);const root=document.getElementById('projectWorkspaceBody');if(!work||!root)return;
     ensureProjectStructure(work);const stage=projectStageDefinition(work.projectStage);document.getElementById('projectWorkspaceTitle').textContent=`${work.clientName} · ${number(work.systemPower,2)} kWp`;const badge=document.getElementById('projectWorkspaceStage');badge.textContent=stage.id;badge.className=`status ${colorClass(stage.id)}`;
-    const tabs=[['overview','Visão geral'],['kanban','Kanban do projeto'],['documents',`Documentos (${projectDocumentsFor(work.id).length})`],['history','Histórico']];
-    const content=projectWorkspaceTab==='kanban'?renderSingleProjectKanban(work):projectWorkspaceTab==='documents'?renderProjectDocuments(work):projectWorkspaceTab==='history'?renderProjectHistory(work):renderProjectOverview(work);
+    const tabs=[['overview','Visão geral'],['technical','Revisão Técnica'],['kanban','Kanban do projeto'],['documents',`Documentos (${projectDocumentsFor(work.id).length})`],['history','Histórico']];
+    const content=projectWorkspaceTab==='technical'?renderProjectTechnicalReview(work):projectWorkspaceTab==='kanban'?renderSingleProjectKanban(work):projectWorkspaceTab==='documents'?renderProjectDocuments(work):projectWorkspaceTab==='history'?renderProjectHistory(work):renderProjectOverview(work);
     root.innerHTML=`<div class="project-workspace-tabs">${tabs.map(([id,label])=>`<button class="project-workspace-tab ${projectWorkspaceTab===id?'active':''}" data-project-tab="${id}">${label}</button>`).join('')}</div>${content}`;
     bindProjectWorkspaceEvents(work);
   }
@@ -5786,7 +6370,7 @@ service cloud.firestore {
     return `<div class="pipeline-summary"><div class="pipeline-pill"><span>Etapa atual</span><strong>${escapeHtml(stage.id)}</strong></div><div class="pipeline-pill"><span>Progresso</span><strong>${number(work.progress)}%</strong></div><div class="pipeline-pill"><span>Tarefas concluídas</span><strong>${completed}/${tasks.length}</strong></div><div class="pipeline-pill"><span>Documentos</span><strong>${docs.length}</strong></div></div>
       <div class="project-stage-track">${projectStages.map((item,index)=>`<div class="project-stage-step ${index<currentIndex?'done':index===currentIndex?'current':''}"><strong>${index<currentIndex?'✓ ':index===currentIndex?'● ':''}${escapeHtml(item.id)}</strong><span>${escapeHtml(item.defaultTask)}</span></div>`).join('')}</div>
       <div class="project-overview-grid" style="margin-top:16px"><section class="card"><div class="card-head"><div><h3>Dados do projeto</h3><p>Informações operacionais da venda.</p></div><button class="btn btn-ghost btn-sm" data-project-edit type="button">Editar cadastro</button></div><div class="card-body"><div class="detail-grid"><div class="detail-item"><span>Cliente</span><strong>${escapeHtml(work.clientName)}</strong></div><div class="detail-item"><span>CPF/CNPJ</span><strong>${escapeHtml(maskCpfCnpj(clientDocumentForWork(work))||'—')}</strong></div><div class="detail-item"><span>Cidade</span><strong>${escapeHtml(work.city||'—')}</strong></div><div class="detail-item"><span>Potência</span><strong>${number(work.systemPower,2)} kWp</strong></div><div class="detail-item"><span>Equipe</span><strong>${escapeHtml(work.team||'A definir')}</strong></div><div class="detail-item"><span>Início</span><strong>${dateBR(work.startDate)}</strong></div><div class="detail-item"><span>Prazo</span><strong>${dateBR(work.deadline)}</strong></div></div><div class="notice" style="margin-top:12px">${escapeHtml(work.notes||'Sem observações.')}</div></div></section>
-      <section class="card"><div class="card-head"><div><h3>Ações rápidas</h3><p>Continue o fluxo pós-venda.</p></div></div><div class="card-body" style="display:grid;gap:9px"><button class="btn btn-primary" data-project-go="kanban" type="button">Abrir Kanban do projeto</button><button class="btn btn-secondary" data-client-portal-publish type="button">Publicar status no portal</button><button class="btn btn-ghost" data-client-portal-copy type="button">Copiar link do cliente</button><button class="btn btn-secondary" data-project-go="documents" type="button">Adicionar documentação</button>${canDeleteProject()?`<button class="btn btn-danger" data-project-delete type="button">Excluir projeto</button>`:''}<label class="field"><span>Avançar etapa</span><select id="workspaceStageSelect">${projectStages.map(item=>`<option value="${attr(item.id)}" ${item.id===stage.id?'selected':''}>${escapeHtml(item.id)}</option>`).join('')}</select></label></div></section></div>`;
+      <section class="card"><div class="card-head"><div><h3>Ações rápidas</h3><p>Continue o fluxo pós-venda.</p></div></div><div class="card-body" style="display:grid;gap:9px"><button class="btn btn-primary" data-project-go="technical" type="button">Abrir Revisão Técnica</button><button class="btn btn-ghost" data-project-go="kanban" type="button">Abrir Kanban do projeto</button><button class="btn btn-secondary" data-client-portal-publish type="button">Publicar status no portal</button><button class="btn btn-ghost" data-client-portal-copy type="button">Copiar link do cliente</button><button class="btn btn-secondary" data-project-go="documents" type="button">Adicionar documentação</button>${canDeleteProject()?`<button class="btn btn-danger" data-project-delete type="button">Excluir projeto</button>`:''}<label class="field"><span>Avançar etapa</span><select id="workspaceStageSelect">${projectStages.map(item=>`<option value="${attr(item.id)}" ${item.id===stage.id?'selected':''}>${escapeHtml(item.id)}</option>`).join('')}</select></label></div></section></div>`;
   }
 
   function renderSingleProjectKanban(work){
@@ -5845,6 +6429,7 @@ service cloud.firestore {
     document.querySelectorAll('[data-download-project-document]').forEach(button=>button.addEventListener('click',()=>openProjectDocument(button.dataset.downloadProjectDocument,true)));
     document.querySelectorAll('[data-delete-project-document]').forEach(button=>button.addEventListener('click',()=>deleteProjectDocument(button.dataset.deleteProjectDocument)));
     document.querySelector('[data-export-document-index]')?.addEventListener('click',()=>exportProjectDocumentIndex(work));
+    if(projectWorkspaceTab==='technical')bindTechnicalReviewPanel(work);
   }
 
   function bindProjectTaskDragDrop(work){
@@ -6403,6 +6988,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
 
   function bindViewEvents(view){
     if(view==='offgrid')bindOffgridEvents();
+    if(view==='technicalReview')bindTechnicalReviewEvents();
     if(view==='contractEditor')bindContractEditorEvents();
     document.querySelectorAll('[data-view-jump]').forEach(btn=>btn.addEventListener('click',()=>navigate(btn.dataset.viewJump)));
     document.querySelectorAll('[data-action]').forEach(btn=>btn.addEventListener('click',()=>handleAction(btn.dataset.action,btn.dataset)));
