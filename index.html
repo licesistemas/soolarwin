@@ -5688,7 +5688,7 @@ service cloud.firestore {
     const acCableMm2=trNum(input.acCableMm2)>0?trNum(input.acCableMm2):automaticAcCableMm2;
     const peCableMm2=trPeSection(acCableMm2);
     const phaseConductors=phaseKey.startsWith('tri')?3:(phaseKey.startsWith('bi')?2:1);
-    const poles=phaseKey.startsWith('tri')?3:2;
+    const poles=phaseKey.startsWith('tri')?3:(phaseKey.startsWith('bi')?2:1);
     const dpsQty=phaseKey.startsWith('tri')?4:(phaseKey.startsWith('bi')?3:2);
     const items=[];
     const warnings=[];
@@ -6048,7 +6048,7 @@ service cloud.firestore {
           <label class="field"><span>Quantidade de módulos</span><input name="moduleQty" type="number" min="1" value="${attr(input.moduleQty)}" ${canEdit?'':'disabled'}></label>
           <label class="field"><span>Quantidade de inversores</span><input name="inverterQty" type="number" min="1" value="${attr(input.inverterQty)}" ${canEdit?'':'disabled'}></label>
           <label class="field"><span>Potência por inversor (kW)</span><input name="inverterPowerKw" type="number" min=".1" step=".1" value="${attr(input.inverterPowerKw)}" ${canEdit?'':'disabled'}></label>
-          <label class="field"><span>Ligação</span><select name="phases" ${canEdit?'':'disabled'}>${['Monofásico','Bifásico','Trifásico'].map(v=>`<option ${v===input.phases?'selected':''}>${v}</option>`).join('')}</select></label>
+          <label class="field"><span>Ligação</span><select name="phases" ${canEdit?'':'disabled'}>${['Monofásico','Bifásico','Trifásico'].map(v=>`<option ${v===input.phases?'selected':''}>${v}</option>`).join('')}</select><small>Monofásico = disjuntor 1P · Bifásico = 2P · Trifásico = 3P.</small></label>
           <label class="field"><span>Tensão CA (V)</span><input name="voltageV" type="number" min="110" value="${attr(input.voltageV)}" ${canEdit?'':'disabled'}></label>
           <label class="field"><span>Fator de potência</span><input name="powerFactor" type="number" min=".7" max="1" step=".01" value="${attr(input.powerFactor)}" ${canEdit?'':'disabled'}></label>
           <label class="field"><span>Strings efetivas</span><input name="stringCount" type="number" min="1" value="${attr(input.stringCount)}" ${canEdit?'':'disabled'}></label>
@@ -6061,7 +6061,7 @@ service cloud.firestore {
           <label class="field"><span>Estrutura</span><select name="structureType" ${canEdit?'':'disabled'}>${['Metálico','Cerâmico/Fibrocimento - Madeira','Cerâmico/Fibrocimento - Viga de cimento','Laje','Zipado','Solo','Carport'].map(v=>`<option ${v===input.structureType?'selected':''}>${v}</option>`).join('')}</select></label>
           <label class="checkbox-row full"><input name="includeNeutral" type="checkbox" ${input.includeNeutral!==false?'checked':''} ${canEdit?'':'disabled'}><span>Considerar condutor neutro no ramal CA</span></label>
           <div class="full tech-review-note">O dimensionamento CA foi revisado: a corrente é calculada pela potência/tensão/fases; o disjuntor considera margem de 25%; e a bitola considera capacidade de corrente e queda de tensão. O responsável técnico deve validar as condições reais de instalação antes da compra.</div>
-          <div class="full tech-review-actions"><button class="btn btn-primary" type="submit" ${canEdit?'':'disabled'}>Recalcular materiais</button></div>
+          <div class="full tech-review-actions"><button class="btn btn-ghost" data-tech-reset-project type="button" ${canEdit?'':'disabled'}>Redefinir pelo projeto</button><button class="btn btn-primary" type="submit" ${canEdit?'':'disabled'}>Recalcular materiais</button></div>
         </form>
       </div></section>
       <section>
@@ -6105,6 +6105,37 @@ service cloud.firestore {
       item.reservedQty=Math.max(0,Number(row.querySelector(`[data-tech-reserve="${index}"]`)?.value||0));
     });
     return review;
+  }
+
+
+  function resetTechnicalReviewFromProject(work){
+    if(!hasPermission('works','edit')&&!hasPermission('works','create')){denyPermission('works','edit');return;}
+    if(!confirm('Redefinir a revisão pelos dados atuais do projeto? Ajustes manuais e reservas desta revisão serão zerados.'))return;
+    const inputs=technicalReviewDefaults(work);
+    const calculated=calculateTechnicalReviewMaterials(inputs);
+    const items=calculated.items.map(item=>({
+      ...item,
+      adjustment:0,
+      stockId:technicalAutoStockId(item),
+      reservedQty:0,
+      note:''
+    }));
+    work.technicalReview={
+      status:'Rascunho',
+      inputs,
+      items,
+      warnings:calculated.warnings,
+      summary:calculated.summary,
+      approvedAt:'',
+      approvedBy:'',
+      updatedAt:new Date().toISOString()
+    };
+    work.updatedAt=work.technicalReview.updatedAt;
+    persist();
+    syncRecordToFirebase('works',work);
+    if(projectWorkspaceTab==='technical'&&activeProjectId===work.id)renderProjectWorkspace();
+    else renderView('technicalReview');
+    toast('Revisão redefinida','Os parâmetros foram recarregados a partir dos dados atuais do projeto.','success');
   }
 
   function recalculateTechnicalReview(event,work){
@@ -6201,7 +6232,13 @@ service cloud.firestore {
   }
 
   function bindTechnicalReviewPanel(work){
-    document.getElementById('technicalReviewForm')?.addEventListener('submit',event=>recalculateTechnicalReview(event,work));
+    const technicalForm=document.getElementById('technicalReviewForm');
+    technicalForm?.addEventListener('submit',event=>recalculateTechnicalReview(event,work));
+    technicalForm?.querySelector('[name="phases"]')?.addEventListener('change',()=>{
+      if(!technicalForm)return;
+      technicalForm.requestSubmit();
+    });
+    document.querySelector('[data-tech-reset-project]')?.addEventListener('click',()=>resetTechnicalReviewFromProject(work));
     document.querySelector('[data-tech-save-draft]')?.addEventListener('click',()=>saveTechnicalReviewDraft(work));
     document.querySelector('[data-tech-suggest-reserve]')?.addEventListener('click',()=>suggestTechnicalReservations(work));
     document.querySelector('[data-tech-approve]')?.addEventListener('click',()=>approveTechnicalReview(work));
