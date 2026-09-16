@@ -3398,6 +3398,7 @@ service cloud.firestore {
     autoProposalPaymentMethod: 'Financiamento', autoProposalCommercialNotes: 'Instalação completa, homologação e monitoramento inclusos.',
     documentStorageMode: 'google-drive', driveScriptUrl: '', driveScriptToken: '', driveRootFolderName: 'Soolarwin CRM',
     emailGatewayMode: 'apps-script', emailScriptUrl: DEFAULT_APPS_SCRIPT_EMAIL_URL, emailScriptToken: '', emailFromName: 'SolarCRM',
+    backupScriptUrl: '', backupScriptToken: '', backupEmail: '', backupFolderName: 'SolarCRM Backups', backupRetentionDays: 30, backupSchedule: '00:00',
     proposalMessage: 'Olá, {cliente}! Sua proposta de energia solar {proposta} está pronta. Investimento: {valor}. Potência: {potencia} kWp.',
     npsMessage: 'Olá, {cliente}! De 0 a 10, quanto você recomendaria nossa empresa? Sua opinião é muito importante.',
     collectionMessage: 'Olá, {cliente}. Identificamos o vencimento de {descricao}, no valor de {valor}. Podemos ajudar com a regularização?',
@@ -5021,6 +5022,47 @@ service cloud.firestore {
 
   function hasAppsScriptEmailGateway(){
     return !!emailGatewayConfig().url;
+  }
+
+  function backupGatewayConfig(){
+    return {
+      url:String(state.company.backupScriptUrl||'').trim(),
+      token:String(state.company.backupScriptToken||'').trim(),
+      email:String(state.company.backupEmail||state.currentUser?.email||state.company.email||'').trim(),
+      folderName:String(state.company.backupFolderName||'SolarCRM Backups').trim()||'SolarCRM Backups',
+      retentionDays:Math.max(1,Number(state.company.backupRetentionDays||30)),
+      schedule:'00:00',
+      timezone:'America/Sao_Paulo'
+    };
+  }
+
+  function backupWebAppUrl(action){
+    const cfg=backupGatewayConfig();
+    if(!cfg.url)throw new Error('Informe a URL do Web App do Apps Script.');
+    const join=cfg.url.includes('?')?'&':'?';
+    return `${cfg.url}${join}action=${encodeURIComponent(action)}&token=${encodeURIComponent(cfg.token)}`;
+  }
+
+  async function saveBackupSettings(event){
+    event.preventDefault();
+    const values=Object.fromEntries(new FormData(event.currentTarget).entries());
+    state.company.backupScriptUrl=String(values.backupScriptUrl||'').trim();
+    state.company.backupScriptToken=String(values.backupScriptToken||'').trim();
+    state.company.backupEmail=String(values.backupEmail||'').trim();
+    state.company.backupFolderName=String(values.backupFolderName||'SolarCRM Backups').trim()||'SolarCRM Backups';
+    state.company.backupRetentionDays=Math.max(1,Number(values.backupRetentionDays||30));
+    state.company.backupSchedule='00:00';
+    syncCurrentCompanyRecord();persist();
+    const saved=await saveSharedCompanySettings({silent:true});
+    toast('Configuração de backup salva',saved?'Aplicada à empresa no Firebase.':'Salva no CRM atual.','success');
+    renderSettings();
+  }
+
+  function openBackupAction(action){
+    try{
+      const url=backupWebAppUrl(action);
+      window.open(url,'_blank','noopener,noreferrer');
+    }catch(error){toast('Backup não configurado',error.message||String(error),'error');}
   }
 
   async function sendEmailViaAppsScript({to,subject,html,body,metadata}={}){
@@ -10121,7 +10163,32 @@ ${company.tradeName||company.name}`:''}`;
     if(tab==='drive')return renderDriveStoragePanel();
     if(tab==='email')return renderEmailServerPanel();
     if(tab==='users')return renderUserPermissionsPanel();
-    return `<div class="grid grid-2"><div class="form-section"><div class="form-section-head"><div><h3>Exportar backup</h3><p>Baixe todas as informações cadastradas em JSON.</p></div></div><button class="btn btn-primary" id="settingsExportBackup" type="button">Exportar backup completo</button></div><div class="form-section"><div class="form-section-head"><div><h3>Importar backup</h3><p>Restaure um arquivo exportado anteriormente.</p></div></div><button class="btn btn-ghost" id="settingsImportBackup" type="button">Selecionar arquivo JSON</button></div></div><div class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Apagar dados locais</h3><p>Remove definitivamente os cadastros deste navegador e retorna para uma base vazia. Os dados já enviados ao Banco de dados não são apagados.</p></div></div><button class="btn btn-danger" id="resetCleanData" type="button">Apagar dados locais</button></div>`;
+    const backupCfg=backupGatewayConfig();
+    return `<div class="firebase-status"><div><strong>Backup automático diário</strong><span>O Apps Script gera um JSON do Firebase, salva no Google Drive e envia a confirmação por e-mail.</span></div><span class="status ${backupCfg.url?'green':'yellow'}">${backupCfg.url?'Agendado · 00:00':'Configurar Apps Script'}</span></div>
+      <div class="grid grid-3" style="margin-top:14px">
+        <div class="form-section"><div class="form-section-head"><div><h3>Frequência</h3><p>Execução automática.</p></div></div><strong style="display:block;font-size:22px;color:var(--primary)">Todos os dias</strong><span style="display:block;margin-top:5px;color:var(--muted);font-size:10px">00:00 · America/Sao_Paulo</span></div>
+        <div class="form-section"><div class="form-section-head"><div><h3>Destino</h3><p>Cópia principal.</p></div></div><strong style="display:block;font-size:18px">Google Drive</strong><span style="display:block;margin-top:5px;color:var(--muted);font-size:10px">${escapeHtml(backupCfg.folderName)}</span></div>
+        <div class="form-section"><div class="form-section-head"><div><h3>Retenção</h3><p>Limpeza automática.</p></div></div><strong style="display:block;font-size:18px">${backupCfg.retentionDays} dias</strong><span style="display:block;margin-top:5px;color:var(--muted);font-size:10px">Backups antigos são removidos da pasta.</span></div>
+      </div>
+      <form id="backupAutomationSettingsForm" class="form-section" style="margin-top:14px">
+        <div class="form-section-head"><div><h3>Apps Script do backup</h3><p>Configure uma única vez. Depois o backup roda mesmo com o CRM fechado.</p></div></div>
+        <div class="form-grid">
+          <label class="field full"><span>URL do Web App</span><input name="backupScriptUrl" value="${attr(backupCfg.url)}" placeholder="https://script.google.com/macros/s/.../exec"></label>
+          <label class="field"><span>Token do backup</span><input name="backupScriptToken" type="password" value="${attr(backupCfg.token)}" placeholder="Mesmo BACKUP_TOKEN do Code.gs"></label>
+          <label class="field"><span>E-mail que receberá o backup</span><input name="backupEmail" type="email" value="${attr(backupCfg.email)}" placeholder="seuemail@empresa.com"></label>
+          <label class="field"><span>Pasta no Google Drive</span><input name="backupFolderName" value="${attr(backupCfg.folderName)}"></label>
+          <label class="field"><span>Manter backups por quantos dias</span><input name="backupRetentionDays" type="number" min="1" max="365" value="${attr(backupCfg.retentionDays)}"></label>
+          <label class="field"><span>Horário</span><input value="00:00" readonly><small>O Google Apps Script agenda o disparo em torno de 00:00.</small></label>
+        </div>
+        <div style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px">
+          <button class="btn btn-ghost" id="backupStatusBtn" type="button">Ver status no Apps Script</button>
+          <button class="btn btn-secondary" id="backupRunNowBtn" type="button">Gerar backup agora</button>
+          <button class="btn btn-primary" type="submit">Salvar configuração</button>
+        </div>
+        <div class="notice warning" style="margin-top:12px"><strong>Importante:</strong> depois de colar o código no Google Apps Script, execute <b>setupDailyBackup()</b> uma vez e autorize Drive, Gmail e acesso ao Firestore. O gatilho fica configurado diariamente para meia-noite. Por limitação do Apps Script, o início pode ocorrer alguns minutos em torno de 00:00.</div>
+      </form>
+      <div class="grid grid-2" style="margin-top:14px"><div class="form-section"><div class="form-section-head"><div><h3>Backup manual local</h3><p>Baixa o estado atual deste navegador no formato JSON do CRM.</p></div></div><button class="btn btn-primary" id="settingsExportBackup" type="button">Exportar JSON agora</button></div><div class="form-section"><div class="form-section-head"><div><h3>Importar backup local</h3><p>Restaure um JSON exportado pelo próprio CRM.</p></div></div><button class="btn btn-ghost" id="settingsImportBackup" type="button">Selecionar arquivo JSON</button></div></div>
+      <div class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Apagar dados locais</h3><p>Remove definitivamente os cadastros deste navegador e retorna para uma base vazia. Os dados já enviados ao Firebase não são apagados.</p></div></div><button class="btn btn-danger" id="resetCleanData" type="button">Apagar dados locais</button></div>`;
   }
 
   function renderDriveStoragePanel(){
@@ -10478,6 +10545,9 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     document.querySelectorAll('#settingsBody [data-view-jump]').forEach(btn=>btn.addEventListener('click',()=>{closeModal('settingsModal');navigate(btn.dataset.viewJump);}));
     document.querySelectorAll('[data-configure-request-access]').forEach(button=>button.addEventListener('click',()=>openPermissionMatrix('request',button.dataset.configureRequestAccess)));
     document.querySelectorAll('[data-configure-user-access]').forEach(button=>button.addEventListener('click',()=>openPermissionMatrix('user',button.dataset.configureUserAccess)));
+    document.getElementById('backupAutomationSettingsForm')?.addEventListener('submit',saveBackupSettings);
+    document.getElementById('backupStatusBtn')?.addEventListener('click',()=>openBackupAction('status'));
+    document.getElementById('backupRunNowBtn')?.addEventListener('click',()=>openBackupAction('backup'));
     document.getElementById('settingsExportBackup')?.addEventListener('click',exportBackup);
     document.getElementById('settingsImportBackup')?.addEventListener('click',()=>document.getElementById('backupImportInput').click());
     document.getElementById('resetCleanData')?.addEventListener('click',()=>{if(confirm('Apagar definitivamente todos os dados locais deste navegador?')){safeStorageRemove(STORAGE_KEY);safeStorageRemove(ACTIVE_DRAFT_KEY);try{indexedDB.deleteDatabase(ProposalDB.name);indexedDB.deleteDatabase(WorkPhotoDB.name);}catch(_){}ProposalDB.db=null;WorkPhotoDB.db=null;workPhotoPreviewCache.clear();workPhotoAccessRepairAttempts.clear();state=normalizeState(seedState());activeProposal=null;persist();closeModal('settingsModal');renderSidebar();renderView('dashboard');updateTopbar();toast('Base local limpa','Nenhum cadastro foi recriado.','success');}});
