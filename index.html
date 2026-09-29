@@ -2128,7 +2128,7 @@ try{if(new URLSearchParams(location.search).get('abrirPdf'))document.documentEle
     companyName: 'Empresa'
   });
   const collectionMap = {
-    companies: 'companies', users: 'users', teams: 'team_members', accessRequests: 'access_requests', clients: 'clients', leads: 'leads', proposals: 'proposals', maintenanceProposals: 'maintenance_proposals', contracts: 'contracts',
+    companies: 'companies', users: 'users', teams: 'team_members', accessRequests: 'access_requests', clients: 'clients', leads: 'leads', proposals: 'proposals', maintenanceProposals: 'maintenance_proposals', serviceOrders: 'service_orders', contracts: 'contracts',
     projects: 'projects', works: 'projects', installations: 'installations', aftersales: 'installations', homologations: 'homologations',
     tickets: 'tickets', financial: 'financial', commissions: 'commissions', products: 'products', inventory: 'products',
     suppliers: 'suppliers', equipmentCatalog: 'equipment_catalog', notifications: 'notifications', projectDocuments: 'project_documents', automationRules: 'automation_rules', automationQueue: 'automation_queue', automationLogs: 'automation_logs', stockMovements: 'stock_movements', tasks: 'tasks', clientProjectStatus: 'client_project_status', client_project_status: 'client_project_status', publicProposals: 'public_proposals', public_proposals: 'public_proposals'
@@ -3366,6 +3366,13 @@ service cloud.firestore {
       allow delete: if canReadRecord() && hasPermission('maintenanceProposals','delete');
     }
 
+    match /service_orders/{id} {
+      allow read: if canReadRecord() && hasPermission('maintenanceProposals','view');
+      allow create: if canCreateRecord() && hasPermission('maintenanceProposals','create');
+      allow update: if canUpdateRecord() && (hasPermission('maintenanceProposals','edit') || hasPermission('maintenanceProposals','approve'));
+      allow delete: if canReadRecord() && hasPermission('maintenanceProposals','delete');
+    }
+
     match /contracts/{id} {
       allow read: if canReadRecord() && hasPermission('contracts','view');
       allow create: if canCreateRecord() && hasPermission('contracts','create');
@@ -3729,8 +3736,8 @@ service cloud.firestore {
   function findInverterCatalogItem(id){return allInverterCatalog.find(item=>item.id===id)||inverterCatalog[0]||defaultInverterCatalog[0];}
 
   const rolePermissions = {
-    admin: ['dashboard','leads','kanban','clients','proposals','maintenanceProposals','contracts','works','homologations','financial','aftersales','tickets','commissions','inventory','teams','offgrid','reports','projectDocuments','settings'],
-    manager: ['dashboard','leads','kanban','clients','proposals','maintenanceProposals','contracts','works','homologations','financial','aftersales','tickets','commissions','inventory','teams','offgrid','reports','projectDocuments'],
+    admin: ['dashboard','leads','kanban','clients','proposals','maintenanceProposals','serviceOrders','contracts','works','homologations','financial','aftersales','tickets','commissions','inventory','teams','offgrid','reports','projectDocuments','settings'],
+    manager: ['dashboard','leads','kanban','clients','proposals','maintenanceProposals','serviceOrders','contracts','works','homologations','financial','aftersales','tickets','commissions','inventory','teams','offgrid','reports','projectDocuments'],
     seller: ['dashboard','leads','kanban','clients','proposals','maintenanceProposals','contracts','commissions','offgrid'],
     technical: ['dashboard','clients','maintenanceProposals','works','homologations','aftersales','tickets','inventory','teams','offgrid','projectDocuments'],
     finance: ['dashboard','clients','contracts','financial','commissions','reports']
@@ -4039,7 +4046,7 @@ service cloud.firestore {
       theme: 'dark', role: 'seller', currentView: 'dashboard', currentCompanyId: 'company-demo',
       currentUser: { id: '', name: '', email: '', initials: 'US', role: 'seller', companyIds: [], permissions: defaultPermissionMatrix('seller') },
       company: { ...defaultCompany }, companies: [{ ...defaultCompany }],
-      users: [], accessRequests: [], notifications: [], leads: [], clients: [], proposals: [], contracts: [], works: [],
+      users: [], accessRequests: [], notifications: [], leads: [], clients: [], proposals: [], maintenanceProposals: [], serviceOrders: [], contracts: [], works: [],
       homologations: [], financial: [], aftersales: [], tickets: [], commissions: [], inventory: [], equipmentCatalog: [], teams: [], products: [], suppliers: [], offgridDesigns: [],
       automations: { whatsappLead:true, emailProposal:true, followup:true, reminders:true, collections:false, nps:true, lastRunAt:'' },
       automationRules: [], automationQueue: [], automationLogs: [], stockMovements: [], projectDocuments: [], tasks: [], activity: []
@@ -4689,6 +4696,7 @@ service cloud.firestore {
     {stateKey:'leads', remote:'leads', module:'leads'},
     {stateKey:'proposals', remote:'proposals', module:'proposals'},
     {stateKey:'maintenanceProposals', remote:'maintenanceProposals', module:'maintenanceProposals'},
+    {stateKey:'serviceOrders', remote:'serviceOrders', module:'maintenanceProposals'},
     {stateKey:'public_proposals', remote:'public_proposals', module:'proposals'},
     {stateKey:'contracts', remote:'contracts', module:'contracts'},
     {stateKey:'works', remote:'works', module:'works'},
@@ -7668,6 +7676,106 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     return contract;
   }
 
+  function maintenanceServiceOrderFromProposal(p,installer={}){
+    const existing=(state.serviceOrders||[]).find(os=>os.sourceMaintenanceProposalId===p.id);
+    if(existing)return existing;
+    const contract=(state.contracts||[]).find(c=>c.sourceMaintenanceProposalId===p.id||c.id===p.contractId);
+    const now=new Date().toISOString();
+    return {
+      id:newId('os'),companyId:state.currentCompanyId,number:`OS-MAN-${String(Date.now()).slice(-6)}`,
+      sourceMaintenanceProposalId:p.id,proposalNumber:p.number||'',contractId:contract?.id||p.contractId||'',contractNumber:contract?.number||p.contractNumber||'',
+      clientName:p.clientName||'',document:p.document||'',phone:p.phone||'',email:p.email||'',address:p.address||'',city:p.city||'',consumerUnit:p.consumerUnit||'',
+      moduleQty:Number(p.moduleQty||0),systemPower:Number(p.systemPower||0),serviceType:p.serviceType||'both',serviceLabel:maintenanceServiceLabel(p.serviceType),
+      scope:maintenanceScope(p),installerId:installer.id||'',installerName:installer.name||'',installerPhone:installer.phone||'',team:installer.team||'',
+      scheduledDate:'',status:'Aguardando execução',notes:'',checklist:maintenanceScope(p).map((label,index)=>({id:`check-${index+1}`,label,done:false})),
+      createdAt:now,updatedAt:now,createdBy:state.currentUser?.name||state.currentUser?.email||'Sistema'
+    };
+  }
+
+  function serviceOrderFirestoreRecord(os={}){
+    // A OS é estritamente operacional. Nenhuma informação comercial é enviada
+    // para a coleção service_orders (preços, totais, deslocamento ou pagamento).
+    const allowed={
+      id:os.id||'',companyId:os.companyId||state.currentCompanyId,number:os.number||'',
+      sourceMaintenanceProposalId:os.sourceMaintenanceProposalId||'',proposalNumber:os.proposalNumber||'',
+      contractId:os.contractId||'',contractNumber:os.contractNumber||'',
+      clientName:os.clientName||'',document:os.document||'',phone:os.phone||'',email:os.email||'',
+      address:os.address||'',city:os.city||'',consumerUnit:os.consumerUnit||'',
+      moduleQty:Number(os.moduleQty||0),systemPower:Number(os.systemPower||0),
+      serviceType:os.serviceType||'',serviceLabel:os.serviceLabel||'',
+      scope:Array.isArray(os.scope)?os.scope.map(String):[],
+      installerId:os.installerId||'',installerName:os.installerName||'',installerPhone:os.installerPhone||'',team:os.team||'',
+      scheduledDate:os.scheduledDate||'',status:os.status||'Aguardando execução',
+      notes:os.notes||'',
+      checklist:Array.isArray(os.checklist)?os.checklist.map(item=>({id:item.id||'',label:item.label||'',done:Boolean(item.done)})):[],
+      createdAt:os.createdAt||new Date().toISOString(),updatedAt:os.updatedAt||new Date().toISOString(),createdBy:os.createdBy||''
+    };
+    return firestoreSafeRecord(allowed);
+  }
+
+  async function saveMaintenanceServiceOrderCloud(os,{quiet=false}={}){
+    if(!window.FirebaseCRM?.syncReady){if(!quiet)toast('OS salva localmente','O Firestore ainda não está conectado.','info');return false;}
+    try{await window.FirebaseCRM.saveRecord('serviceOrders',serviceOrderFirestoreRecord(os));return true;}
+    catch(error){console.error(error);if(!quiet)toast('Falha ao salvar OS no Firestore',error.message||'A OS foi mantida localmente.','error');return false;}
+  }
+
+  function selectInstallerForMaintenanceOS(){
+    const teams=companyRows('teams').filter(item=>String(item.status||'Ativo')!=='Inativo');
+    if(!teams.length){
+      const name=prompt('Nome do instalador/equipe responsável pela OS:','')||'';
+      return {id:'',name:name.trim(),phone:'',team:''};
+    }
+    const list=teams.slice(0,20).map((item,index)=>`${index+1}. ${item.name}${item.team?` · ${item.team}`:''}`).join('\n');
+    const answer=prompt(`Selecione o instalador/equipe digitando o número ou o nome:\n\n${list}`,'1');
+    if(answer===null)return null;
+    const idx=Number(answer)-1;
+    if(Number.isInteger(idx)&&idx>=0&&idx<teams.length)return teams[idx];
+    const normalized=String(answer).trim().toLowerCase();
+    return teams.find(item=>String(item.name||'').toLowerCase().includes(normalized))||{id:'',name:String(answer).trim(),phone:'',team:''};
+  }
+
+  function maintenanceServiceOrderDocument(os){
+    const company=state.company||{};
+    const checklist=(Array.isArray(os.checklist)?os.checklist:[]).map((item,index)=>`<tr><td>${index+1}</td><td>${escapeHtml(item.label||'')}</td><td class="check">☐</td></tr>`).join('');
+    return `<div class="service-order"><div class="os-head"><div><div class="os-kicker">${escapeHtml(company.tradeName||company.name||'Energia Solar')}</div><h1>Ordem de Serviço</h1><p>Manutenção preventiva e limpeza de sistema fotovoltaico · Documento operacional sem valores comerciais</p></div><div class="os-number"><span>OS</span><strong>${escapeHtml(os.number||'—')}</strong><small>${dateBR(os.createdAt||todayISO())}</small></div></div>
+      <div class="os-grid"><div><span>Cliente</span><strong>${escapeHtml(os.clientName||'—')}</strong></div><div><span>CPF/CNPJ</span><strong>${escapeHtml(os.document||'—')}</strong></div><div><span>Telefone</span><strong>${escapeHtml(os.phone||'—')}</strong></div><div><span>UC</span><strong>${escapeHtml(os.consumerUnit||'—')}</strong></div><div class="wide"><span>Endereço</span><strong>${escapeHtml([os.address,os.city].filter(Boolean).join(' · ')||'—')}</strong></div><div><span>Sistema</span><strong>${number(os.moduleQty||0)} módulos · ${number(os.systemPower||0,2)} kWp</strong></div></div>
+      <div class="os-section"><h2>Programação</h2><div class="os-grid"><div><span>Instalador / equipe</span><strong>${escapeHtml(os.installerName||os.team||'A definir')}</strong></div><div><span>Contato</span><strong>${escapeHtml(os.installerPhone||'—')}</strong></div><div><span>Data agendada</span><strong>${escapeHtml(os.scheduledDate?dateBR(os.scheduledDate):'A definir')}</strong></div><div><span>Status</span><strong>${escapeHtml(os.status||'Aguardando execução')}</strong></div><div><span>Proposta</span><strong>${escapeHtml(os.proposalNumber||'—')}</strong></div><div><span>Contrato</span><strong>${escapeHtml(os.contractNumber||'—')}</strong></div></div></div>
+      <div class="os-section"><h2>Checklist do serviço contratado</h2><table><thead><tr><th>#</th><th>Item a executar</th><th>OK</th></tr></thead><tbody>${checklist}</tbody></table></div>
+      ${os.notes?`<div class="os-section"><h2>Observações</h2><div class="os-notes">${escapeHtml(os.notes).replace(/\n/g,'<br>')}</div></div>`:''}
+      <div class="os-sign"><div><span>________________________________________</span><strong>Responsável técnico / instalador</strong></div><div><span>________________________________________</span><strong>Cliente / responsável local</strong></div></div>
+      <div class="os-foot">${escapeHtml(company.website||company.email||'')} · Documento operacional · valores e condições comerciais restritos à Soolarwin · OS vinculada à proposta ${escapeHtml(os.proposalNumber||'—')}</div></div>`;
+  }
+
+  function printMaintenanceServiceOrder(os){
+    const popup=window.open('','_blank','width=920,height=900');if(!popup){toast('Popup bloqueado','Libere popups para abrir a ordem de serviço.','error');return;}
+    popup.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${escapeHtml(os.number||'Ordem de Serviço')}</title><style>body{margin:0;background:#eef2f6;font-family:Arial,sans-serif;padding:24px;color:#10273d}.service-order{width:794px;min-height:1123px;margin:auto;background:#fff;padding:44px;box-sizing:border-box;box-shadow:0 20px 50px rgba(0,0,0,.16)}.os-head{display:flex;justify-content:space-between;gap:24px;padding-bottom:22px;border-bottom:3px solid #ffb703}.os-kicker{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.12em;color:#9b7100}.os-head h1{margin:6px 0 4px;font-size:34px}.os-head p{margin:0;color:#66798c}.os-number{text-align:right}.os-number span{display:block;font-size:10px;color:#7a8998}.os-number strong{display:block;font-size:18px;margin-top:4px}.os-number small{display:block;margin-top:4px;color:#7a8998}.os-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:20px}.os-grid>div{background:#f4f7fa;border-radius:12px;padding:12px}.os-grid .wide{grid-column:1/-1}.os-grid span{display:block;font-size:8px;text-transform:uppercase;color:#7c8998;letter-spacing:.06em}.os-grid strong{display:block;margin-top:5px;font-size:11px}.os-section{margin-top:24px}.os-section h2{font-size:14px;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px}table{width:100%;border-collapse:collapse;font-size:10px}th{background:#102b46;color:#fff;text-align:left}th,td{padding:9px 10px;border:1px solid #dce4ec}.check{width:44px;text-align:center;font-size:18px}.os-notes{padding:12px;border:1px solid #dce4ec;border-radius:10px;font-size:10px;line-height:1.5}.os-sign{display:grid;grid-template-columns:1fr 1fr;gap:36px;margin-top:60px;text-align:center}.os-sign span{display:block;color:#7d8996}.os-sign strong{display:block;margin-top:7px;font-size:10px}.os-foot{margin-top:38px;border-top:1px solid #dce4ec;padding-top:10px;text-align:center;color:#8290a0;font-size:8px}@media print{body{background:#fff;padding:0}.service-order{width:210mm;min-height:297mm;box-shadow:none;margin:0;padding:14mm}@page{size:A4;margin:0}}</style></head><body>${maintenanceServiceOrderDocument(os)}<script>setTimeout(()=>window.print(),300)<\/script></body></html>`);popup.document.close();
+  }
+
+  function sendMaintenanceServiceOrderToInstaller(os){
+    const phone=String(os.installerPhone||'').replace(/\D/g,'');
+    if(!phone){toast('Instalador sem telefone','Cadastre o telefone do instalador/equipe para encaminhar a OS pelo WhatsApp.','info');return;}
+    const countryPhone=phone.startsWith('55')?phone:`55${phone}`;
+    const msg=`Olá ${os.installerName||'equipe'}, segue a ${os.number} para execução do serviço de ${os.serviceLabel}. Cliente: ${os.clientName}. ${os.moduleQty||0} módulos / ${number(os.systemPower||0,2)} kWp. Endereço: ${[os.address,os.city].filter(Boolean).join(' - ')||'a confirmar'}. Referência: ${os.proposalNumber||''}. A OS contém somente informações operacionais.`;
+    window.open(`https://wa.me/${countryPhone}?text=${encodeURIComponent(msg)}`,'_blank');
+  }
+
+  async function generateMaintenanceServiceOrderFromProposal(p,{open=true}={}){
+    if(!p||p.status!=='Fechada'){toast('Feche a proposta primeiro','A OS é liberada após o fechamento da proposta.','info');return null;}
+    let os=(state.serviceOrders||[]).find(item=>item.sourceMaintenanceProposalId===p.id);
+    if(!os){
+      const installer=selectInstallerForMaintenanceOS();if(installer===null)return null;
+      os=maintenanceServiceOrderFromProposal(p,installer||{});
+      const scheduled=prompt('Data agendada para execução (AAAA-MM-DD). Deixe em branco para definir depois:','')||'';
+      if(/^\d{4}-\d{2}-\d{2}$/.test(scheduled))os.scheduledDate=scheduled;
+      state.serviceOrders=Array.isArray(state.serviceOrders)?state.serviceOrders:[];state.serviceOrders.unshift(os);
+      p.serviceOrderId=os.id;p.serviceOrderNumber=os.number;p.updatedAt=new Date().toISOString();persist();
+      const saved=await saveMaintenanceServiceOrderCloud(os,{quiet:true});await saveMaintenanceProposalCloud(p,{quiet:true});
+      toast('Ordem de serviço gerada',saved?'OS salva no Firestore e vinculada à proposta.':'OS criada localmente; Firestore indisponível.','success');
+    }
+    if(open)printMaintenanceServiceOrder(os);
+    return os;
+  }
+
   async function closeMaintenanceProposal(p){
     if(!p)return;
     p.status='Fechada';p.closedAt=new Date().toISOString();p.updatedAt=p.closedAt;
@@ -7690,7 +7798,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
         <div class="maintenance-price-grid" style="margin-top:14px"><div class="maintenance-price-box"><span>Limpeza</span><strong id="maintenanceCleaningTotal">R$ 0,00</strong></div><div class="maintenance-price-box"><span>Preventiva + deslocamento</span><strong id="maintenanceOtherTotal">R$ 350,00</strong></div><div class="maintenance-price-box"><span>Total</span><strong id="maintenanceGrandTotal">R$ 350,00</strong></div></div>
         <div class="page-actions" style="margin-top:15px;justify-content:flex-end"><button class="btn btn-ghost" id="maintenancePrintDraftBtn" type="button">Visualizar / PDF</button><button class="btn btn-primary" type="submit">Salvar proposta</button></div>
       </form></div></div><div class="card maintenance-preview-card"><div class="card-head"><div><h3>Prévia da proposta</h3><p>Atualização em tempo real.</p></div></div><div class="card-body" id="maintenanceLivePreview">${maintenanceProposalPreviewDocument(draft)}</div></div></div>
-      <div class="card"><div class="card-head"><div><h3>Propostas salvas</h3><p>Histórico de manutenção preventiva e limpeza.</p></div><span class="status yellow">${rows.length} proposta(s)</span></div><div class="card-body"><div class="maintenance-history">${rows.length?rows.map(p=>{const t=maintenanceProposalTotals(p);return `<div class="maintenance-history-card"><div><h4>${escapeHtml(p.clientName||'Cliente sem nome')} · ${escapeHtml(maintenanceServiceLabel(p.serviceType))}</h4><p>${escapeHtml(p.number||'')} · ${number(p.moduleQty||0)} módulos · ${currency(t.total)} · ${dateBR(p.updatedAt||p.createdAt)} · <strong>${escapeHtml(p.status||'Emitida')}</strong></p></div><div class="maintenance-history-actions"><button class="btn btn-ghost btn-sm" data-maint-preview="${attr(p.id)}" type="button">Abrir</button>${p.status==='Fechada'?`<button class="btn btn-primary btn-sm" data-maint-contract="${attr(p.id)}" type="button">Gerar contrato</button>`:`<button class="btn btn-secondary btn-sm" data-maint-close="${attr(p.id)}" type="button">Fechar proposta</button>`}<button class="btn btn-danger btn-sm" data-maint-delete="${attr(p.id)}" type="button">Excluir</button></div></div>`}).join(''):'<div class="maintenance-empty"><strong>Nenhuma proposta salva</strong><br>Preencha o formulário acima para criar a primeira.</div>'}</div></div></div>
+      <div class="card"><div class="card-head"><div><h3>Propostas salvas</h3><p>Histórico de manutenção preventiva e limpeza.</p></div><span class="status yellow">${rows.length} proposta(s)</span></div><div class="card-body"><div class="maintenance-history">${rows.length?rows.map(p=>{const t=maintenanceProposalTotals(p);return `<div class="maintenance-history-card"><div><h4>${escapeHtml(p.clientName||'Cliente sem nome')} · ${escapeHtml(maintenanceServiceLabel(p.serviceType))}</h4><p>${escapeHtml(p.number||'')} · ${number(p.moduleQty||0)} módulos · ${currency(t.total)} · ${dateBR(p.updatedAt||p.createdAt)} · <strong>${escapeHtml(p.status||'Emitida')}</strong></p></div><div class="maintenance-history-actions"><button class="btn btn-ghost btn-sm" data-maint-preview="${attr(p.id)}" type="button">Abrir</button>${p.status==='Fechada'?`<button class="btn btn-primary btn-sm" data-maint-contract="${attr(p.id)}" type="button">Gerar contrato</button><button class="btn btn-secondary btn-sm" data-maint-os="${attr(p.id)}" type="button">${p.serviceOrderId?'Abrir OS':'Gerar OS'}</button>${p.serviceOrderId?`<button class="btn btn-ghost btn-sm" data-maint-os-send="${attr(p.id)}" type="button">Enviar OS</button>`:''}`:`<button class="btn btn-secondary btn-sm" data-maint-close="${attr(p.id)}" type="button">Fechar proposta</button>`}<button class="btn btn-danger btn-sm" data-maint-delete="${attr(p.id)}" type="button">Excluir</button></div></div>`}).join(''):'<div class="maintenance-empty"><strong>Nenhuma proposta salva</strong><br>Preencha o formulário acima para criar a primeira.</div>'}</div></div></div>
     </div>`;
   }
 
@@ -7730,6 +7838,8 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     document.querySelectorAll('[data-maint-preview]').forEach(btn=>btn.addEventListener('click',()=>{const p=companyRows('maintenanceProposals').find(x=>x.id===btn.dataset.maintPreview);if(p)printMaintenanceProposal(p);}));
     document.querySelectorAll('[data-maint-close]').forEach(btn=>btn.addEventListener('click',async()=>{if(!hasPermission('maintenanceProposals','approve'))return denyPermission('maintenanceProposals','approve');const p=companyRows('maintenanceProposals').find(x=>x.id===btn.dataset.maintClose);if(!p)return;if(!confirm('Confirmar o fechamento desta proposta e gerar o contrato de prestação de serviços?'))return;await closeMaintenanceProposal(p);}));
     document.querySelectorAll('[data-maint-contract]').forEach(btn=>btn.addEventListener('click',async()=>{const p=companyRows('maintenanceProposals').find(x=>x.id===btn.dataset.maintContract);if(p)await generateMaintenanceContractFromProposal(p,{open:true});}));
+    document.querySelectorAll('[data-maint-os]').forEach(btn=>btn.addEventListener('click',async()=>{const p=companyRows('maintenanceProposals').find(x=>x.id===btn.dataset.maintOs);if(p)await generateMaintenanceServiceOrderFromProposal(p,{open:true});}));
+    document.querySelectorAll('[data-maint-os-send]').forEach(btn=>btn.addEventListener('click',()=>{const p=companyRows('maintenanceProposals').find(x=>x.id===btn.dataset.maintOsSend);const os=(state.serviceOrders||[]).find(item=>item.id===p?.serviceOrderId||item.sourceMaintenanceProposalId===p?.id);if(os)sendMaintenanceServiceOrderToInstaller(os);else toast('OS não encontrada','Gere a ordem de serviço antes de encaminhar.','error');}));
     document.querySelectorAll('[data-maint-delete]').forEach(btn=>btn.addEventListener('click',async()=>{if(!hasPermission('maintenanceProposals','delete'))return denyPermission('maintenanceProposals','delete');const id=btn.dataset.maintDelete;if(!confirm('Excluir esta proposta de manutenção?'))return;state.maintenanceProposals=(state.maintenanceProposals||[]).filter(x=>x.id!==id);persist();await deleteMaintenanceProposalCloud(id);renderView('maintenanceProposals');toast('Proposta excluída','O registro foi removido.','info');}));
     updateMaintenanceLivePreview();
   }
