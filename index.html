@@ -5768,19 +5768,22 @@ service cloud.firestore {
     document.body.dataset.theme = state.theme || 'dark';
     initAuthenticationScreen();
     chartDefaults();
-    await restoreProposalCache();
-    persist();
-    if (window.pdfjsLib) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
-    }
-    refreshOverdueFinancial();
-    ensureAllProjectStructures();
-    processLocalAutomations(false);
-    bindGlobalEvents();
-    renderSidebar();
-    if (!canAccess(activeView)) activeView = 'dashboard';
-    renderView(activeView);
-    updateTopbar();
+    // O cache local não pode bloquear a inicialização do login/Firebase.
+    promiseWithTimeout(restoreProposalCache(),2500,'Cache local demorou para responder.')
+      .then(()=>{ try{persist();}catch(_){} })
+      .catch(error=>console.warn('Cache local ignorado na inicialização:',error?.message||error));
+    try{ persist(); }catch(error){ console.warn('Persistência local indisponível:',error); }
+    try{
+      if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+    }catch(error){ console.warn('PDF.js não inicializado:',error); }
+    try{ refreshOverdueFinancial(); }catch(error){ console.warn('Financeiro não atualizado:',error); }
+    try{ ensureAllProjectStructures(); }catch(error){ console.warn('Estrutura de projetos não preparada:',error); }
+    try{ processLocalAutomations(false); }catch(error){ console.warn('Automações locais não processadas:',error); }
+    try{ bindGlobalEvents(); }catch(error){ console.error('Falha ao vincular eventos globais:',error); }
+    try{ renderSidebar(); }catch(error){ console.warn('Sidebar não renderizada:',error); }
+    try{ if (!canAccess(activeView)) activeView = 'dashboard'; }catch(_){ activeView='dashboard'; }
+    try{ renderView(activeView); }catch(error){ console.warn('Tela inicial não renderizada:',error); }
+    try{ updateTopbar(); }catch(error){ console.warn('Topbar não atualizada:',error); }
     window.addEventListener('resize', fitProposalPages);
   }
 
@@ -12608,12 +12611,12 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
     if(!config.apiKey||!config.projectId){setLoginStatus('Banco de dados não configurado','Informe a configuração do projeto para liberar o acesso.','error');setSystemLoginEnabled(false);return;}
     try{
       setLoginStatus('Conectando ao banco de dados','Validando o projeto e os métodos de acesso.','info');
-      await promiseWithTimeout(window.FirebaseCRM.connect(config),15000,'O Firebase demorou além do limite para iniciar.');setSystemLoginEnabled(true);attachFirebaseAuthWatcher();
+      await promiseWithTimeout(window.FirebaseCRM.connect(config),9000,'O Firebase demorou além do limite para iniciar.');setSystemLoginEnabled(true);attachFirebaseAuthWatcher();
       if(window.FirebaseCRM.auth?.currentUser)await finishAuthenticatedSession(window.FirebaseCRM.auth.currentUser,{automatic:true});
       else if(window.FirebaseCRM.lastAuthError)setLoginStatus('Login Google não concluído',window.FirebaseCRM.lastAuthError.message,'error');
       else lockSystemForAuthentication('Acesso necessário','Entre com seu usuário e senha ou use sua conta Google.');
     }catch(error){
-      console.warn('Banco de dados não conectado automaticamente:',error.code||'',error.message);setSystemLoginEnabled(false);setLoginStatus('Banco de dados indisponível',location.protocol==='file:'?'Ao abrir por arquivo local, alguns recursos do Firebase podem ser bloqueados. Use localhost ou GitHub Pages para testar a conexão.':(error.message||'Verifique a configuração do projeto.'),'error');
+      console.warn('Banco de dados não conectado automaticamente:',error.code||'',error.message);setSystemLoginEnabled(true);setLoginStatus('Banco de dados indisponível',location.protocol==='file:'?'Ao abrir por arquivo local, alguns recursos do Firebase podem ser bloqueados. Use localhost ou GitHub Pages para testar a conexão.':(error.message||'Verifique a configuração do projeto.'),'error');
       firebaseLastDiagnostic={code:error.code,message:error.message,connected:false,authenticated:false,profileFound:false,companyAuthorized:false};
     }
   }
@@ -12827,7 +12830,32 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
 
   document.getElementById('downloadEvProposalPdfBtn')?.addEventListener('click',generateEvProposalPDF);
 
-  document.addEventListener('DOMContentLoaded',async()=>{const pdfId=representativePdfRequestId();if(pdfId){ensureRepresentativePdfOverlay();await openRequestedRepresentativePdf();return;}await init();autoConnectFirebase();});
+  document.addEventListener('DOMContentLoaded',async()=>{
+    const pdfId=representativePdfRequestId();
+    if(pdfId){ensureRepresentativePdfOverlay();await openRequestedRepresentativePdf();return;}
+    // Inicializa a interface e a conexão de forma independente para evitar tela presa.
+    const watchdog=setTimeout(()=>{
+      if(!window.FirebaseCRM?.connected){
+        setSystemLoginEnabled(true);
+        setLoginStatus('Conexão demorando','O CRM foi carregado, mas o Firebase ainda não respondeu. Para teste local, abra via http://localhost ou publique no GitHub Pages.','error');
+      }
+    },10000);
+    try{
+      await promiseWithTimeout(init(),4000,'A interface demorou para inicializar.');
+    }catch(error){
+      console.error('Inicialização parcial do CRM:',error);
+      try{initAuthenticationScreen();}catch(_){}
+    }
+    try{
+      await autoConnectFirebase();
+    }catch(error){
+      console.error('Falha inesperada ao conectar Firebase:',error);
+      setSystemLoginEnabled(true);
+      setLoginStatus('Falha ao conectar','O CRM carregou, porém a conexão com o banco falhou. Use localhost ou GitHub Pages e tente novamente.','error');
+    }finally{
+      clearTimeout(watchdog);
+    }
+  });
 })();
 
 </script>
