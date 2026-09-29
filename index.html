@@ -2128,7 +2128,7 @@ try{if(new URLSearchParams(location.search).get('abrirPdf'))document.documentEle
     companyName: 'Empresa'
   });
   const collectionMap = {
-    companies: 'companies', users: 'users', teams: 'team_members', accessRequests: 'access_requests', clients: 'clients', leads: 'leads', proposals: 'proposals', contracts: 'contracts',
+    companies: 'companies', users: 'users', teams: 'team_members', accessRequests: 'access_requests', clients: 'clients', leads: 'leads', proposals: 'proposals', maintenanceProposals: 'maintenance_proposals', contracts: 'contracts',
     projects: 'projects', works: 'projects', installations: 'installations', aftersales: 'installations', homologations: 'homologations',
     tickets: 'tickets', financial: 'financial', commissions: 'commissions', products: 'products', inventory: 'products',
     suppliers: 'suppliers', equipmentCatalog: 'equipment_catalog', notifications: 'notifications', projectDocuments: 'project_documents', automationRules: 'automation_rules', automationQueue: 'automation_queue', automationLogs: 'automation_logs', stockMovements: 'stock_movements', tasks: 'tasks', clientProjectStatus: 'client_project_status', client_project_status: 'client_project_status', publicProposals: 'public_proposals', public_proposals: 'public_proposals'
@@ -3359,6 +3359,13 @@ service cloud.firestore {
       allow delete: if canReadRecord() && hasPermission('proposals','delete');
     }
 
+    match /maintenance_proposals/{id} {
+      allow read: if canReadRecord() && hasPermission('maintenanceProposals','view');
+      allow create: if canCreateRecord() && hasPermission('maintenanceProposals','create');
+      allow update: if canUpdateRecord() && (hasPermission('maintenanceProposals','edit') || hasPermission('maintenanceProposals','approve'));
+      allow delete: if canReadRecord() && hasPermission('maintenanceProposals','delete');
+    }
+
     match /contracts/{id} {
       allow read: if canReadRecord() && hasPermission('contracts','view');
       allow create: if canCreateRecord() && hasPermission('contracts','create');
@@ -3761,7 +3768,7 @@ service cloud.firestore {
   ];
 
   const permissionCollectionModules = {
-    leads:'leads', clients:'clients', proposals:'proposals', contracts:'contracts', works:'works', projects:'works',
+    leads:'leads', clients:'clients', proposals:'proposals', maintenanceProposals:'maintenanceProposals', maintenance_proposals:'maintenanceProposals', contracts:'contracts', works:'works', projects:'works',
     homologations:'homologations', financial:'financial', aftersales:'aftersales', installations:'aftersales', tickets:'tickets',
     commissions:'commissions', inventory:'inventory', products:'inventory', suppliers:'inventory', equipmentCatalog:'inventory', equipment_catalog:'inventory', teams:'teams', team_members:'teams',
     projectDocuments:'projectDocuments', project_documents:'projectDocuments', tasks:'works',
@@ -3788,9 +3795,9 @@ service cloud.firestore {
       return matrix;
     }
     const writable={
-      manager:['leads','clients','proposals','contracts','works','projectDocuments','homologations','financial','aftersales','tickets','commissions','inventory','teams','offgrid'],
-      seller:['leads','clients','proposals','offgrid'],
-      technical:['clients','works','projectDocuments','homologations','aftersales','tickets','inventory','teams','offgrid'],
+      manager:['leads','clients','proposals','maintenanceProposals','contracts','works','projectDocuments','homologations','financial','aftersales','tickets','commissions','inventory','teams','offgrid'],
+      seller:['leads','clients','proposals','maintenanceProposals','offgrid'],
+      technical:['clients','maintenanceProposals','works','projectDocuments','homologations','aftersales','tickets','inventory','teams','offgrid'],
       finance:['contracts','financial','commissions']
     }[role]||[];
     writable.forEach(moduleId=>{
@@ -4681,6 +4688,7 @@ service cloud.firestore {
     {stateKey:'clients', remote:'clients', module:'clients'},
     {stateKey:'leads', remote:'leads', module:'leads'},
     {stateKey:'proposals', remote:'proposals', module:'proposals'},
+    {stateKey:'maintenanceProposals', remote:'maintenanceProposals', module:'maintenanceProposals'},
     {stateKey:'public_proposals', remote:'public_proposals', module:'proposals'},
     {stateKey:'contracts', remote:'contracts', module:'contracts'},
     {stateKey:'works', remote:'works', module:'works'},
@@ -7562,19 +7570,127 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     return maintenanceProposalPreviewDocument(p);
   }
 
+  function maintenanceContractNumber(p={}){
+    return p.contractNumber||`CTR-MAN-${String(p.number||Date.now()).replace(/[^0-9A-Za-z-]/g,'').slice(-14)}`;
+  }
+
+  function maintenanceContractFromProposal(p={}){
+    const totals=maintenanceProposalTotals(p), scope=maintenanceScope(p), company=state.company||{};
+    return {
+      id:p.contractId||newId('contract-maint'),
+      companyId:state.currentCompanyId,
+      number:maintenanceContractNumber(p),
+      type:'Prestação de Serviços - Manutenção Preventiva e Limpeza',
+      clientName:p.clientName||'',
+      clientDocument:p.document||'',
+      clientPhone:p.phone||'',
+      clientEmail:p.email||'',
+      clientAddress:p.address||'',
+      city:p.city||'',
+      consumerUnit:p.consumerUnit||'',
+      proposalId:p.id||'',
+      proposalNumber:p.number||'',
+      sourceMaintenanceProposalId:p.id||'',
+      serviceType:p.serviceType||'both',
+      serviceLabel:maintenanceServiceLabel(p.serviceType),
+      scopeItems:scope,
+      moduleQty:Number(p.moduleQty||0),
+      systemPower:Number(p.systemPower||0),
+      cleaningValue:totals.cleaning,
+      preventiveValue:totals.preventive,
+      travelValue:totals.travel,
+      value:totals.total,
+      paymentMethod:p.paymentTerms||'',
+      recurrence:p.recurrence||'Serviço avulso',
+      notes:p.notes||'',
+      status:'Gerado',
+      createdAt:new Date().toISOString(),
+      updatedAt:new Date().toISOString(),
+      companySnapshot:{name:company.name||'',tradeName:company.tradeName||'',document:company.document||'',city:company.city||'',phone:company.phone||'',email:company.email||'',website:company.website||''}
+    };
+  }
+
+  async function saveMaintenanceProposalCloud(p,{quiet=false}={}){
+    if(!window.FirebaseCRM?.syncReady){if(!quiet)toast('Salvo localmente','O Firestore não está conectado neste momento.','info');return false;}
+    try{
+      await window.FirebaseCRM.saveRecord('maintenanceProposals',firestoreSafeRecord(p));
+      return true;
+    }catch(error){console.error('Falha ao salvar proposta de manutenção no Firestore:',error);if(!quiet)toast('Falha no Firestore',error.message||'A proposta ficou salva apenas neste navegador.','error');return false;}
+  }
+
+  async function deleteMaintenanceProposalCloud(id){
+    if(!window.FirebaseCRM?.syncReady)return false;
+    try{await window.FirebaseCRM.deleteRecord('maintenanceProposals',id);return true;}catch(error){console.error(error);toast('Falha ao excluir do Firestore',error.message||'O registro foi removido apenas localmente.','error');return false;}
+  }
+
+  function maintenanceContractDocument(contract){
+    const company=state.company||{}, logo=maintenanceCompanyLogo(company), scope=Array.isArray(contract.scopeItems)?contract.scopeItems:[];
+    const companyName=escapeHtml(company.tradeName||company.name||'CONTRATADA');
+    const companyDoc=escapeHtml(company.document||'CNPJ não informado');
+    const clientName=escapeHtml(contract.clientName||'CONTRATANTE');
+    const clientDoc=escapeHtml(contract.clientDocument||'Documento não informado');
+    const address=escapeHtml([contract.clientAddress,contract.city].filter(Boolean).join(' - ')||'Endereço não informado');
+    return `<div class="service-contract"><div class="service-contract-head"><img src="${attr(logo)}" alt="Logo"><div><span>CONTRATO DE PRESTAÇÃO DE SERVIÇOS</span><h1>Manutenção Preventiva e Limpeza Fotovoltaica</h1><p>${escapeHtml(contract.number||'')}</p></div></div>
+      <div class="contract-parties"><p><strong>CONTRATADA:</strong> ${companyName}, inscrita no CNPJ sob nº ${companyDoc}, com sede em ${escapeHtml(company.city||'cidade não informada')}.</p><p><strong>CONTRATANTE:</strong> ${clientName}, inscrito(a) no CPF/CNPJ sob nº ${clientDoc}, com local de atendimento em ${address}${contract.consumerUnit?`, UC ${escapeHtml(contract.consumerUnit)}`:''}.</p></div>
+      <h2>1. Objeto do contrato</h2><p>O presente contrato tem por objeto a execução dos serviços de <strong>${escapeHtml(contract.serviceLabel||'manutenção preventiva e/ou limpeza')}</strong> no sistema fotovoltaico do CONTRATANTE, composto por aproximadamente <strong>${number(contract.moduleQty||0)} módulos</strong>${Number(contract.systemPower||0)>0?` e potência informada de <strong>${number(contract.systemPower,2)} kWp</strong>`:''}.</p>
+      <h2>2. Serviços contratados</h2><ol class="contract-scope">${scope.map(item=>`<li>${escapeHtml(item)}</li>`).join('')}</ol>
+      <h2>3. Valor e pagamento</h2><p>O valor total contratado é de <strong>${currency(contract.value||0)}</strong>, composto pelos itens previstos na proposta ${escapeHtml(contract.proposalNumber||'')}. Condição de pagamento: <strong>${escapeHtml(contract.paymentMethod||'A combinar')}</strong>.</p>
+      <h2>4. Periodicidade e execução</h2><p>Periodicidade contratada: <strong>${escapeHtml(contract.recurrence||'Serviço avulso')}</strong>. A data de execução será ajustada entre as partes conforme disponibilidade técnica, condições climáticas e acesso seguro ao local.</p>
+      <h2>5. Obrigações da contratada</h2><p>Executar os serviços com equipe e procedimentos compatíveis com o escopo contratado, registrar as condições observadas e informar ao CONTRATANTE situações que exijam reparos corretivos ou serviços adicionais.</p>
+      <h2>6. Obrigações do contratante</h2><p>Garantir acesso ao local, informar riscos ou restrições existentes, disponibilizar condições mínimas para execução segura do serviço e efetuar os pagamentos nas condições contratadas.</p>
+      <h2>7. Serviços não incluídos</h2><p>Substituição de módulos, inversores, cabos, conectores, proteções, estruturas, correções civis, locação de plataformas ou equipamentos especiais e reparos corretivos não descritos no escopo serão previamente informados e, quando necessários, objeto de orçamento complementar.</p>
+      <h2>8. Condições técnicas</h2><p>A inspeção preventiva representa uma verificação das condições acessíveis no momento do atendimento e não substitui ensaios especializados ou diagnóstico de falhas ocultas. A limpeza e as verificações serão realizadas desde que as condições climáticas e de segurança permitam.</p>
+      <h2>9. Vigência e encerramento</h2><p>Para serviço avulso, este contrato vigora até a conclusão dos serviços e obrigações financeiras. Para serviços recorrentes, permanece vigente conforme a periodicidade indicada, podendo as partes ajustar renovação ou encerramento por escrito.</p>
+      ${contract.notes?`<h2>10. Observações específicas</h2><p>${escapeHtml(contract.notes).replace(/\n/g,'<br>')}</p>`:''}
+      <div class="contract-signatures"><div><span></span><strong>${clientName}</strong><small>CONTRATANTE</small></div><div><span></span><strong>${companyName}</strong><small>CONTRATADA</small></div></div>
+      <div class="contract-footer">Contrato vinculado à proposta ${escapeHtml(contract.proposalNumber||'')} · Gerado em ${dateBR(contract.createdAt||todayISO())}</div></div>`;
+  }
+
+  function printMaintenanceContract(contract){
+    const popup=window.open('','_blank','width=950,height=900');if(!popup){toast('Popup bloqueado','Libere pop-ups para gerar o contrato.','error');return;}
+    popup.document.write(`<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><title>${escapeHtml(contract.number||'Contrato')}</title><style>body{margin:0;background:#eef2f6;font-family:Inter,Arial,sans-serif;padding:24px;color:#15263a}.service-contract{width:794px;min-height:1123px;margin:auto;background:#fff;padding:48px 54px;box-sizing:border-box;box-shadow:0 18px 50px rgba(0,0,0,.16);font-size:13px;line-height:1.55}.service-contract-head{display:flex;align-items:center;gap:24px;padding-bottom:22px;border-bottom:3px solid #ffb703}.service-contract-head img{max-width:185px;max-height:68px;object-fit:contain}.service-contract-head span{font-size:10px;font-weight:900;letter-spacing:.14em;color:#9a7000}.service-contract-head h1{font-size:25px;line-height:1.08;margin:5px 0;color:#10273d}.service-contract-head p{margin:4px 0 0;color:#708195}.contract-parties{margin:22px 0;padding:16px 18px;border-radius:14px;background:#f4f7fa}.service-contract h2{font-size:14px;color:#10273d;margin:20px 0 6px;text-transform:uppercase;letter-spacing:.04em}.service-contract p{margin:0 0 10px}.contract-scope{padding-left:22px;margin:8px 0 16px}.contract-scope li{margin:4px 0}.contract-signatures{display:grid;grid-template-columns:1fr 1fr;gap:70px;margin-top:55px;text-align:center}.contract-signatures span{display:block;border-top:1px solid #62758a;margin-bottom:8px}.contract-signatures strong{display:block;font-size:12px}.contract-signatures small{display:block;margin-top:3px;color:#7c8998}.contract-footer{margin-top:42px;border-top:1px solid #dce4ec;padding-top:12px;text-align:center;color:#8290a0;font-size:9px}@media print{body{background:#fff;padding:0}.service-contract{width:210mm;min-height:297mm;margin:0;box-shadow:none;padding:14mm}@page{size:A4;margin:0}}</style></head><body>${maintenanceContractDocument(contract)}<script>setTimeout(()=>window.print(),300)<\/script></body></html>`);popup.document.close();
+  }
+
+  async function generateMaintenanceContractFromProposal(p,{open=true}={}){
+    if(!p||p.status!=='Fechada'){toast('Feche a proposta primeiro','O contrato é liberado depois que o cliente fecha a proposta.','info');return null;}
+    let contract=(state.contracts||[]).find(c=>c.sourceMaintenanceProposalId===p.id);
+    if(!contract){
+      contract=maintenanceContractFromProposal(p);
+      state.contracts=Array.isArray(state.contracts)?state.contracts:[];
+      state.contracts.unshift(contract);
+      p.contractId=contract.id;p.contractNumber=contract.number;p.updatedAt=new Date().toISOString();persist();
+      if(window.FirebaseCRM?.syncReady){
+        try{await window.FirebaseCRM.saveRecord('contracts',firestoreSafeRecord(contract));await saveMaintenanceProposalCloud(p,{quiet:true});toast('Contrato gerado','Contrato salvo no Firestore e vinculado à proposta.','success');}
+        catch(error){console.error(error);toast('Contrato criado localmente',error.message||'Não foi possível salvar o contrato no Firestore.','error');}
+      }
+    }
+    if(open)printMaintenanceContract(contract);
+    return contract;
+  }
+
+  async function closeMaintenanceProposal(p){
+    if(!p)return;
+    p.status='Fechada';p.closedAt=new Date().toISOString();p.updatedAt=p.closedAt;
+    persist();
+    const cloudSaved=await saveMaintenanceProposalCloud(p,{quiet:true});
+    await generateMaintenanceContractFromProposal(p,{open:true});
+    renderView('maintenanceProposals');
+    toast('Proposta fechada',cloudSaved?'Proposta atualizada no Firestore e contrato gerado.':'Proposta fechada e contrato gerado localmente.','success');
+  }
+
   function renderMaintenanceProposals(){
     const draft=maintenanceProposalDefault();
     const rows=companyRows('maintenanceProposals').slice().sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')));
     return `<div class="maintenance-shell">${pageHead('Manutenção Preventiva e Limpeza','Gere propostas comerciais para limpeza técnica e manutenção preventiva de sistemas fotovoltaicos.')}
       <div class="maintenance-layout"><div class="card maintenance-form-card"><div class="card-head"><div><h3>Nova proposta de serviço</h3><p>Preencha os dados. O investimento é atualizado automaticamente.</p></div></div><div class="card-body"><form id="maintenanceProposalForm">
-        <div class="maintenance-form-grid"><label class="field"><span>Cliente *</span><input name="clientName" required placeholder="Nome ou razão social"></label><label class="field"><span>CPF / CNPJ</span><input name="document" placeholder="Documento"></label><label class="field"><span>Telefone / WhatsApp</span><input name="phone" placeholder="(47) 99999-9999"></label><label class="field"><span>E-mail</span><input name="email" type="email" placeholder="cliente@email.com"></label><label class="field"><span>Cidade</span><input name="city" placeholder="Cidade / UF"></label><label class="field"><span>Unidade consumidora</span><input name="consumerUnit" placeholder="Número da UC"></label><label class="field"><span>Quantidade de módulos *</span><input name="moduleQty" type="number" min="0" step="1" value="${draft.moduleQty}"></label><label class="field"><span>Potência da usina (kWp)</span><input name="systemPower" type="number" min="0" step="0.01" value="${draft.systemPower}"></label></div>
+        <div class="maintenance-form-grid"><label class="field"><span>Cliente *</span><input name="clientName" required placeholder="Nome ou razão social"></label><label class="field"><span>CPF / CNPJ</span><input name="document" placeholder="Documento"></label><label class="field"><span>Telefone / WhatsApp</span><input name="phone" placeholder="(47) 99999-9999"></label><label class="field"><span>E-mail</span><input name="email" type="email" placeholder="cliente@email.com"></label><label class="field"><span>Cidade</span><input name="city" placeholder="Cidade / UF"></label><label class="field"><span>Endereço do atendimento</span><input name="address" placeholder="Rua, número, bairro"></label><label class="field"><span>Unidade consumidora</span><input name="consumerUnit" placeholder="Número da UC"></label><label class="field"><span>Quantidade de módulos *</span><input name="moduleQty" type="number" min="0" step="1" value="${draft.moduleQty}"></label><label class="field"><span>Potência da usina (kWp)</span><input name="systemPower" type="number" min="0" step="0.01" value="${draft.systemPower}"></label></div>
         <div class="form-section" style="margin-top:14px"><div class="form-section-head"><div><h3>Tipo de atendimento</h3><p>Escolha o escopo principal.</p></div></div><div class="maintenance-service-pills"><label class="maintenance-service-pill"><input type="radio" name="serviceType" value="both" checked><strong>Completo</strong><span>Preventiva + limpeza técnica dos módulos.</span></label><label class="maintenance-service-pill"><input type="radio" name="serviceType" value="cleaning"><strong>Somente limpeza</strong><span>Higienização técnica dos módulos.</span></label><label class="maintenance-service-pill"><input type="radio" name="serviceType" value="preventive"><strong>Somente preventiva</strong><span>Inspeção elétrica e operacional.</span></label></div></div>
         <div class="form-section"><div class="form-section-head"><div><h3>Valores</h3><p>Os valores abaixo podem ser alterados em cada proposta.</p></div></div><div class="maintenance-form-grid"><label class="field"><span>Limpeza por módulo (R$)</span><input name="cleaningUnitPrice" type="number" min="0" step="0.01" value="100"></label><label class="field"><span>Taxa manutenção preventiva (R$)</span><input name="preventiveFee" type="number" min="0" step="0.01" value="350"></label><label class="field"><span>Distância para cobrança (km)</span><input name="distanceKm" type="number" min="0" step="0.1" value="0"></label><label class="field"><span>Valor por km (R$)</span><input name="kmPrice" type="number" min="0" step="0.01" value="0.90"></label><label class="field"><span>Periodicidade</span><select name="recurrence"><option>Serviço avulso</option><option>Semestral</option><option>Anual</option><option>Trimestral</option></select></label><label class="field"><span>Validade da proposta (dias)</span><input name="validDays" type="number" min="1" value="10"></label><label class="field full"><span>Condição de pagamento</span><input name="paymentTerms" value="50% na aprovação e 50% na conclusão"></label></div></div>
         <div class="form-section"><div class="form-section-head"><div><h3>Itens do escopo</h3><p>Marque o que deve aparecer na proposta.</p></div></div><div class="grid grid-2"><label class="checkbox-row"><input type="checkbox" name="includeCleaning" checked> Limpeza técnica dos módulos</label><label class="checkbox-row"><input type="checkbox" name="includeElectrical" checked> Inspeção elétrica</label><label class="checkbox-row"><input type="checkbox" name="includeTightening" checked> Reaperto preventivo</label><label class="checkbox-row"><input type="checkbox" name="includeGenerationCheck" checked> Verificação da geração</label><label class="checkbox-row"><input type="checkbox" name="includeThermography" checked> Termografia preventiva</label><label class="checkbox-row"><input type="checkbox" name="includeReport" checked> Relatório do atendimento</label></div><label class="field" style="margin-top:12px"><span>Observações comerciais / técnicas</span><textarea name="notes" placeholder="Ex.: acesso ao telhado, necessidade de plataforma, restrições de horário..."></textarea></label></div>
         <div class="maintenance-price-grid" style="margin-top:14px"><div class="maintenance-price-box"><span>Limpeza</span><strong id="maintenanceCleaningTotal">R$ 0,00</strong></div><div class="maintenance-price-box"><span>Preventiva + deslocamento</span><strong id="maintenanceOtherTotal">R$ 350,00</strong></div><div class="maintenance-price-box"><span>Total</span><strong id="maintenanceGrandTotal">R$ 350,00</strong></div></div>
         <div class="page-actions" style="margin-top:15px;justify-content:flex-end"><button class="btn btn-ghost" id="maintenancePrintDraftBtn" type="button">Visualizar / PDF</button><button class="btn btn-primary" type="submit">Salvar proposta</button></div>
       </form></div></div><div class="card maintenance-preview-card"><div class="card-head"><div><h3>Prévia da proposta</h3><p>Atualização em tempo real.</p></div></div><div class="card-body" id="maintenanceLivePreview">${maintenanceProposalPreviewDocument(draft)}</div></div></div>
-      <div class="card"><div class="card-head"><div><h3>Propostas salvas</h3><p>Histórico de manutenção preventiva e limpeza.</p></div><span class="status yellow">${rows.length} proposta(s)</span></div><div class="card-body"><div class="maintenance-history">${rows.length?rows.map(p=>{const t=maintenanceProposalTotals(p);return `<div class="maintenance-history-card"><div><h4>${escapeHtml(p.clientName||'Cliente sem nome')} · ${escapeHtml(maintenanceServiceLabel(p.serviceType))}</h4><p>${escapeHtml(p.number||'')} · ${number(p.moduleQty||0)} módulos · ${currency(t.total)} · ${dateBR(p.updatedAt||p.createdAt)}</p></div><div class="maintenance-history-actions"><button class="btn btn-ghost btn-sm" data-maint-preview="${attr(p.id)}" type="button">Abrir</button><button class="btn btn-danger btn-sm" data-maint-delete="${attr(p.id)}" type="button">Excluir</button></div></div>`}).join(''):'<div class="maintenance-empty"><strong>Nenhuma proposta salva</strong><br>Preencha o formulário acima para criar a primeira.</div>'}</div></div></div>
+      <div class="card"><div class="card-head"><div><h3>Propostas salvas</h3><p>Histórico de manutenção preventiva e limpeza.</p></div><span class="status yellow">${rows.length} proposta(s)</span></div><div class="card-body"><div class="maintenance-history">${rows.length?rows.map(p=>{const t=maintenanceProposalTotals(p);return `<div class="maintenance-history-card"><div><h4>${escapeHtml(p.clientName||'Cliente sem nome')} · ${escapeHtml(maintenanceServiceLabel(p.serviceType))}</h4><p>${escapeHtml(p.number||'')} · ${number(p.moduleQty||0)} módulos · ${currency(t.total)} · ${dateBR(p.updatedAt||p.createdAt)} · <strong>${escapeHtml(p.status||'Emitida')}</strong></p></div><div class="maintenance-history-actions"><button class="btn btn-ghost btn-sm" data-maint-preview="${attr(p.id)}" type="button">Abrir</button>${p.status==='Fechada'?`<button class="btn btn-primary btn-sm" data-maint-contract="${attr(p.id)}" type="button">Gerar contrato</button>`:`<button class="btn btn-secondary btn-sm" data-maint-close="${attr(p.id)}" type="button">Fechar proposta</button>`}<button class="btn btn-danger btn-sm" data-maint-delete="${attr(p.id)}" type="button">Excluir</button></div></div>`}).join(''):'<div class="maintenance-empty"><strong>Nenhuma proposta salva</strong><br>Preencha o formulário acima para criar a primeira.</div>'}</div></div></div>
     </div>`;
   }
 
@@ -7609,10 +7725,12 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
   function bindMaintenanceProposalEvents(){
     const form=document.getElementById('maintenanceProposalForm');if(!form)return;
     form.addEventListener('input',updateMaintenanceLivePreview);form.addEventListener('change',updateMaintenanceLivePreview);
-    form.addEventListener('submit',event=>{event.preventDefault();if(!hasPermission('maintenanceProposals','create'))return denyPermission('maintenanceProposals','create');const p=maintenanceFormData(form);p.id=newId('maint');p.companyId=state.currentCompanyId;p.number=`MAN-${String(Date.now()).slice(-6)}`;p.createdAt=new Date().toISOString();p.updatedAt=p.createdAt;p.status='Emitida';state.maintenanceProposals=Array.isArray(state.maintenanceProposals)?state.maintenanceProposals:[];state.maintenanceProposals.unshift(p);persist();renderView('maintenanceProposals');toast('Proposta salva',`${p.clientName} · ${currency(maintenanceProposalTotals(p).total)}`,'success');});
+    form.addEventListener('submit',async event=>{event.preventDefault();if(!hasPermission('maintenanceProposals','create'))return denyPermission('maintenanceProposals','create');const p=maintenanceFormData(form);p.id=newId('maint');p.companyId=state.currentCompanyId;p.number=`MAN-${String(Date.now()).slice(-6)}`;p.createdAt=new Date().toISOString();p.updatedAt=p.createdAt;p.status='Emitida';state.maintenanceProposals=Array.isArray(state.maintenanceProposals)?state.maintenanceProposals:[];state.maintenanceProposals.unshift(p);persist();const cloudSaved=await saveMaintenanceProposalCloud(p,{quiet:true});renderView('maintenanceProposals');toast('Proposta salva',`${p.clientName} · ${currency(maintenanceProposalTotals(p).total)} · ${cloudSaved?'Firestore sincronizado':'salva localmente'}`,'success');});
     document.getElementById('maintenancePrintDraftBtn')?.addEventListener('click',()=>printMaintenanceProposal(maintenanceFormData(form)));
     document.querySelectorAll('[data-maint-preview]').forEach(btn=>btn.addEventListener('click',()=>{const p=companyRows('maintenanceProposals').find(x=>x.id===btn.dataset.maintPreview);if(p)printMaintenanceProposal(p);}));
-    document.querySelectorAll('[data-maint-delete]').forEach(btn=>btn.addEventListener('click',()=>{if(!hasPermission('maintenanceProposals','delete'))return denyPermission('maintenanceProposals','delete');const id=btn.dataset.maintDelete;if(!confirm('Excluir esta proposta de manutenção?'))return;state.maintenanceProposals=(state.maintenanceProposals||[]).filter(x=>x.id!==id);persist();renderView('maintenanceProposals');toast('Proposta excluída','O registro foi removido.','info');}));
+    document.querySelectorAll('[data-maint-close]').forEach(btn=>btn.addEventListener('click',async()=>{if(!hasPermission('maintenanceProposals','approve'))return denyPermission('maintenanceProposals','approve');const p=companyRows('maintenanceProposals').find(x=>x.id===btn.dataset.maintClose);if(!p)return;if(!confirm('Confirmar o fechamento desta proposta e gerar o contrato de prestação de serviços?'))return;await closeMaintenanceProposal(p);}));
+    document.querySelectorAll('[data-maint-contract]').forEach(btn=>btn.addEventListener('click',async()=>{const p=companyRows('maintenanceProposals').find(x=>x.id===btn.dataset.maintContract);if(p)await generateMaintenanceContractFromProposal(p,{open:true});}));
+    document.querySelectorAll('[data-maint-delete]').forEach(btn=>btn.addEventListener('click',async()=>{if(!hasPermission('maintenanceProposals','delete'))return denyPermission('maintenanceProposals','delete');const id=btn.dataset.maintDelete;if(!confirm('Excluir esta proposta de manutenção?'))return;state.maintenanceProposals=(state.maintenanceProposals||[]).filter(x=>x.id!==id);persist();await deleteMaintenanceProposalCloud(id);renderView('maintenanceProposals');toast('Proposta excluída','O registro foi removido.','info');}));
     updateMaintenanceLivePreview();
   }
 
@@ -12623,7 +12741,7 @@ Sem plano Blaze, o CRM não exclui a conta do Firebase Auth automaticamente. Est
       toast('Ação restrita','Somente o administrador pode importar um cache local para o Firebase.','error');
       return;
     }
-    const collections=['teams','clients','leads','proposals','contracts','works','homologations','tickets','financial','commissions','inventory','equipmentCatalog','aftersales','suppliers','notifications','projectDocuments','tasks','automationRules','automationQueue','automationLogs','stockMovements','public_proposals'];
+    const collections=['teams','clients','leads','proposals','maintenanceProposals','contracts','works','homologations','tickets','financial','commissions','inventory','equipmentCatalog','aftersales','suppliers','notifications','projectDocuments','tasks','automationRules','automationQueue','automationLogs','stockMovements','public_proposals'];
     try{
       await migrateSharedCompanyAssets();
       await window.FirebaseCRM.saveRecord('companies',buildSharedCompanyPayload());
