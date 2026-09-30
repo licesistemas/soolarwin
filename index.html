@@ -7796,9 +7796,9 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
         <div class="form-section"><div class="form-section-head"><div><h3>Valores</h3><p>Os valores abaixo podem ser alterados em cada proposta.</p></div></div><div class="maintenance-form-grid"><label class="field"><span>Limpeza por módulo (R$)</span><input name="cleaningUnitPrice" type="number" min="0" step="0.01" value="100"></label><label class="field"><span>Taxa manutenção preventiva (R$)</span><input name="preventiveFee" type="number" min="0" step="0.01" value="350"></label><label class="field"><span>Distância para cobrança (km)</span><input name="distanceKm" type="number" min="0" step="0.1" value="0"></label><label class="field"><span>Valor por km (R$)</span><input name="kmPrice" type="number" min="0" step="0.01" value="0.90"></label><label class="field"><span>Periodicidade</span><select name="recurrence"><option>Serviço avulso</option><option>Semestral</option><option>Anual</option><option>Trimestral</option></select></label><label class="field"><span>Validade da proposta (dias)</span><input name="validDays" type="number" min="1" value="10"></label><label class="field full"><span>Condição de pagamento</span><input name="paymentTerms" value="50% na aprovação e 50% na conclusão"></label></div></div>
         <div class="form-section"><div class="form-section-head"><div><h3>Itens do escopo</h3><p>Marque o que deve aparecer na proposta.</p></div></div><div class="grid grid-2"><label class="checkbox-row"><input type="checkbox" name="includeCleaning" checked> Limpeza técnica dos módulos</label><label class="checkbox-row"><input type="checkbox" name="includeElectrical" checked> Inspeção elétrica</label><label class="checkbox-row"><input type="checkbox" name="includeTightening" checked> Reaperto preventivo</label><label class="checkbox-row"><input type="checkbox" name="includeGenerationCheck" checked> Verificação da geração</label><label class="checkbox-row"><input type="checkbox" name="includeThermography" checked> Termografia preventiva</label><label class="checkbox-row"><input type="checkbox" name="includeReport" checked> Relatório do atendimento</label></div><label class="field" style="margin-top:12px"><span>Observações comerciais / técnicas</span><textarea name="notes" placeholder="Ex.: acesso ao telhado, necessidade de plataforma, restrições de horário..."></textarea></label></div>
         <div class="maintenance-price-grid" style="margin-top:14px"><div class="maintenance-price-box"><span>Limpeza</span><strong id="maintenanceCleaningTotal">R$ 0,00</strong></div><div class="maintenance-price-box"><span>Preventiva + deslocamento</span><strong id="maintenanceOtherTotal">R$ 350,00</strong></div><div class="maintenance-price-box"><span>Total</span><strong id="maintenanceGrandTotal">R$ 350,00</strong></div></div>
-        <div class="page-actions" style="margin-top:15px;justify-content:flex-end"><button class="btn btn-ghost" id="maintenancePrintDraftBtn" type="button">Visualizar / PDF</button><button class="btn btn-primary" type="submit">Salvar proposta</button></div>
+        <div class="page-actions" style="margin-top:15px;justify-content:flex-end"><button class="btn btn-ghost" id="maintenanceDownloadDraftBtn" type="button">⬇ Baixar proposta</button><button class="btn btn-primary" type="submit">Salvar proposta</button></div>
       </form></div></div><div class="card maintenance-preview-card"><div class="card-head"><div><h3>Prévia da proposta</h3><p>Atualização em tempo real.</p></div></div><div class="card-body" id="maintenanceLivePreview">${maintenanceProposalPreviewDocument(draft)}</div></div></div>
-      <div class="card"><div class="card-head"><div><h3>Propostas salvas</h3><p>Histórico de manutenção preventiva e limpeza.</p></div><span class="status yellow">${rows.length} proposta(s)</span></div><div class="card-body"><div class="maintenance-history">${rows.length?rows.map(p=>{const t=maintenanceProposalTotals(p);return `<div class="maintenance-history-card"><div><h4>${escapeHtml(p.clientName||'Cliente sem nome')} · ${escapeHtml(maintenanceServiceLabel(p.serviceType))}</h4><p>${escapeHtml(p.number||'')} · ${number(p.moduleQty||0)} módulos · ${currency(t.total)} · ${dateBR(p.updatedAt||p.createdAt)} · <strong>${escapeHtml(p.status||'Emitida')}</strong></p></div><div class="maintenance-history-actions"><button class="btn btn-ghost btn-sm" data-maint-preview="${attr(p.id)}" type="button">Abrir</button>${p.status==='Fechada'?`<button class="btn btn-primary btn-sm" data-maint-contract="${attr(p.id)}" type="button">Gerar contrato</button><button class="btn btn-secondary btn-sm" data-maint-os="${attr(p.id)}" type="button">${p.serviceOrderId?'Abrir OS':'Gerar OS'}</button>${p.serviceOrderId?`<button class="btn btn-ghost btn-sm" data-maint-os-send="${attr(p.id)}" type="button">Enviar OS</button>`:''}`:`<button class="btn btn-secondary btn-sm" data-maint-close="${attr(p.id)}" type="button">Fechar proposta</button>`}<button class="btn btn-danger btn-sm" data-maint-delete="${attr(p.id)}" type="button">Excluir</button></div></div>`}).join(''):'<div class="maintenance-empty"><strong>Nenhuma proposta salva</strong><br>Preencha o formulário acima para criar a primeira.</div>'}</div></div></div>
+      <div class="card"><div class="card-head"><div><h3>Propostas salvas</h3><p>Histórico de manutenção preventiva e limpeza.</p></div><span class="status yellow">${rows.length} proposta(s)</span></div><div class="card-body"><div class="maintenance-history">${rows.length?rows.map(p=>{const t=maintenanceProposalTotals(p);return `<div class="maintenance-history-card"><div><h4>${escapeHtml(p.clientName||'Cliente sem nome')} · ${escapeHtml(maintenanceServiceLabel(p.serviceType))}</h4><p>${escapeHtml(p.number||'')} · ${number(p.moduleQty||0)} módulos · ${currency(t.total)} · ${dateBR(p.updatedAt||p.createdAt)} · <strong>${escapeHtml(p.status||'Emitida')}</strong></p></div><div class="maintenance-history-actions"><button class="btn btn-ghost btn-sm" data-maint-download="${attr(p.id)}" type="button">⬇ Baixar proposta</button>${p.status==='Fechada'?`<button class="btn btn-primary btn-sm" data-maint-contract="${attr(p.id)}" type="button">Gerar contrato</button><button class="btn btn-secondary btn-sm" data-maint-os="${attr(p.id)}" type="button">${p.serviceOrderId?'Abrir OS':'Gerar OS'}</button>${p.serviceOrderId?`<button class="btn btn-ghost btn-sm" data-maint-os-send="${attr(p.id)}" type="button">Enviar OS</button>`:''}`:`<button class="btn btn-secondary btn-sm" data-maint-close="${attr(p.id)}" type="button">Fechar proposta</button>`}<button class="btn btn-danger btn-sm" data-maint-delete="${attr(p.id)}" type="button">Excluir</button></div></div>`}).join(''):'<div class="maintenance-empty"><strong>Nenhuma proposta salva</strong><br>Preencha o formulário acima para criar a primeira.</div>'}</div></div></div>
     </div>`;
   }
 
@@ -7815,6 +7815,71 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     const form=document.getElementById('maintenanceProposalForm');if(!form)return;const p=maintenanceFormData(form),t=maintenanceProposalTotals(p);
     const clean=document.getElementById('maintenanceCleaningTotal'),other=document.getElementById('maintenanceOtherTotal'),grand=document.getElementById('maintenanceGrandTotal'),preview=document.getElementById('maintenanceLivePreview');
     if(clean)clean.textContent=currency(t.cleaning);if(other)other.textContent=currency(t.preventive+t.travel);if(grand)grand.textContent=currency(t.total);if(preview)preview.innerHTML=maintenanceProposalPreviewDocument(p);
+  }
+
+  async function buildMaintenanceProposalPdfBlob(p,{onProgress=null}={}){
+    const {jsPDF}=window.jspdf||{};
+    if(!jsPDF||!window.html2canvas)throw new Error('Bibliotecas de geração de PDF indisponíveis.');
+    let sourceRoot=document.createElement('div');
+    sourceRoot.className='pdf-export-source';
+    sourceRoot.innerHTML=maintenanceProposalPreviewDocument(p);
+    document.body.appendChild(sourceRoot);
+    if(document.fonts?.ready)await document.fonts.ready;
+    await new Promise(r=>setTimeout(r,160));
+    const pages=[...sourceRoot.querySelectorAll('.proposal-page')];
+    if(!pages.length){sourceRoot.remove();throw new Error('Nenhuma página da proposta foi renderizada.');}
+    await Promise.all([...sourceRoot.querySelectorAll('img')].map(img=>img.complete?Promise.resolve():new Promise(resolve=>{
+      img.addEventListener('load',resolve,{once:true});
+      img.addEventListener('error',resolve,{once:true});
+      setTimeout(resolve,3500);
+    })));
+    let exportRoot=null;
+    const restore=[];
+    try{
+      exportRoot=document.createElement('div');
+      exportRoot.className='pdf-export-root';
+      document.body.appendChild(exportRoot);
+      const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4',compress:true});
+      for(let i=0;i<pages.length;i++){
+        const page=pages[i];
+        restore.push({page,parent:page.parentNode,next:page.nextSibling,style:page.getAttribute('style')||''});
+        exportRoot.innerHTML='';
+        exportRoot.appendChild(page);
+        Object.assign(page.style,{width:'794px',height:'1123px',minWidth:'794px',minHeight:'1123px',maxWidth:'794px',maxHeight:'1123px',transform:'none',margin:'0',boxShadow:'none',position:'relative',left:'0',top:'0'});
+        onProgress?.(`Gerando página ${i+1}/${pages.length}...`);
+        await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+        const canvas=await html2canvas(page,{scale:2,useCORS:true,allowTaint:true,backgroundColor:'#ffffff',logging:false,imageTimeout:12000,windowWidth:794,windowHeight:1123,width:794,height:1123,scrollX:0,scrollY:0,x:0,y:0});
+        const img=canvas.toDataURL('image/jpeg',.94);
+        if(i>0)pdf.addPage();
+        pdf.addImage(img,'JPEG',0,0,210,297,undefined,'FAST');
+      }
+      return {blob:pdf.output('blob'),pdf};
+    }finally{
+      for(let i=restore.length-1;i>=0;i--){
+        const item=restore[i];
+        if(item.next&&item.next.parentNode===item.parent)item.parent.insertBefore(item.page,item.next);
+        else item.parent?.appendChild(item.page);
+        item.page.setAttribute('style',item.style);
+      }
+      exportRoot?.remove();
+      sourceRoot?.remove();
+    }
+  }
+
+  async function downloadMaintenanceProposal(p,button=null){
+    const old=button?.textContent||'';
+    if(button){button.disabled=true;button.textContent='Preparando...';}
+    try{
+      const {pdf}=await buildMaintenanceProposalPdfBlob(p,{onProgress:text=>{if(button)button.textContent=text;}});
+      const fileName=`proposta-manutencao-${slugify(p.clientName||p.number||'cliente')}.pdf`;
+      pdf.save(fileName);
+      toast('Proposta baixada','Arquivo completo gerado com capa, fundos e contracapa.','success');
+    }catch(error){
+      console.error('Falha ao baixar proposta de manutenção:',error);
+      toast('Erro ao baixar proposta',error.message||'Não foi possível gerar o arquivo.','error');
+    }finally{
+      if(button){button.disabled=false;button.textContent=old||'⬇ Baixar proposta';}
+    }
   }
 
   function printMaintenanceProposal(p){
@@ -7834,8 +7899,8 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     const form=document.getElementById('maintenanceProposalForm');if(!form)return;
     form.addEventListener('input',updateMaintenanceLivePreview);form.addEventListener('change',updateMaintenanceLivePreview);
     form.addEventListener('submit',async event=>{event.preventDefault();if(!hasPermission('maintenanceProposals','create'))return denyPermission('maintenanceProposals','create');const p=maintenanceFormData(form);p.id=newId('maint');p.companyId=state.currentCompanyId;p.number=`MAN-${String(Date.now()).slice(-6)}`;p.createdAt=new Date().toISOString();p.updatedAt=p.createdAt;p.status='Emitida';state.maintenanceProposals=Array.isArray(state.maintenanceProposals)?state.maintenanceProposals:[];state.maintenanceProposals.unshift(p);persist();const cloudSaved=await saveMaintenanceProposalCloud(p,{quiet:true});renderView('maintenanceProposals');toast('Proposta salva',`${p.clientName} · ${currency(maintenanceProposalTotals(p).total)} · ${cloudSaved?'Firestore sincronizado':'salva localmente'}`,'success');});
-    document.getElementById('maintenancePrintDraftBtn')?.addEventListener('click',()=>printMaintenanceProposal(maintenanceFormData(form)));
-    document.querySelectorAll('[data-maint-preview]').forEach(btn=>btn.addEventListener('click',()=>{const p=companyRows('maintenanceProposals').find(x=>x.id===btn.dataset.maintPreview);if(p)printMaintenanceProposal(p);}));
+    document.getElementById('maintenanceDownloadDraftBtn')?.addEventListener('click',async event=>downloadMaintenanceProposal(maintenanceFormData(form),event.currentTarget));
+    document.querySelectorAll('[data-maint-download]').forEach(btn=>btn.addEventListener('click',async()=>{const p=companyRows('maintenanceProposals').find(x=>x.id===btn.dataset.maintDownload);if(p)await downloadMaintenanceProposal(p,btn);}));
     document.querySelectorAll('[data-maint-close]').forEach(btn=>btn.addEventListener('click',async()=>{if(!hasPermission('maintenanceProposals','approve'))return denyPermission('maintenanceProposals','approve');const p=companyRows('maintenanceProposals').find(x=>x.id===btn.dataset.maintClose);if(!p)return;if(!confirm('Confirmar o fechamento desta proposta e gerar o contrato de prestação de serviços?'))return;await closeMaintenanceProposal(p);}));
     document.querySelectorAll('[data-maint-contract]').forEach(btn=>btn.addEventListener('click',async()=>{const p=companyRows('maintenanceProposals').find(x=>x.id===btn.dataset.maintContract);if(p)await generateMaintenanceContractFromProposal(p,{open:true});}));
     document.querySelectorAll('[data-maint-os]').forEach(btn=>btn.addEventListener('click',async()=>{const p=companyRows('maintenanceProposals').find(x=>x.id===btn.dataset.maintOs);if(p)await generateMaintenanceServiceOrderFromProposal(p,{open:true});}));
