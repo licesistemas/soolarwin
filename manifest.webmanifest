@@ -1,0 +1,31 @@
+{
+  "id": "./representante.html",
+  "name": "Soolarwin · Representante",
+  "short_name": "Representante",
+  "description": "Aplicativo móvel para propostas e acompanhamento comercial de representantes.",
+  "lang": "pt-BR",
+  "start_url": "./representante.html",
+  "scope": "./",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "background_color": "#07111f",
+  "theme_color": "#07111f",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

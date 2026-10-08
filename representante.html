@@ -2,7 +2,14 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Representante">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="format-detection" content="telephone=no">
 <meta name="theme-color" content="#08111f">
 <title>Representante · Propostas Solares</title>
 <style>
@@ -151,9 +158,46 @@ button{cursor:pointer}a{color:inherit;text-decoration:none}.hidden{display:none!
 @media(max-width:420px){
   .main{padding:17px 12px 28px}.top{min-height:72px;padding:11px 12px}.hero h1{font-size:23px}.section-head h2{font-size:20px}.stats{gap:7px}.stat{padding:12px 10px}.stat strong{font-size:19px}.grid{grid-template-columns:1fr}.field.full{grid-column:auto}.p-metrics{grid-template-columns:repeat(3,1fr)}.hero-actions .btn{flex:1}.success-actions{grid-template-columns:1fr}.proposal{padding:14px}.p-actions{flex-wrap:wrap}.p-actions .btn{min-width:calc(50% - 4px)}
 }
+
+/* Experiência exclusiva para telefone, incluindo iPhone 14 e telas estreitas. */
+html,body{width:100%;max-width:100%;overflow-x:clip;overscroll-behavior-x:none}
+body{padding-bottom:calc(84px + env(safe-area-inset-bottom,0px));-webkit-tap-highlight-color:transparent}
+.shell,.main,.card,.proposal,.hero,.form-card,.login-card,.sheet{min-width:0;max-width:100%}
+.main{padding-left:max(12px,env(safe-area-inset-left));padding-right:max(12px,env(safe-area-inset-right))}
+.top{padding-top:max(12px,env(safe-area-inset-top))}
+.login{min-height:100dvh;padding:calc(18px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom))}
+.login-card{padding:22px 18px}
+.grid{grid-template-columns:minmax(0,1fr)}
+.field.full{grid-column:auto}
+.field input,.field select,.field textarea,.login-card input{font-size:16px;max-width:100%;min-width:0}
+.btn,.nav,.close,.avatar{touch-action:manipulation}
+.btn{min-height:46px;font-size:13px}
+.nav{min-height:52px;font-size:11px}
+.nav b{font-size:21px}
+.bottom{width:100%;max-width:560px;padding-bottom:max(9px,env(safe-area-inset-bottom))}
+.submit-row{bottom:calc(78px + env(safe-area-inset-bottom));padding:8px}
+.stats{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.stat{padding:13px 8px}.stat strong{font-size:clamp(16px,5vw,22px)}
+.stat span,.p-metrics span{overflow-wrap:anywhere}
+.p-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}
+.p-metrics div,.result-grid div{min-width:0;overflow-wrap:anywhere}
+.p-actions{flex-wrap:wrap}.p-actions .btn{flex:1 1 120px;white-space:normal}
+.result-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.sheet{max-height:calc(100dvh - env(safe-area-inset-top) - 16px);padding-bottom:calc(26px + env(safe-area-inset-bottom))}
+.overlay{align-items:flex-end}
+@media(max-width:350px){.hero-actions{display:grid;grid-template-columns:1fr}.success-actions{grid-template-columns:1fr}.result-grid{grid-template-columns:1fr}.brand strong{font-size:13px}}
+@media(min-width:768px) and (pointer:fine){body>.login,body>.shell,body>.overlay,body>.toast{display:none!important}#mobileOnly{display:flex!important}}
+#mobileOnly{display:none;position:fixed;inset:0;z-index:999;background:#07111f;color:#f6f8fb;align-items:center;justify-content:center;text-align:center;padding:30px;font:16px/1.6 system-ui}
+#installBanner{display:none;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;background:#15283e;border:1px solid #3c526e;border-radius:13px;margin:10px 12px 0;font-size:12px}
+#installBanner strong{display:block;color:#fff}#installBanner small{display:block;color:#b6c1d1;margin-top:3px;line-height:1.4}
+#installBanner button{border:none;background:#ffb703;border-radius:10px;padding:10px 12px;color:#07111f;font-weight:800}
+#installBanner .dismiss{background:transparent;color:#f6f8fb;padding:8px}
+@media(display-mode:standalone){#installBanner{display:none!important}}
 </style>
 </head>
 <body>
+<div id="mobileOnly"><div><div style="font-size:54px">📱</div><h2>Aplicativo exclusivo para celular</h2><p>Abra este endereço no iPhone ou Android para usar o app do representante.</p></div></div>
+<div id="installBanner"><div><strong>Instalar aplicativo</strong><small id="installInstructions">Adicione à tela inicial para usar em tela cheia.</small></div><button id="installAction" type="button">Instalar</button><button id="installDismiss" class="dismiss" type="button" aria-label="Fechar">×</button></div>
 <div id="loginView" class="login">
   <form id="loginForm" class="login-card">
     <div id="loginBrand" class="mark"><span class="wordmark">SOOLARWIN</span></div>
@@ -397,6 +441,31 @@ $('#proposalForm').addEventListener('submit',async e=>{e.preventDefault();const 
 
 applyLoginLogo();
 onAuthStateChanged(auth,async user=>{if(!user){profile=null;company=null;companyId='';unsubscribeCompany?.();unsubscribeCompany=null;unsubscribeProposals?.();unsubscribeProposals=null;companyProposals=[];myProposals=[];applyLoginLogo();$('#appView').classList.add('hidden');$('#loginView').classList.remove('hidden');return}try{await loadSession(user)}catch(ex){console.error(ex);$('#loginError').textContent=ex.message||'Seu acesso ainda não está liberado.';$('#loginError').classList.remove('hidden');await signOut(auth)}})
+</script>
+
+<script>
+(function(){
+  var promptEvent=null, banner=document.getElementById('installBanner');
+  var action=document.getElementById('installAction');
+  var instructions=document.getElementById('installInstructions');
+  var standalone=window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+  var ios=/iPad|iPhone|iPod/.test(navigator.userAgent);
+  var dismissed=sessionStorage.getItem('rep_install_dismissed')==='1';
+  if(!standalone&&!dismissed){
+    banner.style.display='flex';
+    if(ios){instructions.textContent='No Safari, toque em Compartilhar → Adicionar à Tela de Início.';action.textContent='Como instalar';}
+    else {instructions.textContent='Instale o app na tela inicial do Android.';action.textContent='Instalar';}
+  }
+  window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();promptEvent=e;if(!standalone&&!dismissed)banner.style.display='flex';});
+  action.addEventListener('click',async function(){
+    if(promptEvent){promptEvent.prompt();await promptEvent.userChoice;promptEvent=null;banner.style.display='none';return;}
+    if(ios){instructions.textContent='Safari: toque no ícone Compartilhar (quadrado com seta para cima) e selecione “Adicionar à Tela de Início”.';return;}
+    instructions.textContent='Abra o menu ⋮ do Chrome e escolha “Instalar app” ou “Adicionar à tela inicial”.';
+  });
+  document.getElementById('installDismiss').addEventListener('click',function(){banner.style.display='none';sessionStorage.setItem('rep_install_dismissed','1');});
+  window.addEventListener('appinstalled',function(){banner.style.display='none';});
+  if('serviceWorker' in navigator&&location.protocol!=='file:')window.addEventListener('load',function(){navigator.serviceWorker.register('./sw.js',{scope:'./'}).catch(function(e){console.warn('PWA:',e);});});
+})();
 </script>
 </body>
 </html>
