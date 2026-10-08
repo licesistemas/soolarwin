@@ -8665,10 +8665,37 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     return {version:1,updatedAt:String(source.updatedAt||''),items:[...base,...custom]};
   }
 
+  let selectedContractEditorId = '';
+  let individualContractEditorDraft = null;
+  function selectedContractEditorRecord(){
+    return selectedContractEditorId ? companyRows('contracts').find(c=>String(c.id)===String(selectedContractEditorId)) : null;
+  }
   function currentContractEditorConfig(){
+    if(selectedContractEditorId){
+      const record=selectedContractEditorRecord();
+      if(!record){selectedContractEditorId='';individualContractEditorDraft=null;}
+      else {
+        if(!individualContractEditorDraft) individualContractEditorDraft=normalizeContractEditorConfig(record.contractEditor || state.company?.contractEditor);
+        return individualContractEditorDraft;
+      }
+    }
     const normalized=normalizeContractEditorConfig(state.company?.contractEditor);
     state.company.contractEditor=normalized;
     return normalized;
+  }
+  function assignContractEditorConfig(cfg){
+    if(selectedContractEditorId) individualContractEditorDraft=cfg;
+    else {state.company.contractEditor=cfg;syncCurrentCompanyRecord();persist();}
+  }
+  function contractEditorSelectorChange(id){
+    if(contractEditorDirty && !confirm('Existem alterações não salvas. Deseja trocar de contrato e descartá-las?')){
+      const sel=document.getElementById('contractEditorContractSelect');if(sel)sel.value=selectedContractEditorId;
+      return;
+    }
+    selectedContractEditorId=id;
+    individualContractEditorDraft=null;
+    activeContractEditorClauseId='';contractEditorDirty=false;
+    renderView('contractEditor');
   }
 
   function contractEditorClauseIdFromTitle(title=''){
@@ -8691,7 +8718,10 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
       activeContractEditorClauseId=cfg.items[0]?.id||'';
     }
     const active=cfg.items.find(item=>item.id===activeContractEditorClauseId)||cfg.items[0];
-    const canEdit=currentUserIsAdmin()||hasPermission('settings','edit');
+    const canEdit=selectedContractEditorId?hasPermission('contracts','edit'):(currentUserIsAdmin()||hasPermission('settings','edit'));
+    const contracts=companyRows('contracts');
+    const selected=selectedContractEditorRecord();
+    const contractChoices=contracts.map(c=>`<option value="${attr(c.id)}" ${selectedContractEditorId===String(c.id)?'selected':''}>${escapeHtml(c.clientName||'Cliente sem nome')} · ${escapeHtml(c.number||c.contractNumber||String(c.id).slice(0,12))}</option>`).join('');
     const list=cfg.items.map((item,index)=>`
       <button class="contract-editor-item ${item.id===active?.id?'active':''}" data-contract-editor-item="${attr(item.id)}" type="button">
         <span class="contract-editor-item-index">${index+1}</span>
@@ -8700,12 +8730,20 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
       </button>`).join('');
     const variableChips=CONTRACT_EDITOR_VARIABLES.map(([token,label])=>`<button class="contract-variable-chip" data-contract-variable="${attr(token)}" type="button" title="Inserir ${attr(label)}">${escapeHtml(token)}</button>`).join('');
     return `<div class="contract-editor-page">
-      ${pageHead('Editor de contrato','Edite as cláusulas do contrato sem mexer no código ou na paginação.',`
+      ${pageHead('Editor de contrato','Escolha um contrato específico antes de editar, ou mantenha o modelo geral.',`
         <div class="contract-editor-toolbar">
           <button class="btn btn-ghost" id="contractEditorRestoreBtn" type="button">Restaurar padrão</button>
           <button class="btn btn-secondary" id="contractEditorPreviewBtn" type="button">Visualizar contrato</button>
-          <button class="btn btn-primary" id="contractEditorSaveBtn" type="button" ${canEdit?'':'disabled'}>Salvar modelo</button>
+          <button class="btn btn-primary" id="contractEditorSaveBtn" type="button" ${canEdit?'':'disabled'}>${selectedContractEditorId?'Salvar este contrato':'Salvar modelo'}</button>
         </div>`)}
+      <section class="card card-pad" style="margin-bottom:16px">
+        <div class="form-grid" style="align-items:end">
+          <label class="field"><span>Qual contrato deseja editar?</span>
+            <select id="contractEditorContractSelect"><option value="">Modelo geral (todos os próximos contratos)</option>${contractChoices}</select>
+          </label>
+          <div class="notice ${selectedContractEditorId?'warning':''}">${selected ? `Editando exclusivamente o contrato de <strong>${escapeHtml(selected.clientName||'Cliente')}</strong>. As demais versões não serão alteradas.` : 'O modelo geral serve para novos contratos. Selecione um cliente para editar somente o contrato dele.'}</div>
+        </div>
+      </section>
       <div class="contract-editor-help">
         <div><strong>1. Escolha uma cláusula</strong><span>Clique no texto da esquerda para editar somente aquele trecho.</span></div>
         <div><strong>2. Use variáveis</strong><span>Cliente, valor, UC e demais dados são preenchidos automaticamente no contrato.</span></div>
@@ -8719,7 +8757,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
         <section class="card contract-editor-form-card">
           ${active?`<div class="contract-editor-form">
             <div class="contract-editor-topline">
-              <div><h3>${active.custom?'Cláusula adicional':'Editar cláusula'}</h3><p>As alterações são aplicadas aos próximos contratos gerados.</p></div>
+              <div><h3>${active.custom?'Cláusula adicional':'Editar cláusula'}</h3><p>${selectedContractEditorId?'As alterações serão exclusivas do contrato selecionado.':'As alterações são aplicadas aos próximos contratos gerados.'}</p></div>
               <label class="switch" title="Exibir esta cláusula"><input id="contractEditorEnabled" type="checkbox" ${active.enabled!==false?'checked':''} ${canEdit?'':'disabled'}><span></span></label>
             </div>
             <div class="form-grid">
@@ -8728,7 +8766,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
             </div>
             <div class="contract-variable-box"><span>Clique para inserir uma informação automática no ponto onde está o cursor:</span><div class="contract-variable-chips">${variableChips}</div></div>
             <div class="contract-editor-footer">
-              <span id="contractEditorStatus" class="contract-editor-status ${contractEditorDirty?'dirty':''}">${contractEditorDirty?'Alterações ainda não salvas':'Modelo sincronizado localmente'}</span>
+              <span id="contractEditorStatus" class="contract-editor-status ${contractEditorDirty?'dirty':''}">${contractEditorDirty?'Alterações ainda não salvas':(selectedContractEditorId?'Contrato carregado para edição':'Modelo sincronizado localmente')}</span>
               <div style="display:flex;gap:8px;flex-wrap:wrap">
                 ${active.custom?`<button class="btn btn-danger btn-sm" id="contractEditorDeleteBtn" type="button" ${canEdit?'':'disabled'}>Excluir cláusula</button>`:''}
                 <button class="btn btn-ghost btn-sm" id="contractEditorResetClauseBtn" type="button" ${canEdit?'':'disabled'}>${active.custom?'Limpar texto':'Restaurar esta cláusula'}</button>
@@ -8751,9 +8789,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     if(body)item.text=body.value;
     if(enabled)item.enabled=enabled.checked;
     cfg.updatedAt=new Date().toISOString();
-    state.company.contractEditor=cfg;
-    syncCurrentCompanyRecord();
-    persist();
+    assignContractEditorConfig(cfg);
     contractEditorDirty=true;
     const status=document.getElementById('contractEditorStatus');
     if(status){status.textContent='Alterações ainda não salvas';status.className='contract-editor-status dirty';}
@@ -8769,7 +8805,29 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
   }
 
   async function saveContractEditor(){
+    const authorized=selectedContractEditorId?hasPermission('contracts','edit'):(currentUserIsAdmin()||hasPermission('settings','edit'));
+    if(!authorized){toast('Sem permissão','Você não pode editar este contrato.','error');return;}
     updateContractEditorFromFields();
+    if(selectedContractEditorId){
+      const record=selectedContractEditorRecord();
+      if(!record){toast('Contrato não encontrado','Atualize a lista e tente novamente.','error');return;}
+      const previous=record.contractEditor;
+      record.contractEditor=deepClone(individualContractEditorDraft);
+      record.updatedAt=new Date().toISOString();
+      persist();
+      try{
+        if(window.FirebaseCRM?.syncReady && typeof window.FirebaseCRM.saveRecord==='function')
+          await window.FirebaseCRM.saveRecord('contracts',firestoreSafeRecord(record));
+      }catch(error){
+        record.contractEditor=previous;persist();
+        toast('Falha na sincronização',`Não foi possível salvar o contrato no Firebase: ${error.message}`,'error');return;
+      }
+      contractEditorDirty=false;
+      const status=document.getElementById('contractEditorStatus');
+      if(status){status.textContent='Contrato individual salvo';status.className='contract-editor-status saved';}
+      toast('Contrato atualizado',`As cláusulas de ${record.clientName||'cliente'} foram salvas sem alterar os demais contratos.`,'success');
+      return;
+    }
     syncCurrentCompanyRecord();persist();
     let cloudSaved=false;
     if(window.FirebaseCRM?.syncReady && (currentUserIsAdmin()||hasPermission('settings','edit'))){
@@ -8786,8 +8844,8 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     const cfg=currentContractEditorConfig();
     const item={id:newId('contract-clause'),title:'Nova cláusula',text:'Digite o texto desta cláusula.',enabled:true,custom:true};
     cfg.items.push(item);cfg.updatedAt=new Date().toISOString();
-    state.company.contractEditor=cfg;activeContractEditorClauseId=item.id;contractEditorDirty=true;
-    syncCurrentCompanyRecord();persist();renderView('contractEditor');
+    assignContractEditorConfig(cfg);activeContractEditorClauseId=item.id;contractEditorDirty=true;
+    renderView('contractEditor');
   }
 
   function deleteContractEditorClause(){
@@ -8797,8 +8855,8 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     if(!confirm(`Excluir a cláusula “${item.title}”?`))return;
     cfg.items=cfg.items.filter(row=>row.id!==item.id);
     activeContractEditorClauseId=cfg.items[0]?.id||'';
-    cfg.updatedAt=new Date().toISOString();state.company.contractEditor=cfg;contractEditorDirty=true;
-    syncCurrentCompanyRecord();persist();renderView('contractEditor');
+    cfg.updatedAt=new Date().toISOString();assignContractEditorConfig(cfg);contractEditorDirty=true;
+    renderView('contractEditor');
   }
 
   function restoreContractEditorClause(){
@@ -8809,21 +8867,22 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
       const original=CONTRACT_EDITOR_DEFAULT_ITEMS.find(row=>row.id===item.id);
       if(original){item.title=original.title;item.text=original.text;item.enabled=true;}
     }
-    cfg.updatedAt=new Date().toISOString();state.company.contractEditor=cfg;contractEditorDirty=true;
-    syncCurrentCompanyRecord();persist();renderView('contractEditor');
+    cfg.updatedAt=new Date().toISOString();assignContractEditorConfig(cfg);contractEditorDirty=true;
+    renderView('contractEditor');
   }
 
   function restoreContractEditorAll(){
     if(!confirm('Restaurar todo o contrato para o texto padrão? As edições atuais serão substituídas.'))return;
-    state.company.contractEditor=defaultContractEditorConfig();
-    activeContractEditorClauseId=state.company.contractEditor.items[0]?.id||'';
-    contractEditorDirty=true;syncCurrentCompanyRecord();persist();renderView('contractEditor');
+    const resetCfg=defaultContractEditorConfig();
+    assignContractEditorConfig(resetCfg);
+    activeContractEditorClauseId=resetCfg.items[0]?.id||'';
+    contractEditorDirty=true;renderView('contractEditor');
     toast('Contrato restaurado','O texto padrão foi recuperado. Clique em Salvar modelo para sincronizar.','info');
   }
 
   function previewContractEditor(){
     updateContractEditorFromFields();
-    const existing=companyRows('contracts')[0];
+    const existing=selectedContractEditorRecord()||companyRows('contracts')[0];
     const sample=existing||{
       id:'contract-editor-preview',
       companyId:state.currentCompanyId,
@@ -8836,21 +8895,22 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     const modal=ensureContractPreviewModal();
     const frame=modal.querySelector('#contractPreviewFrame');
     const title=modal.querySelector('#contractPreviewTitle');
-    if(title)title.textContent='Prévia do modelo de contrato';
+    if(title)title.textContent=selectedContractEditorId?'Prévia do contrato selecionado':'Prévia do modelo de contrato';
     if(frame){
       frame.onload=()=>{try{compactContractPages(frame.contentDocument);}catch(error){console.warn(error);}};
-      frame.srcdoc=renderContractHtml(sample);
+      frame.srcdoc=renderContractHtml(selectedContractEditorId?{...sample,contractEditor:currentContractEditorConfig()}:sample);
     }
     const printBtn=modal.querySelector('#contractPreviewPrint');
     if(printBtn)printBtn.onclick=()=>{try{frame.contentWindow.document.body.classList.remove('cw-compact-print');frame.contentWindow.print();}catch(error){toast('Não foi possível imprimir',error.message,'error');}};
     const downloadBtn=modal.querySelector('#contractPreviewDownload');
-    if(downloadBtn)downloadBtn.onclick=()=>downloadBlob(new Blob([renderContractHtml(sample)],{type:'text/html;charset=utf-8'}),'modelo-contrato-soolarwin.html');
+    if(downloadBtn)downloadBtn.onclick=()=>downloadBlob(new Blob([renderContractHtml(selectedContractEditorId?{...sample,contractEditor:currentContractEditorConfig()}:sample)],{type:'text/html;charset=utf-8'}),'modelo-contrato-soolarwin.html');
     const pdfBtn=modal.querySelector('#contractPreviewCompactPrint');
     if(pdfBtn){pdfBtn.disabled=true;pdfBtn.title='Abra um contrato de cliente para gerar o PDF final.';}
     openModal('contractPreviewModal');
   }
 
   function bindContractEditorEvents(){
+    document.getElementById('contractEditorContractSelect')?.addEventListener('change',event=>contractEditorSelectorChange(event.target.value));
     document.querySelectorAll('[data-contract-editor-item]').forEach(btn=>btn.addEventListener('click',()=>{
       updateContractEditorFromFields();
       activeContractEditorClauseId=btn.dataset.contractEditorItem;
@@ -8936,7 +8996,7 @@ O registro será removido do CRM. O arquivo original continuará protegido no Go
     const page=(num,title,body,extra='')=>`<section class="cw-page ${extra}">${num>1?header(num):''}<div class="cw-content">${title?`<h2>${escapeHtml(title)}</h2>`:''}${body}</div>${footer(num)}</section>`;
     const dataLine=(label,value)=>`<div class="cw-data"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value||'Não informado')}</strong></div>`;
     const table=(rows,heads=['Item','Qtd.','Descrição'])=>`<table class="cw-table"><thead><tr>${heads.map(h=>`<th>${escapeHtml(h)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(cell=>`<td>${escapeHtml(String(cell??''))}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
-    const contractEditorCfg=normalizeContractEditorConfig(company.contractEditor);
+    const contractEditorCfg=normalizeContractEditorConfig(contract.contractEditor || company.contractEditor);
     const contractTokenValues={
       '{{cliente}}':clientName,
       '{{cpf_cnpj}}':clientDoc,
