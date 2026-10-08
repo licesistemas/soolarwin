@@ -1,4 +1,4 @@
-const CACHE='soolarwin-propostas-shell-v2';
+const CACHE='soolarwin-propostas-shell-v3';
 const SHELL=['./representante.html','./manifest.webmanifest','./icons/icon-192.png','./icons/icon-512.png'];
 self.addEventListener('install',event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(SHELL)));self.skipWaiting()});
 self.addEventListener('activate',event=>{event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('representante-shell-')&&k!==CACHE).map(k=>caches.delete(k)))));self.clients.claim()});
