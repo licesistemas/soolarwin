@@ -8631,7 +8631,7 @@ margin:0;
 color:#273a4f;
 text-indent:8mm;
 }
-.cw-clause + .cw-clause{margin-top:1.2mm!important}.cw-sign-city{position:relative;display:flex;justify-content:space-between;margin:18mm 25mm 13mm;font-size:12px}.cw-signatures{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:17mm 24mm;margin:0 18mm}.cw-signatures div{text-align:center;font-size:11px;min-height:22mm}.cw-signatures i{display:block;border-top:1.5px solid #0d2438;margin-bottom:4mm}.cw-signatures strong{display:block}.cw-signatures span{display:block;margin-top:2mm;font-weight:800}.cw-company-signature{display:flex;flex-direction:column;justify-content:flex-end}.cw-signature-img{display:block;max-width:100%;height:22mm;object-fit:contain;object-position:center bottom;margin:0 auto 2mm;background:transparent;opacity:1}.cw-final-block{position:relative;break-inside:avoid-page;page-break-inside:avoid}.cw-page.final{padding-top:26mm}.cw-page.final .cw-final-block>h2{margin-bottom:7mm}.cw-page.final .cw-sign-city{margin-top:14mm}.cw-page:nth-of-type(2n) .cw-mark{border-color:#ffc247;color:#9a6a00}.cw-page::after{content:"";position:absolute;left:50%;bottom:12mm;width:27mm;height:8.5mm;transform:translateX(-50%);background-image:url("${window.__defaultSoolarwinContractSignature}");background-repeat:no-repeat;background-position:center;background-size:contain;opacity:1;pointer-events:none;z-index:3}.cw-page.final::after{display:none}.cw-bottom-safe{display:block;height:0;min-height:0}
+.cw-clause + .cw-clause{margin-top:1.2mm!important}.cw-sign-city{position:relative;display:flex;justify-content:space-between;margin:18mm 25mm 13mm;font-size:12px}.cw-signatures{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:17mm 24mm;margin:0 18mm}.cw-signatures div{text-align:center;font-size:11px;min-height:22mm}.cw-signatures i{display:block;border-top:1.5px solid #0d2438;margin-bottom:4mm}.cw-signatures strong{display:block}.cw-signatures span{display:block;margin-top:2mm;font-weight:800}.cw-company-signature{display:flex;flex-direction:column;justify-content:flex-end}.cw-signature-img{display:block;max-width:100%;height:22mm;object-fit:contain;object-position:center bottom;margin:0 auto 2mm;background:transparent;opacity:1}.cw-final-block{position:relative;break-inside:avoid-page;page-break-inside:avoid}.cw-page.final{padding-top:26mm}.cw-page.final .cw-final-block>h2{margin-bottom:7mm}.cw-page.final .cw-sign-city{margin-top:14mm}.cw-page:nth-of-type(2n) .cw-mark{border-color:#ffc247;color:#9a6a00}.cw-page::after{content:"";position:absolute;left:50%;bottom:12mm;width:27mm;height:8.5mm;transform:translateX(-50%);background-image:url("${window.__defaultSoolarwinContractSignature}");background-repeat:no-repeat;background-position:center;background-size:contain;opacity:1;pointer-events:none;z-index:3}.cw-page.final::after{display:none}.cw-page.cw-has-contract-signatures::after{display:none}.cw-bottom-safe{display:block;height:0;min-height:0}
 
       /* Paginação visual otimizada — usa melhor a área A4 sem cortar conteúdo */
       .cw-section-gap{height:5mm}
@@ -8909,17 +8909,36 @@ text-indent:8mm;
     if(!doc||doc.documentElement?.dataset?.contractCompacted==='1')return;
     doc.documentElement.dataset.contractCompacted='1';
 
-    // As páginas 1, 2 e 3 permanecem totalmente fixas. A compactação começa
-    // somente nas páginas seguintes, onde havia grandes áreas em branco.
+    // A capa permanece fixa. Da página 2 em diante, o conteúdo pode recuar
+    // para ocupar o espaço útil da página anterior, inclusive a página final.
+    // Cidade/data + assinaturas permanecem sempre juntas como um único bloco.
     const allPages=()=>[...doc.querySelectorAll('.cw-page')];
     const isHeading=el=>el?.matches?.('h2,h3');
     const isFinal=page=>page?.classList?.contains('final');
+
+    function normalizeFinalPage(){
+      const finalPage=allPages().find(isFinal);
+      const content=finalPage?.querySelector('.cw-content');
+      if(!content)return;
+      const finalBlock=[...content.children].find(el=>el.classList?.contains('cw-final-block'));
+      if(!finalBlock)return;
+
+      const directChildren=[...finalBlock.children];
+      const firstSignatureIndex=directChildren.findIndex(el=>el.matches?.('.cw-sign-city,.cw-signatures'));
+      if(firstSignatureIndex>0){
+        directChildren.slice(0,firstSignatureIndex).forEach(el=>content.insertBefore(el,finalBlock));
+      }
+      if(finalBlock.querySelector('.cw-signatures'))finalBlock.classList.add('cw-final-signature-block');
+    }
+
+    normalizeFinalPage();
 
     function firstMovableGroup(content){
       const children=[...content.children];
       if(!children.length)return [];
       const first=children[0];
-      if(first.matches('.cw-final-block,.cw-sign-city,.cw-signatures'))return [];
+      if(first.matches('.cw-sign-city,.cw-signatures'))return [];
+      if(first.matches('.cw-final-signature-block'))return [first];
 
       // Títulos nunca são movidos sozinhos. Levamos o título e o primeiro bloco
       // relacionado; no bloco de garantia, tabela e texto introdutório seguem juntos.
@@ -8947,21 +8966,24 @@ text-indent:8mm;
       if(!last)return true;
       const pageRect=page.getBoundingClientRect();
       const footerRect=footer.getBoundingClientRect();
-      // Reserva adicional para a assinatura fixa das páginas internas.
+      const hasRealSignatures=Boolean(content.querySelector('.cw-final-signature-block,.cw-signatures'));
+      // Páginas internas comuns reservam espaço para a assinatura decorativa fixa.
+      // Quando o bloco real de assinaturas recua para a página, usamos só o limite
+      // do rodapé para não desperdiçar uma faixa inteira em branco.
       const signatureSafeTop=pageRect.bottom-86;
-      const limit=Math.min(footerRect.top-14,signatureSafeTop);
+      const limit=hasRealSignatures?footerRect.top-14:Math.min(footerRect.top-14,signatureSafeTop);
       return last.getBoundingClientRect().bottom<=limit;
     }
 
-    // Nunca mexe nas três primeiras páginas nem traz conteúdo da última página
-    // de assinaturas. Cada tentativa é medida e revertida se não couber inteira.
-    for(let pass=0;pass<24;pass++){
+    // Cada tentativa é medida e revertida se o grupo não couber inteiro.
+    // A página final agora também pode fornecer conteúdo para a página anterior.
+    for(let pass=0;pass<32;pass++){
       let changed=false;
       const pages=allPages();
-      for(let i=3;i<pages.length-1;i++){
+      for(let i=1;i<pages.length-1;i++){
         const current=pages[i];
         const next=pages[i+1];
-        if(!current||!next||isFinal(current)||isFinal(next))continue;
+        if(!current||!next||isFinal(current))continue;
         const currentContent=current.querySelector('.cw-content');
         const nextContent=next.querySelector('.cw-content');
         if(!currentContent||!nextContent)continue;
@@ -8970,10 +8992,12 @@ text-indent:8mm;
 
         const marker=doc.createComment('contract-flow-marker');
         nextContent.insertBefore(marker,group[0]);
+        const movingSignatures=group.some(el=>el.matches?.('.cw-final-signature-block')||el.querySelector?.('.cw-signatures'));
         group.forEach(el=>{
           el.classList.add('cw-flow-continuation');
           currentContent.appendChild(el);
         });
+        if(movingSignatures)current.classList.add('cw-has-contract-signatures');
 
         if(fits(current)){
           marker.remove();
@@ -8984,16 +9008,18 @@ text-indent:8mm;
             nextContent.insertBefore(el,marker);
           });
           marker.remove();
+          if(movingSignatures&&!currentContent.querySelector('.cw-signatures'))current.classList.remove('cw-has-contract-signatures');
         }
       }
       if(!changed)break;
     }
 
-    // Remove somente páginas internas que ficaram realmente vazias e renumera.
+    // Remove qualquer página (inclusive a antiga página final) que tenha ficado
+    // realmente vazia após o recuo e renumera todas as páginas restantes.
     allPages().forEach(page=>{
-      if(page.classList.contains('cover')||isFinal(page))return;
+      if(page.classList.contains('cover'))return;
       const content=page.querySelector('.cw-content');
-      if(content && !String(content.innerText||'').trim() && !content.querySelector('table,img'))page.remove();
+      if(content && !String(content.innerText||'').trim() && !content.querySelector('table,img,.cw-signatures'))page.remove();
     });
     allPages().forEach((page,index)=>{
       const num=page.querySelector('.cw-foot strong');
@@ -9074,6 +9100,7 @@ text-indent:8mm;
         captureStyle.textContent=`
           [data-contract-pdf-capture] .cw-page::after{content:""!important;position:absolute!important;left:50%!important;bottom:45px!important;width:102px!important;height:32px!important;transform:translateX(-50%)!important;background-image:url("${window.__defaultSoolarwinContractSignature}")!important;background-repeat:no-repeat!important;background-position:center!important;background-size:contain!important;opacity:1!important;pointer-events:none!important;z-index:4!important;}
           [data-contract-pdf-capture] .cw-page.final::after{display:none!important;content:none!important;}
+          [data-contract-pdf-capture] .cw-page.cw-has-contract-signatures::after{display:none!important;content:none!important;}
           [data-contract-pdf-capture] .cw-page:not(.cover){padding-bottom:106px!important;}
           [data-contract-pdf-capture] .cw-page.equipment-page .cw-table{margin-bottom:26px!important;}
           [data-contract-pdf-capture] .cw-page.technical-clauses-page .cw-clause{display:block!important;margin-bottom:26px!important;line-height:1.5!important;}
