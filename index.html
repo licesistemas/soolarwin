@@ -4256,12 +4256,12 @@ service cloud.firestore {
   function applyFinancingBankToProposal(proposal,bank,{preserveTerm=true}={}){
     if(!proposal||!bank)return proposal;
     proposal.financing=proposal.financing||{};
-    const term=preserveTerm&&FINANCING_TERMS.includes(Number(proposal.financing.months))?Number(proposal.financing.months):72;
+    const term=preserveTerm&&Number.isInteger(Number(proposal.financing.months))&&Number(proposal.financing.months)>=1&&Number(proposal.financing.months)<=600?Number(proposal.financing.months):72;
     proposal.financing.bankId=bank.id;
     proposal.financing.bank=bank.name;
     proposal.financing.months=term;
     proposal.financing.rates={36:Number(bank.rates[36]||0),48:Number(bank.rates[48]||0),72:Number(bank.rates[72]||0)};
-    proposal.financing.monthlyRate=Number(proposal.financing.rates[term]||0);
+    proposal.financing.monthlyRate=proposal.financing.customEnabled?Math.max(0,Number(proposal.financing.customRate??0)):Number(proposal.financing.rates[term]||0);
     return proposal;
   }
   function hydrateProposalFinancing(proposal){
@@ -4272,19 +4272,54 @@ service cloud.firestore {
     proposal.financing.downPayment=Math.max(0,Number(proposal.financing.downPayment||0));
     return proposal;
   }
+  // Sistema Price: taxa mensal percentual (1,5 equivale a 1,5% a.m.).
   function fixedInstallment(principal,months,monthlyRatePercent){
-    principal=Math.max(0,Number(principal||0));months=Math.max(1,Number(months||1));
-    const rate=Math.max(0,Number(monthlyRatePercent||0))/100;
+    principal=Math.max(0,Number(principal)||0);
+    months=Math.max(1,Math.trunc(Number(months)||1));
+    const rate=Math.max(0,Number(monthlyRatePercent)||0)/100;
     if(!principal)return 0;
-    return rate===0?principal/months:principal*(rate*Math.pow(1+rate,months))/(Math.pow(1+rate,months)-1);
+    if(rate===0)return principal/months;
+    const discount=Math.pow(1+rate,-months);
+    return principal*rate/(1-discount);
+  }
+  function financingSchedule(principal,months,ratePercent){
+    // A tabela Price usa a taxa EFETIVA mensal informada, não juros simples.
+    // Calculamos em centavos e arredondamos a parcela para CIMA (no máximo
+    // um centavo acima da prestação matemática), evitando que a última
+    // prestação ultrapasse a parcela anunciada.
+    const toCents=value=>Math.round((Number(value)||0)*100);
+    const money=cents=>cents/100;
+    const periods=Math.max(1,Math.trunc(Number(months)||1));
+    const principalCents=Math.max(0,toCents(principal));
+    const rate=Math.max(0,Number(ratePercent)||0)/100;
+    if(!principalCents)return {installment:0,lastInstallment:0,total:0,interest:0,remaining:0};
+    const exact=fixedInstallment(money(principalCents),periods,ratePercent);
+    // Precisão numérica para evitar arredondar indevidamente na fronteira do centavo.
+    const paymentCents=Math.max(1,Math.ceil(exact*100-1e-8));
+    let balance=principalCents,totalCents=0,lastCents=0;
+    for(let month=1;month<=periods;month++){
+      const interestCents=Math.round(balance*rate);
+      const amountDue=balance+interestCents;
+      const paid=Math.min(paymentCents,amountDue);
+      balance=Math.max(0,amountDue-paid);
+      totalCents+=paid;
+      lastCents=paid;
+      if(balance===0)break;
+    }
+    // O último vencimento pode ter ajuste INFERIOR por centavos.
+    return {installment:money(paymentCents),lastInstallment:money(lastCents),total:money(totalCents),interest:money(totalCents-principalCents),remaining:money(balance)};
   }
   function proposalFinancingOptions(proposal,principal,monthlySaving){
     const bank=findFinancingBank(proposal);
     const snapshot=proposal?.financing?.rates||{};
-    return FINANCING_TERMS.map(term=>{
-      const rate=Math.max(0,Number(snapshot[term]??snapshot[String(term)]??bank?.rates?.[term]??proposal?.financing?.monthlyRate??0));
-      const installment=fixedInstallment(principal,term,rate);
-      return {term,rate,installment,total:installment*term,interest:Math.max(0,installment*term-principal),netMonthlyEconomy:Number(monthlySaving||0)-installment};
+    const customTerm=Number(proposal?.financing?.customMonths||(proposal?.financing?.customEnabled?proposal?.financing?.months:0));
+    const terms=[...FINANCING_TERMS];
+    if(Number.isInteger(customTerm)&&customTerm>=1&&customTerm<=600&&!terms.includes(customTerm))terms.push(customTerm);
+    return terms.sort((a,b)=>a-b).map(term=>{
+      const isCustom=term===customTerm&&proposal?.financing?.customEnabled===true;
+      const rate=isCustom?Math.max(0,Number(proposal?.financing?.customRate)||0):Math.max(0,Number(snapshot[term]??snapshot[String(term)]??bank?.rates?.[term]??proposal?.financing?.monthlyRate??0));
+      const result=financingSchedule(principal,term,rate);
+      return {term,rate,...result,netMonthlyEconomy:Number(monthlySaving||0)-result.installment};
     });
   }
   function scheduleFinancingBankRegistrySave(){
@@ -4324,7 +4359,7 @@ service cloud.firestore {
       const bank=data.company.financingBanks.find(item=>item.id===normalized.financing.bankId)||data.company.financingBanks.find(item=>item.name===normalized.financing.bank)||data.company.financingBanks[0];
       if(bank){
         normalized.financing.bankId=bank.id;normalized.financing.bank=bank.name;
-        normalized.financing.months=FINANCING_TERMS.includes(Number(normalized.financing.months))?Number(normalized.financing.months):72;
+        normalized.financing.months=Number.isInteger(Number(normalized.financing.months))&&Number(normalized.financing.months)>=1&&Number(normalized.financing.months)<=600?Number(normalized.financing.months):72;
         normalized.financing.rates={...bank.rates};normalized.financing.monthlyRate=Number(bank.rates[normalized.financing.months]||0);
       }
       return normalized;
@@ -9419,7 +9454,7 @@ text-indent:8mm;
     const down=Math.min(investment,Math.max(0,Number(p.financing?.downPayment||0)));
     const principal=Math.max(0,investment-down);
     const requestedTerm=Number(p.financing?.months||72);
-    const monthsCount=FINANCING_TERMS.includes(requestedTerm)?requestedTerm:72;
+    const monthsCount=Number.isInteger(requestedTerm)&&requestedTerm>=1&&requestedTerm<=600?requestedTerm:72;
     const financingOptions=proposalFinancingOptions(p,principal,monthlySaving);
     const selectedFinancingOption=financingOptions.find(option=>option.term===monthsCount)||financingOptions.at(-1);
     const monthlyRate=Math.max(0,Number(selectedFinancingOption?.rate||0))/100;
@@ -9619,10 +9654,10 @@ text-indent:8mm;
           <label class="field"><span>Instituição financeira</span><select data-financing-bank-select>${banks.map(bank=>`<option value="${attr(bank.id)}" ${bank.id===selectedBank?.id?'selected':''}>${escapeHtml(bank.name)}</option>`).join('')}</select></label>
           ${proposalField('financing.downPayment','Entrada (R$)','number')}
         </div>
-        <div class="financing-option-grid">${options.map(option=>`<button class="financing-option-card ${option.term===selectedTerm?'selected':''}" data-select-financing-term="${option.term}" data-financing-option-term="${option.term}" type="button"><span>${option.term} parcelas</span><strong data-option-installment>${currency(option.installment)}</strong><small>Taxa de <b data-option-rate>${number(option.rate,2)}% a.m.</b></small><div class="financing-option-meta"><div><span>Total</span><b data-option-total>${currency(option.total)}</b></div><div><span>Saldo mensal</span><b data-option-net style="color:${option.netMonthlyEconomy>=0?'var(--green)':'var(--red)'}">${currency(option.netMonthlyEconomy)}</b></div></div></button>`).join('')}</div>
+        <div class="financing-main-grid" style="margin-top:12px;margin-bottom:12px"><label class="field"><span>Prazo personalizado (meses)</span><input data-financing-custom="months" type="number" min="1" max="600" step="1" value="${attr(p.financing?.customMonths||60)}"></label><label class="field"><span>Juros personalizados (% ao mês)</span><input data-financing-custom="rate" type="number" min="0" max="100" step="0.01" value="${attr(p.financing?.customRate??1.5)}"></label></div><button class="btn btn-secondary btn-sm" type="button" data-financing-use-custom>Simular prazo e taxa personalizados</button><div class="financing-option-grid" style="margin-top:12px">${options.map(option=>`<button class="financing-option-card ${option.term===selectedTerm?'selected':''}" data-select-financing-term="${option.term}" data-financing-option-term="${option.term}" type="button"><span>${option.term} parcelas</span><strong data-option-installment>${currency(option.installment)}</strong><small>Taxa de <b data-option-rate>${number(option.rate,2)}% a.m.</b></small><div class="financing-option-meta"><div><span>Total</span><b data-option-total>${currency(option.total)}</b></div><div><span>Última parcela</span><b data-option-last>${currency(option.lastInstallment)}</b></div><div><span>Saldo mensal</span><b data-option-net style="color:${option.netMonthlyEconomy>=0?'var(--green)':'var(--red)'}">${currency(option.netMonthlyEconomy)}</b></div></div></button>`).join('')}</div>
       </div>
       <div class="calc-highlight"><div class="calc-box"><span>Valor financiado</span><strong data-financing-result="principal">${currency(calc.principal)}</strong></div><div class="calc-box"><span>Opção selecionada</span><strong data-financing-result="installment">${calc.monthsCount}x de ${currency(calc.installment)}</strong></div><div class="calc-box"><span>Economia mensal</span><strong data-financing-result="monthlySaving">${currency(calc.monthlySaving)}</strong></div><div class="calc-box"><span>Economia líquida</span><strong data-financing-result="netMonthlyEconomy" style="color:${calc.netMonthlyEconomy>=0?'var(--green)':'var(--red)'}">${currency(calc.netMonthlyEconomy)}</strong></div></div>
-      <div class="form-section">${sectionHeading('Cadastro de bancos','Cadastre novas instituições ou altere as taxas mensais usadas em cada prazo.')}
+      <div class="notice" style="margin-bottom:14px"><strong>Última parcela:</strong> <span data-financing-result="lastInstallment">${currency(calc.selectedFinancingOption?.lastInstallment||0)}</span> · <strong>Total das parcelas:</strong> <span data-financing-result="total">${currency(calc.selectedFinancingOption?.total||0)}</span> · <strong>Juros totais:</strong> <span data-financing-result="interest">${currency(calc.selectedFinancingOption?.interest||0)}</span>. Método Price: taxa efetiva mensal, juros sobre o saldo devedor e amortização mensal. A última parcela pode ser menor por ajuste de centavos. Não inclui IOF, seguros nem tarifas.</div><div class="form-section">${sectionHeading('Cadastro de bancos','Cadastre novas instituições ou altere as taxas mensais usadas em cada prazo.')}
         <div class="bank-config-actions"><p>As taxas ficam salvas para a empresa e serão usadas nas próximas propostas.</p><button class="btn btn-secondary btn-sm" id="addFinancingBankBtn" type="button">＋ Cadastrar banco</button></div>
         <div class="bank-config-list">${banks.map((bank,index)=>`<div class="bank-config-row" data-bank-config-row="${attr(bank.id)}"><label class="field bank-name-field"><span>Nome do banco</span><input data-bank-config-id="${attr(bank.id)}" data-bank-config-field="name" value="${attr(bank.name)}">${bank.id===selectedBank?.id?'<small class="bank-config-selected">Banco desta proposta</small>':''}</label>${FINANCING_TERMS.map(term=>`<label class="field"><span>Taxa ${term}x (% a.m.)</span><input type="number" step="0.01" min="0" data-bank-config-id="${attr(bank.id)}" data-bank-config-field="rate${term}" value="${attr(number(bank.rates[term],2).replace('.','').replace(',','.'))}"></label>`).join('')}<div class="bank-delete-cell"><button class="btn btn-danger btn-icon" data-delete-financing-bank="${attr(bank.id)}" type="button" title="Excluir banco" ${banks.length===1?'disabled':''}>✕</button></div></div>`).join('')}</div>
       </div>
@@ -9762,7 +9797,10 @@ text-indent:8mm;
       principal:currency(calc.principal),
       installment:`${calc.monthsCount}x de ${currency(calc.installment)}`,
       monthlySaving:currency(calc.monthlySaving),
-      netMonthlyEconomy:currency(calc.netMonthlyEconomy)
+      netMonthlyEconomy:currency(calc.netMonthlyEconomy),
+      lastInstallment:currency(calc.selectedFinancingOption?.lastInstallment||0),
+      total:currency(calc.selectedFinancingOption?.total||0),
+      interest:currency(calc.selectedFinancingOption?.interest||0)
     };
     Object.entries(outputs).forEach(([key,value])=>{
       const element=document.querySelector(`[data-financing-result="${key}"]`);
@@ -9782,6 +9820,7 @@ text-indent:8mm;
       const installment=card.querySelector('[data-option-installment]');if(installment)installment.textContent=currency(option.installment);
       const rate=card.querySelector('[data-option-rate]');if(rate)rate.textContent=`${number(option.rate,2)}% a.m.`;
       const total=card.querySelector('[data-option-total]');if(total)total.textContent=currency(option.total);
+      const last=card.querySelector('[data-option-last]');if(last)last.textContent=currency(option.lastInstallment);
       const net=card.querySelector('[data-option-net]');if(net){net.textContent=currency(option.netMonthlyEconomy);net.style.color=option.netMonthlyEconomy>=0?'var(--green)':'var(--red)';}
     });
     updateProposalFinancingCalculations();
@@ -9799,9 +9838,23 @@ text-indent:8mm;
       applyFinancingBankToProposal(activeProposal,bank,{preserveTerm:true});activeProposal.updatedAt=new Date().toISOString();
       renderProposalBuilder();scheduleProposalDraftSave();
     });
+    document.querySelectorAll('[data-financing-custom]').forEach(input=>input.addEventListener('input',()=>{
+      activeProposal.financing.customMonths=Math.max(1,Math.min(600,Math.trunc(Number(document.querySelector('[data-financing-custom="months"]')?.value||60))));
+      activeProposal.financing.customRate=Math.max(0,Number(document.querySelector('[data-financing-custom="rate"]')?.value||0));
+      if(activeProposal.financing.customEnabled){activeProposal.financing.months=activeProposal.financing.customMonths;activeProposal.financing.monthlyRate=activeProposal.financing.customRate;}
+      updateFinancingOptionCards();renderProposalSummary();scheduleProposalDraftSave();
+    }));
+    document.querySelector('[data-financing-use-custom]')?.addEventListener('click',()=>{
+      const f=activeProposal.financing;
+      f.customMonths=Math.max(1,Math.min(600,Math.trunc(Number(document.querySelector('[data-financing-custom="months"]')?.value||60))));
+      f.customRate=Math.max(0,Number(document.querySelector('[data-financing-custom="rate"]')?.value||0));
+      f.customEnabled=true;f.months=f.customMonths;f.monthlyRate=f.customRate;
+      renderProposalBuilder();scheduleProposalDraftSave();
+    });
     document.querySelectorAll('[data-select-financing-term]').forEach(button=>button.addEventListener('click',()=>{
-      const term=Number(button.dataset.selectFinancingTerm);if(!FINANCING_TERMS.includes(term))return;
-      activeProposal.financing.months=term;activeProposal.financing.monthlyRate=Number(activeProposal.financing.rates?.[term]||0);activeProposal.updatedAt=new Date().toISOString();
+      const term=Number(button.dataset.selectFinancingTerm);if(!Number.isInteger(term)||term<1||term>600)return;
+      activeProposal.financing.customEnabled=term===Number(activeProposal.financing.customMonths);
+      activeProposal.financing.months=term;activeProposal.financing.monthlyRate=activeProposal.financing.customEnabled?Number(activeProposal.financing.customRate||0):Number(activeProposal.financing.rates?.[term]||0);activeProposal.updatedAt=new Date().toISOString();
       updateFinancingOptionCards();renderProposalSummary();scheduleProposalDraftSave();
     }));
     document.querySelectorAll('[data-bank-config-field]').forEach(input=>{
@@ -11501,7 +11554,7 @@ ${company.tradeName||company.name}`:''}`;
           <div class="vp-finance-bank-selected"><div class="vp-finance-bank-selected-copy"><span>Instituição financeira selecionada</span><strong>${safe(selectedFinancingBank?.name||p.financing?.bank||'Banco')}</strong><small>Entrada de ${shortCurrency(c.down)} · valor financiado de ${shortCurrency(c.principal)}</small></div><div class="vp-finance-bank-selected-mark" style="background:${attr(selectedFinancingBank?.color||'#ffb703')};color:#fff">${escapeHtml(financingBankInitials(selectedFinancingBank?.name||p.financing?.bank))}</div></div>
           <span class="vp-finance-section-label">Alternativas de parcelamento</span>
           <div class="vp-finance-options"><div class="vp-finance-option-head"><span>Prazo</span><span>Taxa mensal</span><span>Valor da parcela</span><span>Total estimado</span></div>${financingOptions.map(option=>`<div class="vp-finance-option-row ${option.term===c.monthsCount?'selected':''}"><div class="term"><span>Financiamento</span><strong>${option.term}x</strong></div><div><span>Juros</span><strong>${number(option.rate,2)}% a.m.</strong></div><div class="payment"><span>Parcela estimada</span><strong>${shortCurrency(option.installment)}</strong></div><div><span>Total</span><strong>${shortCurrency(option.total)}</strong></div></div>`).join('')}</div>
-          <div class="vp-finance-summary-grid compact"><div class="vp-finance-summary"><span>Investimento à vista</span><strong>${shortCurrency(p.commercial.price)}</strong></div><div class="vp-finance-summary"><span>Previsão da conta após instalação</span><strong>${shortCurrency(c.billAfter)}</strong></div><div class="vp-finance-summary positive"><span>Economia mensal estimada</span><strong>${shortCurrency(c.monthlySaving)}</strong></div></div>
+          <div class="vp-finance-note">Opção selecionada: última parcela de ${shortCurrency(c.selectedFinancingOption?.lastInstallment||0)} · juros totais de ${shortCurrency(c.selectedFinancingOption?.interest||0)}. A última parcela pode ser ligeiramente menor por arredondamento em centavos.</div><div class="vp-finance-summary-grid compact"><div class="vp-finance-summary"><span>Investimento à vista</span><strong>${shortCurrency(p.commercial.price)}</strong></div><div class="vp-finance-summary"><span>Previsão da conta após instalação</span><strong>${shortCurrency(c.billAfter)}</strong></div><div class="vp-finance-summary positive"><span>Economia mensal estimada</span><strong>${shortCurrency(c.monthlySaving)}</strong></div></div>
           <div class="vp-finance-note">A opção destacada é a selecionada na proposta. A simulação usa parcelas fixas e as taxas cadastradas para o banco. Tarifas, seguros, carência, impostos, análise de crédito e condições finais podem alterar os valores apresentados.</div>
         </div>
         ${footer(financingPage)}</div></section>`:'';
